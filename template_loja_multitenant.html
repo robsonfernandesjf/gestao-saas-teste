@@ -617,7 +617,7 @@
   <button onclick="showPage('historico')">Histórico</button>
   <button onclick="showPage('cadastro')">Cadastrar Produto</button>
   <button onclick="showPage('relatorios')">📊 Relatórios</button>
-  <button onclick="showPage('clientes')">👥 Clientes</button>
+  <button onclick="showPage('clientes')">👥 Clientes/Fornecedores</button>
   <button onclick="showPage('vendedores')">🧑‍💼 Vendedores</button>
   <button onclick="showPage('financeiro')">💰 Financeiro</button>
   <button id="nav-usuarios" onclick="showPage('usuarios')" style="display:none;">🔐 Usuários</button>
@@ -1018,6 +1018,23 @@
       <div id="import-excel-preview" style="margin-top:14px;"></div>
     </div>
 
+    <!-- IMPORTAR XML NF-e (entrada de mercadoria) -->
+    <div id="secao-import-xml" style="display:none;">
+      <div class="section-title" style="margin-bottom:8px;">🧾 Lançar Nota Fiscal (XML)</div>
+      <div class="table-wrap" style="padding:20px;margin-bottom:24px;">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+          Importe o XML da NF-e recebida do fornecedor. O sistema lê os itens, dá entrada no estoque
+          (atualizando produtos existentes pela referência/EAN ou criando novos) e vincula a compra ao fornecedor.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <input type="file" id="import-xml-input" accept=".xml" style="display:none;" onchange="handleImportXmlNFe(event)">
+          <button class="btn btn-primary" onclick="document.getElementById('import-xml-input').click()">📂 Escolher arquivo XML</button>
+        </div>
+        <div id="import-xml-status" style="margin-top:12px;font-size:13px;"></div>
+        <div id="import-xml-preview" style="margin-top:14px;"></div>
+      </div>
+    </div>
+
     <div class="section-title">Cadastrar novo produto</div>
     <div class="table-wrap" style="padding:24px;">
       <div class="form-grid">
@@ -1161,11 +1178,24 @@
           </div>
           <div class="form-row">
             <label>CSOSN (Simples Nacional)</label>
-            <select id="cad-csosn">
+            <select id="cad-csosn" onchange="toggleCamposCsosn()">
               <option value="102">102 - Sem permissão de crédito</option>
-              <option value="500">500 - ICMS cobrado por substituição</option>
+              <option value="103">103 - Isenção (faixa de receita bruta)</option>
+              <option value="300">300 - Imune</option>
+              <option value="400">400 - Não tributada</option>
+              <option value="500">500 - ICMS cobrado por substituição/antecipação</option>
               <option value="900">900 - Outros</option>
             </select>
+          </div>
+        </div>
+        <div class="form-grid" id="cad-csosn-extra">
+          <div class="form-row">
+            <label>Alíquota ICMS (%) <span style="font-size:10px;color:var(--muted);font-weight:400;">— informativo, geralmente 0 no Simples</span></label>
+            <input type="text" inputmode="decimal" id="cad-aliquota-icms" placeholder="0,00">
+          </div>
+          <div class="form-row">
+            <label>Cód. benefício fiscal (opcional)</label>
+            <input type="text" id="cad-cod-beneficio" placeholder="conforme tabela da SEFAZ/UF">
           </div>
         </div>
       </div>
@@ -2424,7 +2454,7 @@ const MODULOS = [
   { id: 'historico',   label: '📋 Histórico de Vendas',icon: '📋' },
   { id: 'cadastro',    label: '➕ Cadastrar Produto',   icon: '➕' },
   { id: 'relatorios',  label: '📈 Relatórios',         icon: '📈' },
-  { id: 'clientes',    label: '👥 Clientes',           icon: '👥' },
+  { id: 'clientes',    label: '👥 Clientes/Fornecedores', icon: '👥' },
   { id: 'vendedores',  label: '🧑‍💼 Vendedores',        icon: '🧑‍💼' },
   { id: 'financeiro',  label: '💰 Financeiro',         icon: '💰' },
 ];
@@ -3893,12 +3923,22 @@ async function confirmarImportacaoExcel() {
   populateCatFilter();
 }
 
+// Esconde alíquota ICMS quando o CSOSN não tem incidência (isento/imune/não tributado)
+function toggleCamposCsosn() {
+  const csosn = document.getElementById('cad-csosn').value;
+  const semIcms = ['103','300','400'].includes(csosn);
+  document.getElementById('cad-csosn-extra').style.display = semIcms ? 'none' : 'grid';
+}
+
 // ===== FEATURE FLAGS UI (mostra/esconde seções de grade e fiscal) =====
 function aplicarFeatureFlagsUI() {
   const secGrade = document.getElementById('secao-grade-produto');
   const secFiscal = document.getElementById('secao-fiscal-produto');
   if (secGrade) secGrade.style.display = LOJA_USA_GRADE ? 'block' : 'none';
   if (secFiscal) secFiscal.style.display = LOJA_USA_NFCE ? 'block' : 'none';
+  if (LOJA_USA_NFCE) toggleCamposCsosn();
+  const secXml = document.getElementById('secao-import-xml');
+  if (secXml) secXml.style.display = LOJA_USA_NFCE ? 'block' : 'none';
   popularSelectFornecedores();
 }
 
@@ -3971,6 +4011,180 @@ function cancelarImportacaoExcel() {
   document.getElementById('import-excel-input').value = '';
 }
 
+// ===== IMPORTAÇÃO DE XML DE NF-e (entrada de mercadoria) =====
+let _xmlNFeParsed = null; // { fornecedor: {cnpj, nome}, numeroNota, itens: [...] }
+
+function handleImportXmlNFe(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('import-xml-status');
+  const previewEl = document.getElementById('import-xml-preview');
+  statusEl.innerHTML = '<span style="color:var(--muted)">Lendo XML...</span>';
+  previewEl.innerHTML = '';
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(e.target.result, 'text/xml');
+      const erroParse = xml.querySelector('parsererror');
+      if (erroParse) throw new Error('Arquivo XML inválido ou corrompido.');
+
+      const getTxt = (el, tag) => { const n = el.querySelector(tag); return n ? n.textContent.trim() : ''; };
+
+      const emit = xml.querySelector('emit');
+      if (!emit) throw new Error('Não foi possível localizar os dados do emitente no XML.');
+      const fornecedor = {
+        cnpj: getTxt(emit, 'CNPJ'),
+        nome: getTxt(emit, 'xNome') || getTxt(emit, 'xFant') || 'Fornecedor sem nome'
+      };
+
+      const numeroNota = getTxt(xml.querySelector('ide'), 'nNF') || '—';
+      const dataEmissao = getTxt(xml.querySelector('ide'), 'dhEmi') || getTxt(xml.querySelector('ide'), 'dEmi');
+
+      const detEls = [...xml.querySelectorAll('det')];
+      if (!detEls.length) throw new Error('Nenhum item (produto) encontrado neste XML.');
+
+      const itens = detEls.map(det => {
+        const prod = det.querySelector('prod');
+        return {
+          codigo: getTxt(prod, 'cProd'),
+          ean: getTxt(prod, 'cEAN') !== 'SEM GTIN' ? getTxt(prod, 'cEAN') : '',
+          nome: getTxt(prod, 'xProd'),
+          ncm: getTxt(prod, 'NCM'),
+          unidade: getTxt(prod, 'uCom') || 'UN',
+          quantidade: parseFloat(getTxt(prod, 'qCom')) || 0,
+          valorUnit: parseFloat(getTxt(prod, 'vUnCom')) || 0,
+          valorTotal: parseFloat(getTxt(prod, 'vProd')) || 0,
+        };
+      });
+
+      _xmlNFeParsed = { fornecedor, numeroNota, dataEmissao, itens };
+
+      const valorTotalNota = itens.reduce((s,i) => s + i.valorTotal, 0);
+      statusEl.innerHTML = `<span style="color:var(--success)">✅ NF-e nº ${numeroNota} lida com sucesso — ${itens.length} item(ns), fornecedor: ${fornecedor.nome}.</span>`;
+
+      previewEl.innerHTML = `
+        <div class="produto-info-box" style="margin-bottom:14px;">
+          <strong>${fornecedor.nome}</strong><br>
+          <span style="font-size:12px;color:var(--muted);">CNPJ: ${fornecedor.cnpj || '—'} · Nota nº ${numeroNota} · Total: ${R(valorTotalNota)}</span>
+        </div>
+        <div class="table-wrap" style="max-height:320px;overflow-y:auto;">
+          <table>
+            <thead><tr><th>Cód.</th><th>EAN</th><th>Produto</th><th>Qtd.</th><th>Custo Unit.</th><th>Total</th></tr></thead>
+            <tbody>${itens.map(i => `<tr>
+              <td><code>${i.codigo}</code></td><td style="font-size:11px;">${i.ean||'—'}</td><td>${i.nome}</td>
+              <td>${i.quantidade}</td><td>${R(i.valorUnit)}</td><td>${R(i.valorTotal)}</td>
+            </tr>`).join('')}</tbody>
+          </table>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:10px;">
+          Produtos com referência/EAN já cadastrados terão o <strong>estoque somado</strong> e o <strong>custo atualizado</strong>.
+          Produtos não encontrados serão <strong>criados automaticamente</strong>, vinculados a este fornecedor.
+        </p>
+        <button class="btn btn-primary" style="margin-top:14px;" onclick="confirmarImportacaoXmlNFe()">✅ Confirmar entrada de ${itens.length} item(ns)</button>
+        <button class="btn btn-outline" style="margin-top:14px;margin-left:8px;" onclick="cancelarImportacaoXmlNFe()">Cancelar</button>
+      `;
+    } catch (err) {
+      console.error(err);
+      statusEl.innerHTML = `<span style="color:var(--danger)">⚠ ${err.message || 'Erro ao ler o XML da NF-e.'}</span>`;
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function confirmarImportacaoXmlNFe() {
+  if (!_xmlNFeParsed) return;
+  const statusEl = document.getElementById('import-xml-status');
+  statusEl.innerHTML = '<span style="color:var(--muted)">Lançando nota, aguarde...</span>';
+
+  try {
+    mostrarLoading(true);
+    const { fornecedor, itens, numeroNota } = _xmlNFeParsed;
+
+    const clientes = getClientes();
+    let fornecedorReg = clientes.find(c => c.eh_fornecedor && c.doc_numero && c.doc_numero.replace(/\D/g,'') === fornecedor.cnpj);
+    if (!fornecedorReg) {
+      const novoFornecedor = await sbPost('clientes', {
+        nome: fornecedor.nome,
+        eh_fornecedor: true,
+        doc_tipo: 'cnpj',
+        doc_numero: fornecedor.cnpj
+      });
+      fornecedorReg = Array.isArray(novoFornecedor) ? novoFornecedor[0] : novoFornecedor;
+      clientes.push(fornecedorReg);
+      invalidarCache('clientes');
+      saveClientes(clientes);
+    }
+
+    const produtos = getProdutos();
+    let criados = 0, atualizados = 0, erros = 0;
+
+    for (const item of itens) {
+      try {
+        const existente = produtos.find(p =>
+          (item.ean && p.ean13 === item.ean) || p.ref === item.codigo
+        );
+
+        if (existente) {
+          const novoEstoque = (existente.estoque || 0) + item.quantidade;
+          await sbPatch('produtos', existente.id, {
+            estoque: novoEstoque,
+            custo: item.valorUnit,
+            fornecedor_id: fornecedorReg.id
+          });
+          existente.estoque = novoEstoque;
+          existente.custo = item.valorUnit;
+          existente.fornecedor_id = fornecedorReg.id;
+          atualizados++;
+        } else {
+          const novoProduto = {
+            ref: item.codigo || ('NF' + Date.now() + Math.floor(Math.random()*1000)),
+            produto: item.nome,
+            ean13: item.ean || undefined,
+            categoria: 'Outros',
+            custo: item.valorUnit,
+            preco_venda: item.valorUnit,
+            estoque: item.quantidade,
+            qtd_comprada: item.quantidade,
+            fornecedor_id: fornecedorReg.id,
+            ncm: item.ncm || null,
+            unidade: item.unidade || 'UN'
+          };
+          const criado = await sbPost('produtos', novoProduto);
+          const registro = Array.isArray(criado) ? criado[0] : (criado || { ...novoProduto, id: 'prod_' + Date.now() });
+          produtos.push(registro);
+          criados++;
+        }
+      } catch (e) {
+        console.warn('Erro ao processar item da NF-e:', item.nome, e.message);
+        erros++;
+      }
+    }
+
+    invalidarCache('produtos');
+    saveProdutos(produtos);
+
+    statusEl.innerHTML = `<span style="color:var(--success)">✅ Nota ${numeroNota} lançada! ${criados} produto(s) novo(s), ${atualizados} atualizado(s)${erros>0?`, ${erros} erro(s)`:''}.</span>`;
+    document.getElementById('import-xml-preview').innerHTML = '';
+    document.getElementById('import-xml-input').value = '';
+    _xmlNFeParsed = null;
+    populateCatFilter();
+  } catch (e) {
+    console.error('Erro ao lançar NF-e:', e);
+    statusEl.innerHTML = '<span style="color:var(--danger)">⚠ Erro ao lançar a nota. Verifique sua conexão e tente novamente.</span>';
+  } finally {
+    mostrarLoading(false);
+  }
+}
+
+function cancelarImportacaoXmlNFe() {
+  _xmlNFeParsed = null;
+  document.getElementById('import-xml-preview').innerHTML = '';
+  document.getElementById('import-xml-status').innerHTML = '';
+  document.getElementById('import-xml-input').value = '';
+}
+
 // Preenche automaticamente "Estoque inicial" com a "Qtd. comprada" enquanto
 // o usuário não tiver editado manualmente o campo de estoque — evita o
 // produto ser salvo com estoque 0 (e por isso invisível na tela de venda).
@@ -4013,6 +4227,8 @@ async function salvarCadastro() {
     novoProduto.unidade = document.getElementById('cad-unidade').value;
     novoProduto.origem = document.getElementById('cad-origem').value;
     novoProduto.csosn = document.getElementById('cad-csosn').value;
+    novoProduto.aliquota_icms = parseFloat((document.getElementById('cad-aliquota-icms').value||'0').replace(',','.')) || 0;
+    novoProduto.cod_beneficio = document.getElementById('cad-cod-beneficio').value.trim() || null;
   }
 
   if (novoProduto.estoque === 0) {
@@ -4029,7 +4245,7 @@ async function salvarCadastro() {
     saveProdutos(produtos);
     document.getElementById('cad-msg').style.color = 'var(--success)';
     document.getElementById('cad-msg').textContent = '✓ Produto ' + ref + ' cadastrado!';
-    ['cad-ref','cad-ean13','cad-nome','cad-custo','cad-preco','cad-cp','cad-est','cad-parcela','cad-nparcelas','cad-est-min','cad-ncm'].forEach(id=>document.getElementById(id).value='');
+    ['cad-ref','cad-ean13','cad-nome','cad-custo','cad-preco','cad-cp','cad-est','cad-parcela','cad-nparcelas','cad-est-min','cad-ncm','cad-aliquota-icms','cad-cod-beneficio'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('cad-fornecedor').value = '';
     document.getElementById('cad-tem-grade').checked = false;
     _gradeAtual = [];
