@@ -752,6 +752,13 @@
 
 <!-- ESTOQUE -->
 <div id="page-estoque" class="page">
+  <div class="cat-tabs" style="margin-bottom:16px;" id="estoque-subtabs">
+    <div class="cat-tab active" onclick="mostrarSubEstoque('lista')">📦 Lista de Produtos</div>
+    <div class="cat-tab" onclick="mostrarSubEstoque('lancamento')">🧾 Lançamento de Nota</div>
+  </div>
+
+  <!-- SUB: LISTA DE PRODUTOS (conteúdo original) -->
+  <div id="subestoque-lista">
   <div class="toolbar">
     <input type="text" id="busca-estoque" placeholder="Buscar por ref. ou produto..." oninput="renderEstoque()">
     <select id="filtro-cat" onchange="renderEstoque()"><option value="">Todas as categorias</option></select>
@@ -781,11 +788,86 @@
     </table>
     <div class="pagination" id="estoque-pag"></div>
   </div>
+  </div>
+
+  <!-- SUB: LANÇAMENTO DE NOTA (XML + manual) -->
+  <div id="subestoque-lancamento" style="display:none;">
+    <div style="max-width:680px;">
+
+      <!-- IMPORTAR XML NF-e (entrada de mercadoria) -->
+      <div id="secao-import-xml" style="display:none;">
+        <div class="section-title" style="margin-bottom:8px;">🧾 Lançar Nota Fiscal (XML)</div>
+        <div class="table-wrap" style="padding:20px;margin-bottom:24px;">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+            Importe o XML da NF-e recebida do fornecedor. O sistema lê os itens, dá entrada no estoque
+            (atualizando produtos existentes pela referência/EAN ou criando novos) e vincula a compra ao fornecedor.
+          </p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <input type="file" id="import-xml-input" accept=".xml" style="display:none;" onchange="handleImportXmlNFe(event)">
+            <button class="btn btn-primary" onclick="document.getElementById('import-xml-input').click()">📂 Escolher arquivo XML</button>
+          </div>
+          <div id="import-xml-status" style="margin-top:12px;font-size:13px;"></div>
+          <div id="import-xml-preview" style="margin-top:14px;"></div>
+        </div>
+      </div>
+
+      <!-- LANÇAMENTO MANUAL DE NOTA (sem XML) -->
+      <div class="section-title" style="margin-bottom:8px;">✍️ Lançar Nota Manualmente</div>
+      <div class="table-wrap" style="padding:20px;margin-bottom:24px;">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+          Não tem o XML em mãos? Lance a entrada de mercadoria manualmente, item por item, vinculando ao fornecedor.
+        </p>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Fornecedor</label>
+            <select id="man-fornecedor">
+              <option value="">— Selecione —</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Nº da nota (opcional)</label>
+            <input type="text" id="man-numero-nota" placeholder="Ex: 1234">
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:14px;">
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--accent);margin-bottom:10px;">Adicionar item</p>
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Referência</label>
+              <input type="text" id="man-item-ref" placeholder="Ex: EB97">
+            </div>
+            <div class="form-row">
+              <label>Produto</label>
+              <input type="text" id="man-item-nome" placeholder="Ex: Blusa modal básica">
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Quantidade</label>
+              <input type="number" id="man-item-qtd" placeholder="0" min="1">
+            </div>
+            <div class="form-row">
+              <label>Custo unitário (R$)</label>
+              <input type="text" inputmode="numeric" id="man-item-custo" placeholder="0,00" oninput="mascaraMoeda(this)">
+            </div>
+          </div>
+          <button type="button" class="btn" style="width:100%;" onclick="adicionarItemNotaManual()">+ Adicionar item à nota</button>
+        </div>
+
+        <div id="man-itens-lista" style="margin-top:14px;"></div>
+
+        <button class="btn btn-primary" style="width:100%;padding:12px;margin-top:14px;" onclick="confirmarLancamentoManual()">✅ Lançar Nota</button>
+        <p id="man-nota-msg" style="margin-top:10px;font-size:13px;"></p>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- VENDAS -->
 <div id="page-vendas" class="page">
   <div class="section-title">Registrar nova venda · carrinho</div>
+
 
   <div class="pdv-layout">
 
@@ -1016,23 +1098,6 @@
       </div>
       <div id="import-excel-status" style="margin-top:12px;font-size:13px;"></div>
       <div id="import-excel-preview" style="margin-top:14px;"></div>
-    </div>
-
-    <!-- IMPORTAR XML NF-e (entrada de mercadoria) -->
-    <div id="secao-import-xml" style="display:none;">
-      <div class="section-title" style="margin-bottom:8px;">🧾 Lançar Nota Fiscal (XML)</div>
-      <div class="table-wrap" style="padding:20px;margin-bottom:24px;">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
-          Importe o XML da NF-e recebida do fornecedor. O sistema lê os itens, dá entrada no estoque
-          (atualizando produtos existentes pela referência/EAN ou criando novos) e vincula a compra ao fornecedor.
-        </p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-          <input type="file" id="import-xml-input" accept=".xml" style="display:none;" onchange="handleImportXmlNFe(event)">
-          <button class="btn btn-primary" onclick="document.getElementById('import-xml-input').click()">📂 Escolher arquivo XML</button>
-        </div>
-        <div id="import-xml-status" style="margin-top:12px;font-size:13px;"></div>
-        <div id="import-xml-preview" style="margin-top:14px;"></div>
-      </div>
     </div>
 
     <div class="section-title">Cadastrar novo produto</div>
@@ -2968,7 +3033,7 @@ function showPage(id) {
     if (m && m[1] === id) b.classList.add('active');
   });
   if (id === 'dashboard') renderDashExecutivo();
-  if (id === 'estoque') { populateCatFilter(); renderEstoque(); }
+  if (id === 'estoque') { populateCatFilter(); renderEstoque(); aplicarFeatureFlagsUI(); popularSelectFornecedoresManual(); }
   if (id === 'historico') { populateHistFilter(); renderHistorico(); }
   if (id === 'relatorios') { renderRelatorios(); renderRelEstoque(); }
   if (id === 'rel-estoque') { renderRelEstoque(); }
@@ -3931,6 +3996,123 @@ function toggleCamposCsosn() {
 }
 
 // ===== FEATURE FLAGS UI (mostra/esconde seções de grade e fiscal) =====
+// ===== SUB-ABAS DA PÁGINA ESTOQUE (Lista de Produtos / Lançamento de Nota) =====
+function mostrarSubEstoque(sub) {
+  document.getElementById('subestoque-lista').style.display = sub === 'lista' ? 'block' : 'none';
+  document.getElementById('subestoque-lancamento').style.display = sub === 'lancamento' ? 'block' : 'none';
+  document.querySelectorAll('#estoque-subtabs .cat-tab').forEach(t => t.classList.remove('active'));
+  const idx = ['lista','lancamento'].indexOf(sub);
+  const tabs = document.querySelectorAll('#estoque-subtabs .cat-tab');
+  if (tabs[idx]) tabs[idx].classList.add('active');
+}
+
+// ===== LANÇAMENTO MANUAL DE NOTA (entrada de mercadoria sem XML) =====
+let _itensNotaManual = [];
+
+async function popularSelectFornecedoresManual() {
+  const sel = document.getElementById('man-fornecedor');
+  if (!sel) return;
+  try {
+    const clientes = await getClientesAsync();
+    const fornecedores = clientes.filter(c => c.eh_fornecedor);
+    sel.innerHTML = '<option value="">— Selecione —</option>' +
+      fornecedores.map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+  } catch (e) {
+    console.warn('Não foi possível carregar fornecedores:', e.message);
+  }
+}
+
+function adicionarItemNotaManual() {
+  const ref = document.getElementById('man-item-ref').value.trim().toUpperCase();
+  const nome = document.getElementById('man-item-nome').value.trim();
+  const qtd = parseInt(document.getElementById('man-item-qtd').value) || 0;
+  const custo = valorMoeda('man-item-custo');
+  if (!ref || !nome || !qtd) { alert('Preencha referência, produto e quantidade.'); return; }
+  _itensNotaManual.push({ ref, nome, qtd, custo });
+  document.getElementById('man-item-ref').value = '';
+  document.getElementById('man-item-nome').value = '';
+  document.getElementById('man-item-qtd').value = '';
+  document.getElementById('man-item-custo').value = '';
+  renderItensNotaManual();
+}
+
+function removerItemNotaManual(idx) {
+  _itensNotaManual.splice(idx, 1);
+  renderItensNotaManual();
+}
+
+function renderItensNotaManual() {
+  const el = document.getElementById('man-itens-lista');
+  if (!_itensNotaManual.length) { el.innerHTML = '<p style="font-size:12px;color:var(--muted);">Nenhum item adicionado ainda.</p>'; return; }
+  const total = _itensNotaManual.reduce((s,i)=>s+i.qtd*i.custo,0);
+  el.innerHTML = `
+    <table style="width:100%;font-size:13px;">
+      <thead><tr><th style="text-align:left;">Ref.</th><th style="text-align:left;">Produto</th><th style="text-align:right;">Qtd.</th><th style="text-align:right;">Custo</th><th></th></tr></thead>
+      <tbody>${_itensNotaManual.map((i,idx)=>`
+        <tr>
+          <td><code>${i.ref}</code></td><td>${i.nome}</td><td style="text-align:right;">${i.qtd}</td><td style="text-align:right;">${R(i.custo)}</td>
+          <td style="text-align:right;"><button type="button" class="btn" style="padding:2px 8px;font-size:11px;" onclick="removerItemNotaManual(${idx})">✕</button></td>
+        </tr>`).join('')}</tbody>
+    </table>
+    <p style="font-size:12px;color:var(--muted);margin-top:6px;">Total da nota: <strong>${R(total)}</strong> · ${_itensNotaManual.length} item(ns)</p>
+  `;
+}
+
+async function confirmarLancamentoManual() {
+  const msgEl = document.getElementById('man-nota-msg');
+  if (!_itensNotaManual.length) { msgEl.style.color = 'var(--danger)'; msgEl.textContent = '⚠ Adicione ao menos um item à nota.'; return; }
+
+  const fornecedorId = document.getElementById('man-fornecedor').value || null;
+  msgEl.style.color = 'var(--muted)';
+  msgEl.textContent = 'Lançando nota, aguarde...';
+
+  try {
+    mostrarLoading(true);
+    const produtos = getProdutos();
+    let criados = 0, atualizados = 0;
+
+    for (const item of _itensNotaManual) {
+      const existente = produtos.find(p => p.ref === item.ref);
+      if (existente) {
+        const novoEstoque = (existente.estoque || 0) + item.qtd;
+        await sbPatch('produtos', existente.id, {
+          estoque: novoEstoque, custo: item.custo,
+          fornecedor_id: fornecedorId || existente.fornecedor_id || null
+        });
+        existente.estoque = novoEstoque;
+        existente.custo = item.custo;
+        atualizados++;
+      } else {
+        const novoProduto = {
+          ref: item.ref, produto: item.nome, categoria: 'Outros',
+          custo: item.custo, preco_venda: item.custo, estoque: item.qtd, qtd_comprada: item.qtd,
+          fornecedor_id: fornecedorId
+        };
+        const criado = await sbPost('produtos', novoProduto);
+        const registro = Array.isArray(criado) ? criado[0] : (criado || { ...novoProduto, id: 'prod_' + Date.now() });
+        produtos.push(registro);
+        criados++;
+      }
+    }
+
+    invalidarCache('produtos');
+    saveProdutos(produtos);
+
+    msgEl.style.color = 'var(--success)';
+    msgEl.textContent = `✓ Nota lançada! ${criados} produto(s) novo(s), ${atualizados} atualizado(s).`;
+    _itensNotaManual = [];
+    renderItensNotaManual();
+    document.getElementById('man-numero-nota').value = '';
+    populateCatFilter();
+  } catch (e) {
+    console.error('Erro ao lançar nota manual:', e);
+    msgEl.style.color = 'var(--danger)';
+    msgEl.textContent = '⚠ Erro ao lançar. Verifique sua conexão e tente novamente.';
+  } finally {
+    mostrarLoading(false);
+  }
+}
+
 function aplicarFeatureFlagsUI() {
   const secGrade = document.getElementById('secao-grade-produto');
   const secFiscal = document.getElementById('secao-fiscal-produto');
