@@ -323,7 +323,7 @@
     box-shadow: 0 16px 60px rgba(0,0,0,.5);
   }
   .login-header {
-    background: linear-gradient(135deg, #B56B7A 0%, #C49A9A 100%); padding: 28px 32px 22px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%); padding: 28px 32px 22px;
     color: #fff; text-align: center;
   }
   .login-header h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
@@ -2146,6 +2146,25 @@
         <div id="edit-parc-preview" style="display:none;font-size:12px;padding:7px 10px;background:var(--surface);border-radius:5px;"></div>
       </div>
       <div id="edit-margem-preview" style="display:none;padding:9px 12px;border-radius:var(--radius);font-size:12px;margin-bottom:12px;"></div>
+
+      <!-- FOTO DO PRODUTO (catálogo público) — só aparece se loja.usa_catalogo = true -->
+      <div id="edit-secao-foto" style="display:none;border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;background:var(--bg);">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:10px;">🛍️ Foto no catálogo</div>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div id="edit-foto-preview" style="width:72px;height:72px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+            <span style="font-size:24px;opacity:0.3;">🖼️</span>
+          </div>
+          <div>
+            <input type="file" id="edit-foto-input" accept="image/*" style="display:none;" onchange="handleFotoEdicao(event)">
+            <button type="button" class="btn btn-sm" onclick="document.getElementById('edit-foto-input').click()">📷 Trocar foto</button>
+            <p id="edit-foto-status" style="font-size:11px;color:var(--muted);margin-top:6px;"></p>
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text);cursor:pointer;margin-top:10px;font-size:13px;">
+          <input type="checkbox" id="edit-visivel-catalogo" style="width:auto;margin:0;">
+          Mostrar este produto no catálogo público
+        </label>
+      </div>
       <div style="border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;background:var(--bg);">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:10px;">Estoque atual</div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
@@ -3769,6 +3788,17 @@ function abrirEdicao(ref) {
   document.getElementById('est-add').value = '';
   document.getElementById('est-sub').value = '';
   atualizarPreviewEst();
+
+  // Foto / catálogo público
+  _editFotoUrl = p.foto_url || null;
+  const secFoto = document.getElementById('edit-secao-foto');
+  if (secFoto) secFoto.style.display = LOJA_USA_CATALOGO ? 'block' : 'none';
+  document.getElementById('edit-foto-preview').innerHTML = p.foto_url
+    ? `<img src="${p.foto_url}" style="width:100%;height:100%;object-fit:cover;">`
+    : '<span style="font-size:24px;opacity:0.3;">🖼️</span>';
+  document.getElementById('edit-foto-status').textContent = '';
+  document.getElementById('edit-visivel-catalogo').checked = p.visivel_catalogo !== false;
+
   document.getElementById('modal-edicao').classList.add('open');
 }
 
@@ -3816,10 +3846,14 @@ async function salvarEdicao() {
   if (ep > 0) produtos[idx].parcela = ep; else delete produtos[idx].parcela;
   if (en > 0) produtos[idx].nparcelas = en; else delete produtos[idx].nparcelas;
   produtos[idx].estoque = parseInt(document.getElementById('edit-est').value)||0;
+  if (LOJA_USA_CATALOGO) {
+    produtos[idx].foto_url = _editFotoUrl || null;
+    produtos[idx].visivel_catalogo = document.getElementById('edit-visivel-catalogo').checked;
+  }
 
   try {
     mostrarLoading(true);
-    await sbPatchWhere('produtos', 'ref', ref, {
+    const patchData = {
       produto: produtos[idx].produto,
       ean13: produtos[idx].ean13 ?? null,
       custo: produtos[idx].custo,
@@ -3827,7 +3861,12 @@ async function salvarEdicao() {
       parcela: produtos[idx].parcela ?? null,
       nparcelas: produtos[idx].nparcelas ?? null,
       estoque: produtos[idx].estoque
-    });
+    };
+    if (LOJA_USA_CATALOGO) {
+      patchData.foto_url = produtos[idx].foto_url;
+      patchData.visivel_catalogo = produtos[idx].visivel_catalogo;
+    }
+    await sbPatchWhere('produtos', 'ref', ref, patchData);
     invalidarCache('produtos');
   } catch (e) {
     console.error('Erro ao salvar edição do produto:', e);
@@ -4225,6 +4264,44 @@ function resetarFotoProduto() {
   document.getElementById('cad-foto-status').textContent = '';
   document.getElementById('cad-foto-input').value = '';
   document.getElementById('cad-visivel-catalogo').checked = true;
+}
+
+// ===== FOTO DO PRODUTO — edição (modal "Editar Produto" no Estoque) =====
+let _editFotoUrl = null;
+
+async function handleFotoEdicao(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('edit-foto-status');
+  const previewEl = document.getElementById('edit-foto-preview');
+  statusEl.textContent = 'Otimizando imagem...';
+  statusEl.style.color = 'var(--muted)';
+
+  try {
+    const blob = await comprimirImagem(file);
+    const ref = (document.getElementById('edit-ref').value.trim().toUpperCase()) || ('img' + Date.now());
+    const nomeArquivo = `${LOJA_ID}/${ref}-${Date.now()}.jpg`;
+
+    statusEl.textContent = 'Enviando foto...';
+    const resp = await fetch(`${SB_URL}/storage/v1/object/produtos/${nomeArquivo}`, {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'image/jpeg' },
+      body: blob
+    });
+    if (!resp.ok) throw new Error('Falha no upload (status ' + resp.status + ').');
+
+    const urlPublica = `${SB_URL}/storage/v1/object/public/produtos/${nomeArquivo}`;
+    _editFotoUrl = urlPublica;
+
+    previewEl.innerHTML = `<img src="${urlPublica}" style="width:100%;height:100%;object-fit:cover;">`;
+    const kb = Math.round(blob.size / 1024);
+    statusEl.style.color = 'var(--success)';
+    statusEl.textContent = `✓ Imagem otimizada: ${kb} KB`;
+  } catch (e) {
+    console.error('Erro ao processar/enviar foto:', e);
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = '⚠ Erro ao enviar a foto. Tente novamente.';
+  }
 }
 
 function aplicarFeatureFlagsUI() {
@@ -7995,10 +8072,11 @@ async function renderizarCatalogoPublico() {
   cont.innerHTML = '<p style="padding:40px;text-align:center;color:var(--muted);">Carregando catálogo...</p>';
 
   try {
-    const respLoja = await fetch(`${SB_URL}/rest/v1/lojas?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,catalogo_whatsapp`, { headers: SB_HEADS });
+    const respLoja = await fetch(`${SB_URL}/rest/v1/lojas?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,catalogo_whatsapp,catalogo_banner_url`, { headers: SB_HEADS });
     const lojas = await respLoja.json();
     const nomeLoja = (lojas[0] && lojas[0].nome) || CONFIG_LOJA.nomeLoja;
     const whats = (lojas[0] && lojas[0].catalogo_whatsapp) || '';
+    const bannerUrl = (lojas[0] && lojas[0].catalogo_banner_url) || '';
 
     const respProd = await fetch(`${SB_URL}/rest/v1/produtos?loja_id=eq.${encodeURIComponent(LOJA_ID)}&visivel_catalogo=eq.true&select=ref,produto,preco_venda,estoque,foto_url,categoria&order=produto.asc`, { headers: SB_HEADS });
     const produtos = await respProd.json();
@@ -8006,6 +8084,7 @@ async function renderizarCatalogoPublico() {
     const categorias = [...new Set(produtos.map(p => p.categoria).filter(Boolean))].sort();
 
     cont.innerHTML = `
+      ${bannerUrl ? `<div style="width:100%;max-height:280px;overflow:hidden;"><img src="${bannerUrl}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>` : ''}
       <div style="max-width:1100px;margin:0 auto;padding:20px;">
         <div style="text-align:center;padding:24px 16px;margin-bottom:20px;">
           <h1 style="font-size:24px;margin-bottom:4px;color:var(--accent);">${nomeLoja}</h1>
