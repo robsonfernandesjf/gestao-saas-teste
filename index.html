@@ -557,6 +557,10 @@
 </head>
 <body>
 
+<!-- ===== CATÁLOGO PÚBLICO (vitrine sem login) ===== -->
+<!-- Se a URL terminar em /loja, esconde todo o sistema e renderiza só a vitrine -->
+<div id="catalogo-publico" style="display:none;"></div>
+
 <!-- LOGIN SCREEN -->
 <div id="login-screen">
   <div class="login-box">
@@ -1179,6 +1183,30 @@
         <select id="cad-fornecedor">
           <option value="">— Nenhum —</option>
         </select>
+      </div>
+
+      <!-- SEÇÃO CATÁLOGO PÚBLICO — só aparece se loja.usa_catalogo = true -->
+      <div id="secao-catalogo-produto" style="display:none;border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--accent);margin-bottom:12px;">🛍️ Catálogo Público</p>
+        <div class="form-row">
+          <label>Foto do produto</label>
+          <input type="file" id="cad-foto-input" accept="image/*" style="display:none;" onchange="handleFotoProduto(event)">
+          <div style="display:flex;gap:12px;align-items:center;">
+            <div id="cad-foto-preview" style="width:84px;height:84px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+              <span style="font-size:28px;opacity:0.3;">🖼️</span>
+            </div>
+            <div>
+              <button type="button" class="btn" onclick="document.getElementById('cad-foto-input').click()">📷 Escolher foto</button>
+              <p id="cad-foto-status" style="font-size:11px;color:var(--muted);margin-top:6px;"></p>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text);cursor:pointer;">
+            <input type="checkbox" id="cad-visivel-catalogo" checked style="width:auto;margin:0;">
+            Mostrar este produto no catálogo público
+          </label>
+        </div>
       </div>
 
       <!-- SEÇÃO GRADE (tamanho × cor) — só aparece se loja.usa_grade = true -->
@@ -4295,12 +4323,89 @@ async function confirmarLancamentoManual() {
   }
 }
 
+// ===== CATÁLOGO PÚBLICO: foto de produto (redimensiona + comprime + upload) =====
+let _fotoProdutoUrl = null; // URL pública após upload, usada no salvarCadastro
+
+function comprimirImagem(file, maxLargura = 800, qualidade = 0.8) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxLargura) {
+          height = Math.round(height * (maxLargura / width));
+          width = maxLargura;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => {
+          if (!blob) { reject(new Error('Falha ao processar a imagem.')); return; }
+          resolve(blob);
+        }, 'image/jpeg', qualidade);
+      };
+      img.onerror = () => reject(new Error('Não foi possível ler a imagem.'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('Falha ao ler o arquivo.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleFotoProduto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('cad-foto-status');
+  const previewEl = document.getElementById('cad-foto-preview');
+  statusEl.textContent = 'Otimizando imagem...';
+  statusEl.style.color = 'var(--muted)';
+
+  try {
+    const blob = await comprimirImagem(file);
+    const ref = (document.getElementById('cad-ref').value.trim().toUpperCase()) || ('img' + Date.now());
+    const nomeArquivo = `${LOJA_ID}/${ref}-${Date.now()}.jpg`;
+
+    statusEl.textContent = 'Enviando foto...';
+    const resp = await fetch(`${SB_URL}/storage/v1/object/produtos/${nomeArquivo}`, {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'image/jpeg' },
+      body: blob
+    });
+    if (!resp.ok) throw new Error('Falha no upload (status ' + resp.status + ').');
+
+    const urlPublica = `${SB_URL}/storage/v1/object/public/produtos/${nomeArquivo}`;
+    _fotoProdutoUrl = urlPublica;
+
+    previewEl.innerHTML = `<img src="${urlPublica}" style="width:100%;height:100%;object-fit:cover;">`;
+    const kb = Math.round(blob.size / 1024);
+    statusEl.style.color = 'var(--success)';
+    statusEl.textContent = `✓ Imagem otimizada: ${kb} KB`;
+  } catch (e) {
+    console.error('Erro ao processar/enviar foto:', e);
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = '⚠ Erro ao enviar a foto. Tente novamente.';
+  }
+}
+
+function resetarFotoProduto() {
+  _fotoProdutoUrl = null;
+  document.getElementById('cad-foto-preview').innerHTML = '<span style="font-size:28px;opacity:0.3;">🖼️</span>';
+  document.getElementById('cad-foto-status').textContent = '';
+  document.getElementById('cad-foto-input').value = '';
+  document.getElementById('cad-visivel-catalogo').checked = true;
+}
+
 // ===== FEATURE FLAGS UI (mostra/esconde seções de grade e fiscal) =====
 function aplicarFeatureFlagsUI() {
   const secGrade = document.getElementById('secao-grade-produto');
   const secFiscal = document.getElementById('secao-fiscal-produto');
+  const secCatalogo = document.getElementById('secao-catalogo-produto');
   if (secGrade) secGrade.style.display = LOJA_USA_GRADE ? 'block' : 'none';
   if (secFiscal) secFiscal.style.display = LOJA_USA_NFCE ? 'block' : 'none';
+  if (secCatalogo) secCatalogo.style.display = LOJA_USA_CATALOGO ? 'block' : 'none';
   if (LOJA_USA_NFCE) toggleCamposCsosn();
   const secXml = document.getElementById('secao-import-xml');
   if (secXml) secXml.style.display = 'block';
@@ -4406,6 +4511,11 @@ async function salvarCadastro() {
     novoProduto.cod_beneficio = document.getElementById('cad-cod-beneficio').value.trim() || null;
   }
 
+  if (LOJA_USA_CATALOGO) {
+    novoProduto.foto_url = _fotoProdutoUrl || null;
+    novoProduto.visivel_catalogo = document.getElementById('cad-visivel-catalogo').checked;
+  }
+
   if (novoProduto.estoque === 0) {
     const continuar = confirm('⚠ O estoque inicial está em 0 — este produto não aparecerá na tela de Vendas até ter estoque. Continuar mesmo assim?');
     if (!continuar) return;
@@ -4426,6 +4536,7 @@ async function salvarCadastro() {
     _gradeAtual = [];
     renderGradeLista();
     toggleGradeProduto();
+    if (LOJA_USA_CATALOGO) resetarFotoProduto();
     document.getElementById('cad-parcela-preview').style.display = 'none';
     document.getElementById('cad-margem-preview').style.display = 'none';
     _estoqueEditadoManualmente = false;
@@ -7768,6 +7879,8 @@ document.addEventListener('click', function(e) {
 // ===== FEATURE FLAGS DA LOJA (NFC-e / Grade) =====
 let LOJA_USA_NFCE = false;
 let LOJA_USA_GRADE = false;
+let LOJA_USA_CATALOGO = false;
+let LOJA_CATALOGO_WHATSAPP = '';
 
 // ===== APLICAR CONFIG_LOJA NA INTERFACE =====
 async function aplicarConfigLoja() {
@@ -7780,7 +7893,7 @@ async function aplicarConfigLoja() {
   // Busca a configuração mais recente direto da tabela "lojas" no Supabase
   // (assim o Painel Admin pode editar nome/logo/cores sem precisar editar este arquivo)
   try {
-    const resp = await fetch(`${SB_URL}/rest/v1/lojas?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,logo_base64,cor_accent,cor_accent2,cor_bg,usa_nfce,usa_grade`, { headers: SB_HEADS });
+    const resp = await fetch(`${SB_URL}/rest/v1/lojas?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,logo_base64,cor_accent,cor_accent2,cor_bg,usa_nfce,usa_grade,usa_catalogo,catalogo_whatsapp`, { headers: SB_HEADS });
     if (resp.ok) {
       const rows = await resp.json();
       const loja = rows[0];
@@ -7799,6 +7912,8 @@ async function aplicarConfigLoja() {
         }
         LOJA_USA_NFCE = !!loja.usa_nfce;
         LOJA_USA_GRADE = !!loja.usa_grade;
+        LOJA_USA_CATALOGO = !!loja.usa_catalogo;
+        LOJA_CATALOGO_WHATSAPP = loja.catalogo_whatsapp || '';
         aplicarFeatureFlagsUI();
       }
     }
@@ -7834,6 +7949,97 @@ async function aplicarConfigLoja() {
   root.setProperty('--accent2-light', cores.accent2Light);
 }
 aplicarConfigLoja();
+
+// ===== CATÁLOGO PÚBLICO: detecta /loja na URL e renderiza vitrine sem login =====
+function ehRotaCatalogoPublico() {
+  return window.location.pathname.replace(/\/+$/, '').endsWith('/loja');
+}
+
+async function renderizarCatalogoPublico() {
+  document.getElementById('login-screen').style.display = 'none';
+  const cont = document.getElementById('catalogo-publico');
+  cont.style.display = 'block';
+  cont.innerHTML = '<p style="padding:40px;text-align:center;color:var(--muted);">Carregando catálogo...</p>';
+
+  try {
+    // Busca dados da loja (nome, whatsapp do catálogo, cores já aplicadas por aplicarConfigLoja)
+    const respLoja = await fetch(`${SB_URL}/rest/v1/lojas?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,catalogo_whatsapp`, { headers: SB_HEADS });
+    const lojas = await respLoja.json();
+    const nomeLoja = (lojas[0] && lojas[0].nome) || CONFIG_LOJA.nomeLoja;
+    const whats = (lojas[0] && lojas[0].catalogo_whatsapp) || '';
+
+    // Busca produtos visíveis no catálogo
+    const respProd = await fetch(`${SB_URL}/rest/v1/produtos?loja_id=eq.${encodeURIComponent(LOJA_ID)}&visivel_catalogo=eq.true&select=ref,produto,preco_venda,estoque,foto_url,categoria&order=produto.asc`, { headers: SB_HEADS });
+    const produtos = await respProd.json();
+
+    const categorias = [...new Set(produtos.map(p => p.categoria).filter(Boolean))].sort();
+
+    cont.innerHTML = `
+      <div style="max-width:1100px;margin:0 auto;padding:20px;">
+        <div style="text-align:center;padding:24px 16px;margin-bottom:20px;">
+          <h1 style="font-size:24px;margin-bottom:4px;color:var(--accent);">${nomeLoja}</h1>
+          <p style="color:var(--muted);font-size:14px;">Catálogo de produtos</p>
+        </div>
+        ${categorias.length ? `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:24px;" id="cat-pub-filtros">
+          <button class="btn btn-primary" style="padding:6px 14px;font-size:13px;" onclick="filtrarCatalogoPub('')">Todos</button>
+          ${categorias.map(c => `<button class="btn" style="padding:6px 14px;font-size:13px;" onclick="filtrarCatalogoPub('${c.replace(/'/g,"\\'")}')">${c}</button>`).join('')}
+        </div>` : ''}
+        <div id="cat-pub-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;"></div>
+      </div>
+    `;
+
+    window._catalogoPubProdutos = produtos;
+    window._catalogoPubWhats = whats;
+    renderGridCatalogoPub(produtos);
+  } catch (e) {
+    console.error('Erro ao carregar catálogo público:', e);
+    cont.innerHTML = '<p style="padding:40px;text-align:center;color:var(--danger);">Não foi possível carregar o catálogo. Tente novamente em instantes.</p>';
+  }
+}
+
+function filtrarCatalogoPub(categoria) {
+  const todos = window._catalogoPubProdutos || [];
+  const filtrados = categoria ? todos.filter(p => p.categoria === categoria) : todos;
+  renderGridCatalogoPub(filtrados);
+}
+
+function renderGridCatalogoPub(produtos) {
+  const grid = document.getElementById('cat-pub-grid');
+  if (!grid) return;
+  if (!produtos.length) {
+    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--muted);padding:30px;">Nenhum produto disponível no momento.</p>';
+    return;
+  }
+  const whats = (window._catalogoPubWhats || '').replace(/\D/g,'');
+  grid.innerHTML = produtos.map(p => {
+    const esgotado = (p.estoque || 0) <= 0;
+    const msg = encodeURIComponent(`Olá! Tenho interesse na peça "${p.produto}" - Ref ${p.ref} - ${R(p.preco_venda)}`);
+    const linkWhats = whats ? `https://wa.me/55${whats}?text=${msg}` : null;
+    return `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="width:100%;aspect-ratio:1;background:var(--bg);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">
+          ${p.foto_url
+            ? `<img src="${p.foto_url}" loading="lazy" style="width:100%;height:100%;object-fit:cover;${esgotado?'opacity:0.5;':''}">`
+            : `<span style="font-size:36px;opacity:0.25;">🖼️</span>`}
+          ${esgotado ? `<span style="position:absolute;top:8px;right:8px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;">ESGOTADO</span>` : ''}
+        </div>
+        <div style="padding:12px;flex:1;display:flex;flex-direction:column;gap:4px;">
+          <strong style="font-size:13px;line-height:1.3;">${p.produto}</strong>
+          <span style="font-size:11px;color:var(--muted);">Ref. ${p.ref}</span>
+          <span style="font-size:16px;font-weight:700;color:var(--accent);margin-top:4px;">${R(p.preco_venda)}</span>
+          ${linkWhats && !esgotado
+            ? `<a href="${linkWhats}" target="_blank" class="btn btn-primary" style="margin-top:8px;text-align:center;text-decoration:none;font-size:12px;padding:8px;">💬 Quero esse</a>`
+            : esgotado ? `<span style="margin-top:8px;text-align:center;font-size:11px;color:var(--muted);">Indisponível</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+if (ehRotaCatalogoPublico()) {
+  renderizarCatalogoPublico();
+}
 
 // ===== PWA: SERVICE WORKER =====
 // Precisa ser um arquivo real (sw.js) no mesmo domínio — navegadores não
