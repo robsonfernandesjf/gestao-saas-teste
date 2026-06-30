@@ -2228,8 +2228,20 @@ const CONFIG_LOJA = {
   masterNome: 'Fátima Cigani · Master',
 
   // Identificador único desta loja no Supabase compartilhado (multi-tenant)
+  // Fallback usado quando a URL não tem subpath (ex: acesso direto ao domínio raiz)
   lojaId: 'fatima-cigani'
 };
+
+// ===== DESCOBERTA AUTOMÁTICA DO LOJA_ID PELA URL =====
+// Permite que o MESMO arquivo sirva várias lojas: o subpath da URL
+// (ex: app.legadoerp.com.br/vitrine-legado) define qual loja carregar.
+// Sem subpath, usa o fallback definido em CONFIG_LOJA.lojaId acima.
+(function descobrirLojaId() {
+  const partes = window.location.pathname.split('/').filter(p => p && !p.includes('.') && p !== 'index' && p !== 'loja');
+  if (partes.length > 0) { CONFIG_LOJA.lojaId = partes[0]; return; }
+  const labels = window.location.hostname.split('.');
+  if (labels.length > 2 && labels[0] !== 'www') { CONFIG_LOJA.lojaId = labels[0]; return; }
+})();
 // ===================== FIM DO BLOCO DE CONFIGURAÇÃO =====================
 
 // ===== SUPABASE API (MULTI-TENANT) =====
