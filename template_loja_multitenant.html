@@ -652,19 +652,12 @@
 
     <div class="toolbar" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;">
       <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">Período</span>
-      <select id="exec-periodo" onchange="onExecPeriodoChange()" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+      <select id="exec-periodo" onchange="renderDashExecutivo()" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
         <option value="30" selected>Este mês</option>
         <option value="7">Últimos 7 dias</option>
         <option value="90">Últimos 90 dias</option>
         <option value="0">Todos os dados</option>
-        <option value="custom">Período personalizado</option>
       </select>
-      <div id="exec-custom-wrap" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
-        <span style="font-size:12px;color:var(--muted);">De</span>
-        <input type="date" id="exec-data-ini" onchange="renderDashExecutivo()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
-        <span style="font-size:12px;color:var(--muted);">até</span>
-        <input type="date" id="exec-data-fim" onchange="renderDashExecutivo()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
-      </div>
     </div>
 
     <!-- Linha 1: Waterfall + Margem + Receita/Despesa -->
@@ -3161,42 +3154,9 @@ function toggleDashView(view) {
   if (view === 'classic') renderDashboard();
 }
 
-function onExecPeriodoChange() {
-  const val = document.getElementById('exec-periodo')?.value;
-  const wrap = document.getElementById('exec-custom-wrap');
-  if (wrap) wrap.style.display = val === 'custom' ? 'flex' : 'none';
-  if (val === 'custom') {
-    const ini = document.getElementById('exec-data-ini');
-    const fim = document.getElementById('exec-data-fim');
-    if (!ini.value) {
-      const hoje = new Date();
-      ini.value = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-01`;
-      const ultimo = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0);
-      fim.value = `${ultimo.getFullYear()}-${String(ultimo.getMonth()+1).padStart(2,'0')}-${String(ultimo.getDate()).padStart(2,'0')}`;
-    }
-  }
-  renderDashExecutivo();
-}
-
 function execGetVendasPeriodo() {
-  const sel = document.getElementById('exec-periodo')?.value || '30';
+  const dias = parseInt(document.getElementById('exec-periodo')?.value || '30');
   const vendas = getVendas();
-
-  if (sel === 'custom') {
-    const ini = document.getElementById('exec-data-ini')?.value;
-    const fim = document.getElementById('exec-data-fim')?.value;
-    if (!ini || !fim) return vendas;
-    const dIni = new Date(ini + 'T00:00:00');
-    const dFim = new Date(fim + 'T23:59:59');
-    return vendas.filter(v => {
-      const p = (v.data||'').split('/');
-      if (p.length < 3) return false;
-      const d = new Date(`${p[2].substring(0,4)}-${p[1]}-${p[0]}`);
-      return d >= dIni && d <= dFim;
-    });
-  }
-
-  const dias = parseInt(sel);
   if (dias === 0) return vendas;
   const corte = new Date();
   corte.setDate(corte.getDate() - dias);
