@@ -652,12 +652,19 @@
 
     <div class="toolbar" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;">
       <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">Período</span>
-      <select id="exec-periodo" onchange="renderDashExecutivo()" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+      <select id="exec-periodo" onchange="onExecPeriodoChange()" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
         <option value="30" selected>Este mês</option>
         <option value="7">Últimos 7 dias</option>
         <option value="90">Últimos 90 dias</option>
         <option value="0">Todos os dados</option>
+        <option value="custom">Período personalizado</option>
       </select>
+      <div id="exec-custom-wrap" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--muted);">De</span>
+        <input type="date" id="exec-data-ini" onchange="renderDashExecutivo()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
+        <span style="font-size:12px;color:var(--muted);">até</span>
+        <input type="date" id="exec-data-fim" onchange="renderDashExecutivo()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
+      </div>
     </div>
 
     <!-- Linha 1: Waterfall + Margem + Receita/Despesa -->
@@ -3145,9 +3152,40 @@ function toggleDashView(view) {
   if (view === 'classic') renderDashboard();
 }
 
+function onExecPeriodoChange() {
+  const val = document.getElementById('exec-periodo')?.value;
+  const wrap = document.getElementById('exec-custom-wrap');
+  if (wrap) wrap.style.display = val === 'custom' ? 'flex' : 'none';
+  if (val === 'custom') {
+    const ini = document.getElementById('exec-data-ini');
+    const fim = document.getElementById('exec-data-fim');
+    if (!ini.value) {
+      const hoje = new Date();
+      ini.value = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-01`;
+      const ultimo = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0);
+      fim.value = `${ultimo.getFullYear()}-${String(ultimo.getMonth()+1).padStart(2,'0')}-${String(ultimo.getDate()).padStart(2,'0')}`;
+    }
+  }
+  renderDashExecutivo();
+}
+
 function execGetVendasPeriodo() {
-  const dias = parseInt(document.getElementById('exec-periodo')?.value || '30');
+  const sel = document.getElementById('exec-periodo')?.value || '30';
   const vendas = getVendas();
+  if (sel === 'custom') {
+    const ini = document.getElementById('exec-data-ini')?.value;
+    const fim = document.getElementById('exec-data-fim')?.value;
+    if (!ini || !fim) return vendas;
+    const dIni = new Date(ini + 'T00:00:00');
+    const dFim = new Date(fim + 'T23:59:59');
+    return vendas.filter(v => {
+      const p = (v.data||'').split('/');
+      if (p.length < 3) return false;
+      const d = new Date(`${p[2].substring(0,4)}-${p[1]}-${p[0]}`);
+      return d >= dIni && d <= dFim;
+    });
+  }
+  const dias = parseInt(sel);
   if (dias === 0) return vendas;
   const corte = new Date();
   corte.setDate(corte.getDate() - dias);
@@ -3313,20 +3351,68 @@ function renderDashExecutivo() {
     `<div class="exec-mini-card"><div class="exec-mini-label">A Receber</div><div class="exec-mini-value" style="color:var(--warn)">${R(aReceber)}</div></div>` +
     `<div class="exec-mini-card"><div class="exec-mini-label">A Pagar</div><div class="exec-mini-value" style="color:var(--danger)">${R(aPagar)}</div></div>`;
 
-  // ===== 5. CARDS INDICADORES (liquidez) =====
-  const caixaDisponivel = aReceber; // simplificado: a receber como "ativo líquido"
-  const quickRatio = aPagarRatio > 0 ? (caixaDisponivel / aPagarRatio) : 0;
+  // ===== 5. CARDS INDICADORES =====
   const valorEstoque = produtos.reduce((s,p) => s + p.estoque*(p.custo||0), 0);
-  const currentRatio = aPagarRatio > 0 ? ((caixaDisponivel + valorEstoque) / aPagarRatio) : 0;
   const totalEstoquePecas = produtos.reduce((s,p) => s+p.estoque, 0);
   const pctOrcamento = despesasAtuaisMes > 0 && fatAtual > 0 ? (despesasAtuaisMes/fatAtual*100) : 0;
 
+  // Margem Bruta do mês
+  const margemBrutaMes = fatAtual > 0 ? (lucroAtual / fatAtual * 100) : 0;
+  let margemDesc, margemColor;
+  if (fatAtual === 0)            { margemDesc = 'Sem vendas no mês';                    margemColor = 'var(--muted)'; }
+  else if (margemBrutaMes >= 40) { margemDesc = 'Margem excelente';                     margemColor = 'var(--success)'; }
+  else if (margemBrutaMes >= 25) { margemDesc = 'Margem saudável';                      margemColor = 'var(--success)'; }
+  else if (margemBrutaMes >= 10) { margemDesc = 'Margem em atenção — revise preços';    margemColor = 'var(--warn)'; }
+  else                           { margemDesc = 'Margem crítica — preços muito baixos'; margemColor = 'var(--danger)'; }
+
+  // Ticket Médio do mês
+  const ticketMedioMes = vAtual.length > 0 ? fatAtual / vAtual.length : 0;
+  let ticketDesc, ticketColor;
+  if (vAtual.length === 0)        { ticketDesc = 'Sem vendas no mês';              ticketColor = 'var(--muted)'; }
+  else if (ticketMedioMes >= 200) { ticketDesc = 'Ótimo valor médio por venda';    ticketColor = 'var(--success)'; }
+  else if (ticketMedioMes >= 100) { ticketDesc = 'Valor médio por venda saudável'; ticketColor = 'var(--success)'; }
+  else if (ticketMedioMes >= 50)  { ticketDesc = 'Valor médio por venda moderado'; ticketColor = 'var(--warn)'; }
+  else                            { ticketDesc = 'Valor médio por venda baixo';     ticketColor = 'var(--danger)'; }
+
+  // % Despesa s/ Receita
+  let despDesc, despColor;
+  if (pctOrcamento === 0)     { despDesc = 'Sem despesas lançadas';                   despColor = 'var(--muted)'; }
+  else if (pctOrcamento > 50) { despDesc = 'Despesas acima do limite — revise custos'; despColor = 'var(--danger)'; }
+  else if (pctOrcamento > 30) { despDesc = 'Despesas em nível de atenção';             despColor = 'var(--warn)'; }
+  else                        { despDesc = 'Despesas sob controle';                    despColor = 'var(--success)'; }
+
+  // Peças em Estoque
+  let pecasDesc, pecasColor;
+  if (totalEstoquePecas === 0)     { pecasDesc = 'Estoque zerado — reposição urgente'; pecasColor = 'var(--danger)'; }
+  else if (totalEstoquePecas < 10) { pecasDesc = 'Estoque baixo — considere repor';    pecasColor = 'var(--warn)'; }
+  else                             { pecasDesc = 'Peças disponíveis para venda';        pecasColor = 'var(--text)'; }
+
   document.getElementById('exec-cards-row2').innerHTML = `
-    <div class="exec-mini-card"><div class="exec-mini-label">Quick Ratio</div><div class="exec-mini-value">${quickRatio.toFixed(2)}</div></div>
-    <div class="exec-mini-card"><div class="exec-mini-label">Current Ratio</div><div class="exec-mini-value">${currentRatio.toFixed(2)}</div></div>
-    <div class="exec-mini-card"><div class="exec-mini-label">% Despesa s/ Receita</div><div class="exec-mini-value" style="color:${pctOrcamento>50?'var(--danger)':'var(--success)'}">${pct(pctOrcamento)}</div></div>
-    <div class="exec-mini-card"><div class="exec-mini-label">Peças em Estoque</div><div class="exec-mini-value">${totalEstoquePecas}</div></div>
-    <div class="exec-mini-card"><div class="exec-mini-label">Valor em Estoque</div><div class="exec-mini-value" style="color:var(--accent2)">${R(valorEstoque)}</div></div>`;
+    <div class="exec-mini-card" title="Lucro do mês ÷ Faturamento do mês.">
+      <div class="exec-mini-label">Margem Bruta</div>
+      <div class="exec-mini-value" style="color:${margemColor}">${margemBrutaMes.toFixed(1)}%</div>
+      <div class="exec-mini-delta" style="color:${margemColor};font-size:10px;margin-top:5px;font-weight:600;">${margemDesc}</div>
+    </div>
+    <div class="exec-mini-card" title="Faturamento do mês ÷ número de vendas.">
+      <div class="exec-mini-label">Ticket Médio</div>
+      <div class="exec-mini-value" style="color:${ticketColor}">${R(ticketMedioMes)}</div>
+      <div class="exec-mini-delta" style="color:${ticketColor};font-size:10px;margin-top:5px;font-weight:600;">${ticketDesc}</div>
+    </div>
+    <div class="exec-mini-card" title="Quanto das receitas está sendo consumido por despesas.">
+      <div class="exec-mini-label">% Despesa s/ Receita</div>
+      <div class="exec-mini-value" style="color:${despColor}">${pct(pctOrcamento)}</div>
+      <div class="exec-mini-delta" style="color:${despColor};font-size:10px;margin-top:5px;font-weight:600;">${despDesc}</div>
+    </div>
+    <div class="exec-mini-card" title="Total de peças disponíveis no estoque.">
+      <div class="exec-mini-label">Peças em Estoque</div>
+      <div class="exec-mini-value" style="color:${pecasColor}">${totalEstoquePecas}</div>
+      <div class="exec-mini-delta" style="color:${pecasColor};font-size:10px;margin-top:5px;font-weight:600;">${pecasDesc}</div>
+    </div>
+    <div class="exec-mini-card" title="Valor total do estoque calculado pelo custo de cada produto.">
+      <div class="exec-mini-label">Valor em Estoque</div>
+      <div class="exec-mini-value" style="color:var(--accent2)">${R(valorEstoque)}</div>
+      <div class="exec-mini-delta" style="color:var(--muted);font-size:10px;margin-top:5px;font-weight:600;">Capital investido em mercadoria</div>
+    </div>`;
   } finally {
     _renderingDashExec = false;
   }
