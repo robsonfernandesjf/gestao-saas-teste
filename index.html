@@ -795,7 +795,7 @@
     <div style="max-width:680px;">
 
       <!-- IMPORTAR XML NF-e (entrada de mercadoria) -->
-      <div id="secao-import-xml" style="display:none;">
+      <div id="secao-import-xml">
         <div class="section-title" style="margin-bottom:8px;">🧾 Lançar Nota Fiscal (XML)</div>
         <div class="table-wrap" style="padding:20px;margin-bottom:24px;">
           <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
@@ -4303,7 +4303,7 @@ function aplicarFeatureFlagsUI() {
   if (secFiscal) secFiscal.style.display = LOJA_USA_NFCE ? 'block' : 'none';
   if (LOJA_USA_NFCE) toggleCamposCsosn();
   const secXml = document.getElementById('secao-import-xml');
-  if (secXml) secXml.style.display = LOJA_USA_NFCE ? 'block' : 'none';
+  if (secXml) secXml.style.display = 'block';
   popularSelectFornecedores();
 }
 
