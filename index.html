@@ -3160,11 +3160,11 @@ function renderDashExecutivo() {
   if (existingW) existingW.destroy();
   chartWaterfall = null;
   const waterfallData = [
-    { label: 'Faturamento', value: faturamento },
-    { label: 'Custo Merc.', value: custoTotal },
-    { label: 'Lucro Bruto', value: lucroBruto },
-    { label: 'Despesas', value: despesasPagas },
-    { label: 'Lucro Líquido', value: lucroLiquido }
+    { label: 'Faturamento', value: faturamento, cor: '#3B6EA5' },
+    { label: 'Custo Merc.', value: custoTotal, cor: '#D98E3D' },
+    { label: 'Lucro Bruto', value: lucroBruto, cor: '#2F5E8C' },
+    { label: 'Despesas', value: despesasPagas, cor: '#C0394A' },
+    { label: 'Lucro Líquido', value: lucroLiquido, cor: lucroLiquido >= 0 ? '#2E6B3E' : '#C0394A' }
   ];
   chartWaterfall = new Chart(ctxW, {
     type: 'bar',
@@ -3172,7 +3172,7 @@ function renderDashExecutivo() {
       labels: waterfallData.map(d => d.label),
       datasets: [
         { label: 'valor', data: waterfallData.map(d => d.value),
-          backgroundColor: waterfallData.map(d => d.value >= 0 ? '#2E6B3E' : '#C0394A') }
+          backgroundColor: waterfallData.map(d => d.cor) }
       ]
     },
     options: {
