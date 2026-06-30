@@ -1087,6 +1087,89 @@
           <input type="number" id="cad-est" placeholder="0" oninput="_estoqueEditadoManualmente=true">
         </div>
       </div>
+
+      <div class="form-row">
+        <label>Estoque mínimo (alerta de reposição)</label>
+        <input type="number" id="cad-est-min" placeholder="0" min="0">
+      </div>
+
+      <div class="form-row">
+        <label>Fornecedor (opcional)</label>
+        <select id="cad-fornecedor">
+          <option value="">— Nenhum —</option>
+        </select>
+      </div>
+
+      <!-- SEÇÃO GRADE (tamanho × cor) — só aparece se loja.usa_grade = true -->
+      <div id="secao-grade-produto" style="display:none;border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
+        <div class="form-row">
+          <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text);cursor:pointer;">
+            <input type="checkbox" id="cad-tem-grade" style="width:auto;margin:0;" onchange="toggleGradeProduto()">
+            📐 Este produto tem variações (tamanho/cor)
+          </label>
+        </div>
+        <div id="grade-construtor" style="display:none;">
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Tamanho</label>
+              <input type="text" id="grade-tam-input" placeholder="Ex: M">
+            </div>
+            <div class="form-row">
+              <label>Cor</label>
+              <input type="text" id="grade-cor-input" placeholder="Ex: Preto">
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Qtd. nesta variação</label>
+              <input type="number" id="grade-qtd-input" placeholder="0" min="0">
+            </div>
+            <div class="form-row" style="display:flex;align-items:flex-end;">
+              <button type="button" class="btn" style="width:100%;" onclick="adicionarVariacaoGrade()">+ Adicionar variação</button>
+            </div>
+          </div>
+          <div id="grade-lista" style="margin-top:10px;"></div>
+        </div>
+      </div>
+
+      <!-- SEÇÃO FISCAL (NFC-e) — só aparece se loja.usa_nfce = true -->
+      <div id="secao-fiscal-produto" style="display:none;border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--accent);margin-bottom:12px;">🧾 Dados fiscais (NFC-e)</p>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>NCM</label>
+            <input type="text" id="cad-ncm" placeholder="Ex: 62042200" maxlength="8" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')">
+          </div>
+          <div class="form-row">
+            <label>Unidade</label>
+            <select id="cad-unidade">
+              <option value="UN">UN</option>
+              <option value="PC">PC</option>
+              <option value="PAR">PAR</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Origem da mercadoria</label>
+            <select id="cad-origem">
+              <option value="0">0 - Nacional</option>
+              <option value="1">1 - Estrangeira (importação direta)</option>
+              <option value="2">2 - Estrangeira (mercado interno)</option>
+              <option value="7">7 - Nacional com importação &gt; 40%</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>CSOSN (Simples Nacional)</label>
+            <select id="cad-csosn">
+              <option value="102">102 - Sem permissão de crédito</option>
+              <option value="500">500 - ICMS cobrado por substituição</option>
+              <option value="900">900 - Outros</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <button class="btn btn-primary" style="width:100%;padding:12px;" onclick="salvarCadastro()">+ Adicionar ao Estoque</button>
       <p id="cad-msg" style="margin-top:10px;font-size:13px;"></p>
     </div>
@@ -1449,6 +1532,11 @@
 <div id="page-clientes" class="page">
   <div class="toolbar" style="margin-bottom:12px;">
     <input type="text" id="busca-clientes" placeholder="Buscar por nome ou telefone..." oninput="renderClientes()" style="min-width:220px;">
+    <select id="filtro-tipo-cliente" onchange="renderClientes()" style="min-width:140px;">
+      <option value="">Todos</option>
+      <option value="cliente">👤 Clientes</option>
+      <option value="fornecedor">🏢 Fornecedores</option>
+    </select>
     <select id="filtro-mes-aniv" onchange="renderClientes()" style="min-width:180px;">
       <option value="">Todos os clientes</option>
       <option value="mes">🎂 Aniversariantes do mês</option>
@@ -1984,22 +2072,22 @@
 
 <script>
 // =====================================================================
-// ===== CONFIG_LOJA — ÚNICO BLOCO A EDITAR PARA NOVO DEPLOY =====
-// ===============================================================
-// Em modo "1 deploy, lojaId pela URL", você só precisa trocar
-// supabaseUrl, supabaseKey e as credenciais master abaixo.
-// O lojaId é descoberto automaticamente pela URL de acesso.
-// ===============================================================
+// ===== CONFIG_LOJA — ÚNICO BLOCO A EDITAR PARA REPLICAR P/ NOVA LOJA
+// =====================================================================
+// Para criar o sistema de uma nova loja, troque APENAS os valores abaixo.
+// Nenhuma outra parte do código precisa ser alterada.
+// =====================================================================
 const CONFIG_LOJA = {
-  // Identidade padrão (usada só como fallback se o Supabase não responder)
-  nomeLoja: 'Gestão de Loja',
-  nomeSistema: 'Gestão de Loja',
-  tituloAba: 'Gestão de Loja',
+  // Identidade
+  nomeLoja: 'Nome da Loja',
+  nomeSistema: 'Nome da Loja · Gestão',
+  tituloAba: 'Gestão de Estoque · Nome da Loja',
 
-  // Logo padrão (fallback — logo real vem do Supabase via painel admin)
+  // Logo (base64 data URI completo, ex: "data:image/png;base64,...")
+  // Gere em: base64-image.de ou peça para o Claude converter sua imagem
   logoBase64: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iIzY2NjY2NiIvPjx0ZXh0IHg9IjUwIiB5PSI2NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI1MCIgZm9udC1mYW1pbHk9InNlcmlmIiBmaWxsPSJ3aGl0ZSI+TG9nbzwvdGV4dD48L3N2Zz4=',
 
-  // Paleta de cores padrão (sobrescrita pelo Supabase via painel admin)
+  // Paleta de cores — troque livremente para a identidade visual da loja
   cores: {
     bg: '#F5F5F5',
     surface: '#FFFFFF',
@@ -2012,19 +2100,17 @@ const CONFIG_LOJA = {
     accent2Light: '#F0F6FC'
   },
 
-  // Conexão com o Supabase — todas as lojas compartilham o mesmo projeto
+  // Conexão com o Supabase — em modo multi-tenant, várias lojas usam o
+  // MESMO projeto Supabase (mesma URL/key). O que diferencia uma loja da
+  // outra é o "lojaId" abaixo — TEM que ser único para cada loja!
   supabaseUrl: 'https://SEU-PROJETO-AQUI.supabase.co',
   supabaseKey: 'SUA-ANON-KEY-AQUI',
+  lojaId: 'nome-da-loja-id',  // ex: 'fatima-cigani', 'loja-maria-jose' — sem espaços/acentos
 
-  // lojaId de fallback — usado APENAS se a URL não permitir identificar
-  // a loja (ex: acesso direto via localhost ou domínio raiz sem subpath)
-  lojaId: '',
-
-  // Login Master padrão — o painel admin pode exibir a URL correta de
-  // acesso por loja; este master é o mesmo para todas as lojas
+  // Login Master (dono da loja, nunca bloqueado pela licença)
   masterLogin: 'master',
   masterSenha: 'troque-esta-senha',
-  masterNome: 'Master'
+  masterNome: 'Nome da Loja · Master'
 };
 // ===================== FIM DO BLOCO DE CONFIGURAÇÃO =====================
 
@@ -2033,38 +2119,10 @@ const SB_URL = CONFIG_LOJA.supabaseUrl;
 const SB_KEY = CONFIG_LOJA.supabaseKey;
 const SB_HEADS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
 
-// ===== DESCOBERTA AUTOMÁTICA DO LOJA_ID PELA URL =====
-// Prioridade:
-//   1. Subpath:     gestao.dominio.com/fatima-cigani  → 'fatima-cigani'
-//   2. Subdomínio:  fatima-cigani.dominio.com          → 'fatima-cigani'
-//   3. Fallback:    CONFIG_LOJA.lojaId (hardcoded acima)
-//
-// Regras do subpath: pega o primeiro segmento não-vazio do pathname.
-//   Ex: /fatima-cigani/       → 'fatima-cigani'
-//   Ex: /fatima-cigani        → 'fatima-cigani'
-//   Ignora segmentos que parecem arquivo (contêm ponto) ou são 'index'.
-//
-// Regras do subdomínio: usa o primeiro label do hostname se houver
-//   mais de 2 partes (ex: fatima-cigani.gestao.com → 'fatima-cigani').
-//   Ignora 'www' e hostnames simples como 'localhost'.
-(function descobrirLojaId() {
-  // 1. Subpath
-  const partes = window.location.pathname.split('/').filter(p => p && !p.includes('.') && p !== 'index');
-  if (partes.length > 0) {
-    CONFIG_LOJA.lojaId = partes[0];
-    return;
-  }
-  // 2. Subdomínio
-  const labels = window.location.hostname.split('.');
-  if (labels.length > 2 && labels[0] !== 'www') {
-    CONFIG_LOJA.lojaId = labels[0];
-    return;
-  }
-  // 3. Fallback já está em CONFIG_LOJA.lojaId
-})();
-
 // Identificador único desta loja. Todas as linhas salvas/buscadas no banco
-// são automaticamente filtradas por este valor.
+// são automaticamente filtradas por este valor — assim várias lojas podem
+// compartilhar o MESMO projeto Supabase sem misturar dados entre si.
+// Definido em CONFIG_LOJA.lojaId (ex: 'fatima-cigani', 'loja-maria-jose').
 const LOJA_ID = CONFIG_LOJA.lojaId;
 
 // Tabelas que possuem a coluna loja_id (todas as tabelas de dados da loja).
@@ -2874,6 +2932,7 @@ function showPage(id) {
     if (['dashboard','estoque','vendas','historico','cadastro','relatorios','clientes','financeiro','usuarios'][i] === id) b.classList.add('active');
   });
   // Match by onclick instead
+  if (id === 'cadastro') { aplicarFeatureFlagsUI(); }
   document.querySelectorAll('nav button').forEach(b => {
     const m = (b.getAttribute('onclick')||'').match(/showPage\('(\w+)'\)/);
     if (m && m[1] === id) b.classList.add('active');
@@ -3048,6 +3107,16 @@ function renderDashExecutivo() {
   const parseData = v => { const p=(v.data||'').split('/'); return p.length>=3?new Date(`${p[2].substring(0,4)}-${p[1]}-${p[0]}`):null; };
   const vAtual = todasVendas.filter(v => { const d=parseData(v); return d && d.getMonth()===mesAtual && d.getFullYear()===anoAtual; });
   const vAnt = todasVendas.filter(v => { const d=parseData(v); return d && d.getMonth()===mesAnt && d.getFullYear()===anoAnt; });
+  // Ratios: considera apenas contas a pagar vencidas ou do mês atual (exclui futuras)
+  const hojeRatio = new Date();
+  const aPagarRatio = contas.filter(c => {
+    if (c.pago) return false;
+    if (!c.vencimento) return true;
+    const v = c.vencimento.includes('/') ? c.vencimento.split('/').reverse().join('-') : c.vencimento;
+    const venc = new Date(v + 'T00:00:00');
+    return venc <= new Date(hojeRatio.getFullYear(), hojeRatio.getMonth() + 1, 0); // vence até fim do mês atual
+  }).reduce((s,c)=>s+(c.valor||0),0);
+
   const fatAtual = vAtual.reduce((s,v)=>s+(v.valor||v.valor_unit||0)*(v.qtd||1),0);
   const fatAnt = vAnt.reduce((s,v)=>s+(v.valor||v.valor_unit||0)*(v.qtd||1),0);
   const lucroAtual = vAtual.reduce((s,v)=>s+(v.lucro||0),0);
@@ -3077,9 +3146,9 @@ function renderDashExecutivo() {
 
   // ===== 5. CARDS INDICADORES (liquidez) =====
   const caixaDisponivel = aReceber; // simplificado: a receber como "ativo líquido"
-  const quickRatio = aPagar > 0 ? (caixaDisponivel / aPagar) : 0;
+  const quickRatio = aPagarRatio > 0 ? (caixaDisponivel / aPagarRatio) : 0;
   const valorEstoque = produtos.reduce((s,p) => s + p.estoque*(p.custo||0), 0);
-  const currentRatio = aPagar > 0 ? ((caixaDisponivel + valorEstoque) / aPagar) : 0;
+  const currentRatio = aPagarRatio > 0 ? ((caixaDisponivel + valorEstoque) / aPagarRatio) : 0;
   const totalEstoquePecas = produtos.reduce((s,p) => s+p.estoque, 0);
   const pctOrcamento = despesasAtuaisMes > 0 && fatAtual > 0 ? (despesasAtuaisMes/fatAtual*100) : 0;
 
@@ -3824,6 +3893,77 @@ async function confirmarImportacaoExcel() {
   populateCatFilter();
 }
 
+// ===== FEATURE FLAGS UI (mostra/esconde seções de grade e fiscal) =====
+function aplicarFeatureFlagsUI() {
+  const secGrade = document.getElementById('secao-grade-produto');
+  const secFiscal = document.getElementById('secao-fiscal-produto');
+  if (secGrade) secGrade.style.display = LOJA_USA_GRADE ? 'block' : 'none';
+  if (secFiscal) secFiscal.style.display = LOJA_USA_NFCE ? 'block' : 'none';
+  popularSelectFornecedores();
+}
+
+// ===== GRADE DE PRODUTO (tamanho × cor) =====
+let _gradeAtual = [];
+
+function toggleGradeProduto() {
+  const ativo = document.getElementById('cad-tem-grade').checked;
+  document.getElementById('grade-construtor').style.display = ativo ? 'block' : 'none';
+}
+
+function adicionarVariacaoGrade() {
+  const tam = document.getElementById('grade-tam-input').value.trim();
+  const cor = document.getElementById('grade-cor-input').value.trim();
+  const qtd = parseInt(document.getElementById('grade-qtd-input').value) || 0;
+  if (!tam || !cor) { alert('Preencha tamanho e cor.'); return; }
+  _gradeAtual.push({ tamanho: tam, cor: cor, estoque: qtd });
+  document.getElementById('grade-tam-input').value = '';
+  document.getElementById('grade-cor-input').value = '';
+  document.getElementById('grade-qtd-input').value = '';
+  renderGradeLista();
+}
+
+function removerVariacaoGrade(idx) {
+  _gradeAtual.splice(idx, 1);
+  renderGradeLista();
+}
+
+function renderGradeLista() {
+  const el = document.getElementById('grade-lista');
+  if (!el) return;
+  if (!_gradeAtual.length) { el.innerHTML = '<p style="font-size:12px;color:var(--muted);">Nenhuma variação adicionada.</p>'; return; }
+  const totalGrade = _gradeAtual.reduce((s,v)=>s+v.estoque,0);
+  el.innerHTML = `
+    <table style="width:100%;font-size:13px;">
+      <thead><tr><th style="text-align:left;">Tamanho</th><th style="text-align:left;">Cor</th><th style="text-align:right;">Qtd.</th><th></th></tr></thead>
+      <tbody>${_gradeAtual.map((v,i)=>`
+        <tr>
+          <td>${v.tamanho}</td><td>${v.cor}</td><td style="text-align:right;">${v.estoque}</td>
+          <td style="text-align:right;"><button type="button" class="btn" style="padding:2px 8px;font-size:11px;" onclick="removerVariacaoGrade(${i})">✕</button></td>
+        </tr>`).join('')}</tbody>
+    </table>
+    <p style="font-size:12px;color:var(--muted);margin-top:6px;">Total na grade: <strong>${totalGrade}</strong> peças (preenche automaticamente o estoque inicial)</p>
+  `;
+  // Sincroniza estoque inicial do produto com a soma da grade
+  if (_gradeAtual.length) {
+    document.getElementById('cad-est').value = totalGrade;
+    _estoqueEditadoManualmente = true;
+  }
+}
+
+// ===== FORNECEDORES (vínculo no cadastro de produto) =====
+async function popularSelectFornecedores() {
+  const sel = document.getElementById('cad-fornecedor');
+  if (!sel) return;
+  try {
+    const clientes = await getClientesAsync();
+    const fornecedores = clientes.filter(c => c.eh_fornecedor);
+    sel.innerHTML = '<option value="">— Nenhum —</option>' +
+      fornecedores.map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+  } catch (e) {
+    console.warn('Não foi possível carregar fornecedores:', e.message);
+  }
+}
+
 function cancelarImportacaoExcel() {
   _produtosImportados = [];
   document.getElementById('import-excel-preview').innerHTML = '';
@@ -3857,9 +3997,23 @@ async function salvarCadastro() {
     custo: valorMoeda('cad-custo'),
     preco_venda: valorMoeda('cad-preco'),
     estoque: parseInt(document.getElementById('cad-est').value)||0,
+    estoque_minimo: parseInt(document.getElementById('cad-est-min').value)||0,
+    fornecedor_id: document.getElementById('cad-fornecedor').value || null,
     parcela: parcela || undefined,
     nparcelas: nparcelas || undefined,
   };
+
+  if (LOJA_USA_GRADE) {
+    novoProduto.tem_grade = document.getElementById('cad-tem-grade').checked;
+    novoProduto.grades = novoProduto.tem_grade ? _gradeAtual : [];
+  }
+
+  if (LOJA_USA_NFCE) {
+    novoProduto.ncm = document.getElementById('cad-ncm').value.trim() || null;
+    novoProduto.unidade = document.getElementById('cad-unidade').value;
+    novoProduto.origem = document.getElementById('cad-origem').value;
+    novoProduto.csosn = document.getElementById('cad-csosn').value;
+  }
 
   if (novoProduto.estoque === 0) {
     const continuar = confirm('⚠ O estoque inicial está em 0 — este produto não aparecerá na tela de Vendas até ter estoque. Continuar mesmo assim?');
@@ -3875,7 +4029,12 @@ async function salvarCadastro() {
     saveProdutos(produtos);
     document.getElementById('cad-msg').style.color = 'var(--success)';
     document.getElementById('cad-msg').textContent = '✓ Produto ' + ref + ' cadastrado!';
-    ['cad-ref','cad-ean13','cad-nome','cad-custo','cad-preco','cad-cp','cad-est','cad-parcela','cad-nparcelas'].forEach(id=>document.getElementById(id).value='');
+    ['cad-ref','cad-ean13','cad-nome','cad-custo','cad-preco','cad-cp','cad-est','cad-parcela','cad-nparcelas','cad-est-min','cad-ncm'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('cad-fornecedor').value = '';
+    document.getElementById('cad-tem-grade').checked = false;
+    _gradeAtual = [];
+    renderGradeLista();
+    toggleGradeProduto();
     document.getElementById('cad-parcela-preview').style.display = 'none';
     document.getElementById('cad-margem-preview').style.display = 'none';
     _estoqueEditadoManualmente = false;
@@ -4722,6 +4881,11 @@ function renderClientes() {
   const mesAtual = hoje.getMonth() + 1;
 
   let todos = getClientes();
+  // Filtro tipo cliente/fornecedor
+  const filtroTipo = document.getElementById('filtro-tipo-cliente').value;
+  if (filtroTipo === 'cliente') todos = todos.filter(c => !c.eh_fornecedor);
+  else if (filtroTipo === 'fornecedor') todos = todos.filter(c => c.eh_fornecedor);
+
 
   // Calcular aniversariantes do mês atual (do total, não filtrado)
   const anivMesAtual = todos.filter(c => {
@@ -4816,9 +4980,10 @@ function renderClientes() {
     return `<tr style="${rowBg}">
       <td style="color:var(--muted);font-size:12px;">${i+1}</td>
       <td>
-        <strong>${cl.nome}</strong>
+        <strong>${cl.eh_fornecedor ? '🏢' : '👤'} ${cl.nome}</strong>
         ${hoje2 ? ' <span style="background:var(--warn);color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;font-weight:700;">HOJE 🎂</span>' : ''}
         ${cl.obs ? `<br><span style="font-size:11px;color:var(--muted);">${cl.obs}</span>` : ''}
+        ${cl.doc_numero ? `<br><span style="font-size:11px;color:var(--muted);">${(cl.doc_tipo||'cpf').toUpperCase()}: ${cl.doc_numero}</span>` : ''}
       </td>
       <td>${cl.tel ? `<a href="https://wa.me/55${cl.tel.replace(/\D/g,'')}" target="_blank" style="color:var(--accent2);text-decoration:none;">📱 ${cl.tel}</a>` : '—'}</td>
       <td style="font-size:12px;">${cl.end||'—'}</td>
@@ -5026,6 +5191,10 @@ function abrirModalCliente(id) {
   document.getElementById('cli-nasc').value = '';
   document.getElementById('cli-end').value = '';
   document.getElementById('cli-obs').value = '';
+  document.getElementById('cli-eh-fornecedor').checked = false;
+  document.getElementById('cli-doc-tipo').value = 'cpf';
+  document.getElementById('cli-doc-numero').value = '';
+  toggleTipoCliente();
   document.getElementById('modal-cliente-titulo').textContent = 'Novo Cliente';
   document.getElementById('modal-cliente').classList.add('open');
 }
@@ -5039,8 +5208,40 @@ function editarCliente(id) {
   document.getElementById('cli-nasc').value = cl.nasc||'';
   document.getElementById('cli-end').value = cl.end||'';
   document.getElementById('cli-obs').value = cl.obs||'';
+  document.getElementById('cli-eh-fornecedor').checked = !!cl.eh_fornecedor;
+  document.getElementById('cli-doc-tipo').value = cl.doc_tipo || 'cpf';
+  document.getElementById('cli-doc-numero').value = cl.doc_numero || '';
+  toggleTipoCliente();
   document.getElementById('modal-cliente-titulo').textContent = 'Editar Cliente';
   document.getElementById('modal-cliente').classList.add('open');
+}
+
+// Esconde data de nascimento quando é fornecedor (não faz sentido para PJ)
+function toggleTipoCliente() {
+  const ehFornecedor = document.getElementById('cli-eh-fornecedor').checked;
+  document.getElementById('cli-nasc-wrap').style.display = ehFornecedor ? 'none' : 'block';
+  document.getElementById('cli-doc-tipo').value = ehFornecedor ? 'cnpj' : 'cpf';
+  mascaraDocCliente();
+}
+
+// Aplica máscara dinâmica de CPF ou CNPJ conforme o tipo selecionado
+function mascaraDocCliente() {
+  const tipo = document.getElementById('cli-doc-tipo').value;
+  const label = document.getElementById('cli-doc-label');
+  const input = document.getElementById('cli-doc-numero');
+  let v = input.value.replace(/\D/g,'');
+  if (tipo === 'cnpj') {
+    label.textContent = 'CNPJ';
+    input.placeholder = '00.000.000/0000-00';
+    v = v.slice(0,14);
+    v = v.replace(/(\d{2})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1/$2').replace(/(\d{4})(\d{1,2})$/,'$1-$2');
+  } else {
+    label.textContent = 'CPF';
+    input.placeholder = '000.000.000-00';
+    v = v.slice(0,11);
+    v = v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+  }
+  input.value = v;
 }
 
 async function salvarCliente() {
@@ -5053,7 +5254,10 @@ async function salvarCliente() {
     telefone: document.getElementById('cli-tel').value.trim(),
     nascimento: document.getElementById('cli-nasc').value,
     endereco: document.getElementById('cli-end').value.trim(),
-    obs: document.getElementById('cli-obs').value.trim()
+    obs: document.getElementById('cli-obs').value.trim(),
+    eh_fornecedor: document.getElementById('cli-eh-fornecedor').checked,
+    doc_tipo: document.getElementById('cli-doc-tipo').value,
+    doc_numero: document.getElementById('cli-doc-numero').value.trim()
   };
 
   try {
@@ -7171,6 +7375,10 @@ document.addEventListener('click', function(e) {
   const input = document.getElementById('busca-venda');
   if (cont && input && !input.contains(e.target) && !cont.contains(e.target)) {
     cont.innerHTML = '';
+// ===== FEATURE FLAGS DA LOJA (NFC-e / Grade) =====
+let LOJA_USA_NFCE = false;
+let LOJA_USA_GRADE = false;
+
   }
 });
 
@@ -7185,7 +7393,7 @@ async function aplicarConfigLoja() {
   // Busca a configuração mais recente direto da tabela "lojas" no Supabase
   // (assim o Painel Admin pode editar nome/logo/cores sem precisar editar este arquivo)
   try {
-    const resp = await fetch(`${SB_URL}/rest/v1/lojas?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,logo_base64,cor_accent,cor_accent2,cor_bg`, { headers: SB_HEADS });
+    const resp = await fetch(`${SB_URL}/rest/v1/lojas?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,logo_base64,cor_accent,cor_accent2,cor_bg,usa_nfce,usa_grade`, { headers: SB_HEADS });
     if (resp.ok) {
       const rows = await resp.json();
       const loja = rows[0];
@@ -7202,6 +7410,9 @@ async function aplicarConfigLoja() {
           // Tons derivados simples a partir do bg, para manter contraste dos cards/inputs
           cores.surface = '#FFFFFF';
         }
+        LOJA_USA_NFCE = !!loja.usa_nfce;
+        LOJA_USA_GRADE = !!loja.usa_grade;
+        aplicarFeatureFlagsUI();
       }
     }
   } catch (e) {
@@ -7393,6 +7604,12 @@ atualizarHora();
     <div class="modal-body">
       <input type="hidden" id="cli-id">
       <div class="form-row">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text);cursor:pointer;">
+          <input type="checkbox" id="cli-eh-fornecedor" style="width:auto;margin:0;" onchange="toggleTipoCliente()">
+          🏢 Este cadastro é um fornecedor
+        </label>
+      </div>
+      <div class="form-row">
         <label>Nome completo</label>
         <input type="text" id="cli-nome" placeholder="Ex: Maria Silva">
       </div>
@@ -7401,9 +7618,22 @@ atualizarHora();
           <label>Telefone / WhatsApp</label>
           <input type="tel" id="cli-tel" placeholder="(32) 99999-9999" oninput="mascaraTel(this)">
         </div>
-        <div class="form-row">
+        <div class="form-row" id="cli-nasc-wrap">
           <label>Data de nascimento</label>
           <input type="date" id="cli-nasc">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Tipo de documento</label>
+          <select id="cli-doc-tipo" onchange="mascaraDocCliente()">
+            <option value="cpf">CPF</option>
+            <option value="cnpj">CNPJ</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label id="cli-doc-label">CPF</label>
+          <input type="text" id="cli-doc-numero" placeholder="000.000.000-00" inputmode="numeric" oninput="mascaraDocCliente()">
         </div>
       </div>
       <div class="form-row">
