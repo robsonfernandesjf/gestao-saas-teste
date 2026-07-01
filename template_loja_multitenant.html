@@ -1646,13 +1646,20 @@
         <button class="btn btn-outline btn-sm" onclick="voltarMenuGer()">← Voltar</button>
         <h2 id="ger-detalhe-titulo" style="font-size:16px;font-weight:700;"></h2>
         <div style="margin-left:auto;display:flex;gap:10px;align-items:center;">
-          <select id="ger-periodo" onchange="renderRelatorioAtual()" style="min-width:160px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+          <select id="ger-periodo" onchange="onGerPeriodoChange()" style="min-width:160px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
             <option value="7">Últimos 7 dias</option>
             <option value="15">Últimos 15 dias</option>
             <option value="30" selected>Últimos 30 dias</option>
             <option value="90">Últimos 90 dias</option>
             <option value="0">Todos</option>
+            <option value="custom">Período personalizado</option>
           </select>
+          <div id="ger-custom-wrap" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:12px;color:var(--muted);">De</span>
+            <input type="date" id="ger-data-ini" onchange="renderRelatorioAtual()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
+            <span style="font-size:12px;color:var(--muted);">até</span>
+            <input type="date" id="ger-data-fim" onchange="renderRelatorioAtual()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
+          </div>
           <select id="ger-parado-dias" onchange="renderRelatorioAtual()" style="display:none;min-width:200px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
             <option value="30">Sem venda há 30+ dias</option>
             <option value="60">Sem venda há 60+ dias</option>
@@ -7217,28 +7224,48 @@ function saveContasPagar(cp) { localStorage.setItem(CP_KEY, JSON.stringify(cp));
 
 let _cpEditing = null;
 
-// ===== SPLASH: Contas a pagar vencendo hoje (avisa logo após o login) =====
+// ===== SPLASH: Contas vencidas + vencendo hoje =====
 function verificarContasVencendoHoje() {
   const hoje = new Date().toISOString().slice(0, 10);
-  const contas = getContasPagar().filter(c => !c.pago && c.vencimento === hoje);
+  const todas = getContasPagar().filter(c => !c.pago && c.vencimento);
+  const vencidas  = todas.filter(c => c.vencimento < hoje);
+  const hoje_list = todas.filter(c => c.vencimento === hoje);
+  const contas = [...vencidas, ...hoje_list];
   if (contas.length === 0) return;
 
-  const total = contas.reduce((s, c) => s + (c.valor || 0), 0);
-  document.getElementById('splash-contas-qtd').textContent =
-    contas.length === 1 ? '1 conta' : `${contas.length} contas`;
-  document.getElementById('splash-contas-data').textContent =
-    new Date(hoje + 'T00:00:00').toLocaleDateString('pt-BR');
+  const totalVencidas  = vencidas.reduce((s,c) => s+(c.valor||0), 0);
+  const totalHoje      = hoje_list.reduce((s,c) => s+(c.valor||0), 0);
+  const total          = totalVencidas + totalHoje;
+
+  let tituloEl = document.querySelector('#modal-splash-contas .modal-header h2');
+  if (vencidas.length > 0 && hoje_list.length > 0)
+    tituloEl.textContent = '🚨 Contas vencidas e a vencer hoje';
+  else if (vencidas.length > 0)
+    tituloEl.textContent = '🚨 Contas em atraso';
+  else
+    tituloEl.textContent = '⚠️ Contas a pagar hoje';
+
+  let partes = [];
+  if (vencidas.length > 0)  partes.push(`<span style="color:var(--danger);font-weight:700;">${vencidas.length} em atraso (${R(totalVencidas)})</span>`);
+  if (hoje_list.length > 0) partes.push(`<span style="color:var(--warn);font-weight:700;">${hoje_list.length} vencem hoje (${R(totalHoje)})</span>`);
+  document.getElementById('splash-contas-qtd').innerHTML = partes.join(' + ');
+  document.getElementById('splash-contas-data').textContent = '';
   document.getElementById('splash-contas-total').textContent = R(total);
 
-  document.getElementById('splash-contas-lista').innerHTML = contas.map(c => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+  document.getElementById('splash-contas-lista').innerHTML = contas.map(c => {
+    const atrasada = c.vencimento < hoje;
+    const cor = atrasada ? 'var(--danger)' : 'var(--warn)';
+    const tag = atrasada ? '🔴 Atrasada' : '🟡 Hoje';
+    const vencFmt = c.vencimento ? (() => { const [y,m,d] = c.vencimento.split('-'); return `${d}/${m}/${y}`; })() : '—';
+    return `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg);border:1px solid ${cor};border-radius:8px;">
       <div>
         <div style="font-size:13px;font-weight:600;">${c.fornecedor || c.descricao || 'Sem descrição'}</div>
-        ${c.fornecedor && c.descricao ? `<div style="font-size:11px;color:var(--muted);">${c.descricao}</div>` : ''}
+        <div style="font-size:11px;color:var(--muted);">${c.descricao || ''} • Venc: ${vencFmt} <span style="color:${cor};font-weight:600;">${tag}</span></div>
       </div>
-      <strong style="color:var(--danger);">${R(c.valor)}</strong>
-    </div>
-  `).join('');
+      <strong style="color:${cor};">${R(c.valor)}</strong>
+    </div>`;
+  }).join('');
 
   document.getElementById('modal-splash-contas').classList.add('open');
 }
@@ -7616,11 +7643,45 @@ function renderRelatorioAtual() {
   }
 }
 
+function onGerPeriodoChange() {
+  const val = document.getElementById('ger-periodo')?.value;
+  const wrap = document.getElementById('ger-custom-wrap');
+  if (wrap) wrap.style.display = val === 'custom' ? 'flex' : 'none';
+  if (val === 'custom') {
+    const ini = document.getElementById('ger-data-ini');
+    const fim = document.getElementById('ger-data-fim');
+    if (!ini.value) {
+      const hoje = new Date();
+      ini.value = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-01`;
+      const ultimo = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0);
+      fim.value = `${ultimo.getFullYear()}-${String(ultimo.getMonth()+1).padStart(2,'0')}-${String(ultimo.getDate()).padStart(2,'0')}`;
+    }
+  }
+  renderRelatorioAtual();
+}
+
 function gerGetDias() {
   return parseInt(document.getElementById('ger-periodo')?.value || '30');
 }
 
 function gerFiltrarVendas(vendas) {
+  const sel = document.getElementById('ger-periodo')?.value || '30';
+  if (sel === 'custom') {
+    const ini = document.getElementById('ger-data-ini')?.value;
+    const fim = document.getElementById('ger-data-fim')?.value;
+    if (!ini || !fim) return vendas;
+    const dIni = new Date(ini + 'T00:00:00');
+    const dFim = new Date(fim + 'T23:59:59');
+    return vendas.filter(v => {
+      if (!v.data) return false;
+      const partes = v.data.split('/');
+      if (partes.length >= 3) {
+        const d = new Date(`${partes[2].substring(0,4)}-${partes[1]}-${partes[0]}`);
+        return d >= dIni && d <= dFim;
+      }
+      return false;
+    });
+  }
   const dias = gerGetDias();
   if (dias === 0) return vendas;
   const corte = new Date();
