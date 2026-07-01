@@ -55,24 +55,58 @@
     --radius: 8px;
     --rosegold: #C9956C;
     --rosegold-light: #F9F0EB;
+
+    /* Sidebar (identidade LegadoERP, fixa — nao e personalizada por loja) */
+    --sidebar-bg: #1C110A;
+    --sidebar-active: rgba(192,122,32,.18);
+    --sidebar-text: rgba(255,255,255,.55);
+    --sidebar-text-strong: rgba(255,255,255,.9);
+    --sidebar-accent: #F0B96A;
+    --sidebar-badge: #C07A20;
+    --sidebar-border: rgba(255,255,255,.08);
+    --sidebar-width: 220px;
+    --topbar-height: 56px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { overflow-x: hidden; width: 100%; }
   body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-  /* HEADER */
-  header { background: linear-gradient(135deg, #2D1515 0%, #4A2020 100%); color: #FDF8F8; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
-  header h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }
-  header span { font-size: 12px; color: #A09890; }
+  /* HEADER / TOPBAR (dentro da area de conteudo, ao lado da sidebar) */
+  header { background: var(--surface); color: var(--text); padding: 0 20px; display: flex; align-items: center; justify-content: space-between; height: var(--topbar-height); position: sticky; top: 0; z-index: 90; border-bottom: 1px solid var(--border); margin-left: var(--sidebar-width); }
+  header h1 { font-size: 14px; font-weight: 600; color: var(--text); }
+  header span { font-size: 12px; color: var(--muted); }
 
-  /* NAV */
-  nav { display: flex; gap: 4px; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; }
-  nav button { padding: 12px 18px; border: none; background: none; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; transition: all .15s; }
-  nav button.active { color: var(--accent); border-bottom-color: var(--accent); border-bottom-width: 3px; }
-  nav button:hover:not(.active) { color: var(--text); }
+  /* SIDEBAR (nav fixa, identidade LegadoERP) */
+  nav { position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-width); z-index: 500;
+    background: var(--sidebar-bg); display: flex; flex-direction: column; gap: 2px;
+    padding: 16px 10px; overflow-y: auto; border-right: 1px solid var(--sidebar-border); }
+  nav button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    padding: 9px 12px; border: none; background: none; cursor: pointer;
+    font-size: 13px; font-weight: 500; color: var(--sidebar-text); border-radius: 8px; transition: all .15s; }
+  nav button.active { color: var(--sidebar-accent); background: var(--sidebar-active); font-weight: 600; }
+  nav button:hover:not(.active) { color: #fff; background: rgba(255,255,255,.06); }
+
+  .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; }
+  .sidebar-logo .mark { width: 30px; height: 30px; border-radius: 8px; background: var(--sidebar-badge); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+  .sidebar-logo .name { font-size: 14px; font-weight: 700; color: var(--sidebar-text-strong); line-height: 1.2; }
+  .sidebar-logo .ver { font-size: 10px; color: var(--sidebar-text); }
+  .sidebar-divider { height: 1px; background: var(--sidebar-border); margin: 10px 6px; }
+  .sidebar-quick { display: flex; flex-direction: column; gap: 6px; padding: 4px 2px; }
+  .sidebar-quick button { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px;
+    border: 1px solid var(--sidebar-border); background: rgba(255,255,255,.03); color: var(--sidebar-text);
+    font-size: 12px; cursor: pointer; transition: all .15s; }
+  .sidebar-quick button:hover { border-color: var(--sidebar-badge); color: #fff; }
+  .sidebar-footer { display: flex; align-items: center; gap: 10px; padding: 10px 8px 4px; margin-top: auto;
+    border-top: 1px solid var(--sidebar-border); }
+  .sidebar-footer .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--sidebar-badge); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .sidebar-footer .info { min-width: 0; }
+  .sidebar-footer .info .name { font-size: 12px; color: var(--sidebar-text-strong); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+  .sidebar-footer .info .role { font-size: 10px; color: var(--sidebar-text); }
 
   /* LAYOUT */
-  main { max-width: 1280px; margin: 0 auto; padding: 24px 24px 60px; }
+  main { max-width: 1280px; margin-left: var(--sidebar-width); padding: 24px 24px 60px; }
   .page { display: none; width: 100%; }
   .page.active { display: block; }
 
@@ -419,15 +453,18 @@
     /* HAMBURGER BUTTON - visível no mobile */
     .btn-menu-mobile { display: block; }
 
-    /* NAV - menu vertical dropdown */
+    /* HEADER/MAIN sem recuo da sidebar (ela vira off-canvas) */
+    header, main { margin-left: 0; }
+
+    /* NAV - vira sidebar off-canvas (escura, mesma identidade do desktop) */
     nav { position: fixed; top: 0; left: -280px; bottom: 0; width: 260px; height: 100%;
-      background: var(--surface); flex-direction: column; align-items: stretch;
-      padding: 70px 0 20px; gap: 0; overflow-y: auto; z-index: 1000;
-      box-shadow: 4px 0 24px rgba(0,0,0,.2); transition: left .25s ease; }
+      background: var(--sidebar-bg); flex-direction: column; align-items: stretch;
+      padding: 70px 10px 16px; gap: 2px; overflow-y: auto; z-index: 1000;
+      box-shadow: 4px 0 24px rgba(0,0,0,.35); transition: left .25s ease; }
     nav.open { left: 0; }
-    nav button { padding: 16px 24px; font-size: 14px; text-align: left; justify-content: flex-start;
-      border-bottom: 1px solid var(--border); border-radius: 0; white-space: normal; width: 100%; }
-    nav button.active { background: var(--accent-light); border-bottom-color: var(--border); border-left: 3px solid var(--accent); padding-left: 21px; }
+    nav button { padding: 12px 12px; font-size: 14px; text-align: left; justify-content: flex-start; width: 100%; }
+    nav button.active { color: var(--sidebar-accent); background: var(--sidebar-active); }
+    .sidebar-logo .name, .sidebar-footer .info .name { color: var(--sidebar-text-strong); }
 
     #nav-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 999; }
     #nav-overlay.open { display: block; }
@@ -646,6 +683,13 @@
 </header>
 
 <nav id="main-nav">
+  <div class="sidebar-logo">
+    <span class="mark" aria-hidden="true">L</span>
+    <div>
+      <div class="name">LegadoERP</div>
+      <div class="ver">v2026.1</div>
+    </div>
+  </div>
   <button class="active" onclick="showPage('dashboard')">Dashboard</button>
   <button onclick="showPage('estoque')">Estoque</button>
   <button onclick="showPage('vendas')">Registrar Venda</button>
@@ -656,6 +700,21 @@
   <button onclick="showPage('vendedores')">🧑‍💼 Vendedores</button>
   <button onclick="showPage('financeiro')">💰 Financeiro</button>
   <button id="nav-usuarios" onclick="showPage('usuarios')" style="display:none;">🔐 Usuários</button>
+
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-quick">
+    <button onclick="showPage('vendas')">🛒 Nova venda</button>
+    <button onclick="abrirModalCadastro()">📦 Produto</button>
+    <button onclick="showPage('financeiro')">💳 Conta</button>
+  </div>
+
+  <div class="sidebar-footer">
+    <span class="avatar" id="sidebar-avatar">F</span>
+    <div class="info">
+      <div class="name" id="sidebar-loja-nome">Fátima Cigani</div>
+      <div class="role" id="sidebar-user-role">Usuário</div>
+    </div>
+  </div>
 </nav>
 <div id="nav-overlay" onclick="toggleMenuMobile()"></div>
 
@@ -2874,7 +2933,7 @@ function aplicarPermissoes(usuario) {
   if (navUsr) navUsr.style.display = (isMaster || isAdmin) ? 'block' : 'none';
 
   // Esconder/mostrar botões de nav por módulo
-  const navBtns = document.querySelectorAll('nav button[onclick^="showPage"]');
+  const navBtns = document.querySelectorAll('nav > button[onclick^="showPage"]');
   navBtns.forEach(btn => {
     const match = btn.getAttribute('onclick').match(/showPage\('(\w+)'\)/);
     if (!match) return;
@@ -2903,6 +2962,14 @@ function atualizarHeaderUsuario(usuario) {
     const labels = { master: '⭐ Master', admin: 'Admin', user: 'Vendedor' };
     roleEl.textContent = labels[usuario.perfil] || usuario.perfil;
   }
+  // Sincroniza rodapé da sidebar (nome do usuário logado + inicial no avatar)
+  const sbRole = document.getElementById('sidebar-user-role');
+  const sbAvatar = document.getElementById('sidebar-avatar');
+  if (sbRole) {
+    const labels = { master: 'Master', admin: 'Admin', user: 'Vendedor' };
+    sbRole.textContent = labels[usuario.perfil] || usuario.perfil || 'Usuário';
+  }
+  if (sbAvatar && usuario.nome) sbAvatar.textContent = usuario.nome.trim().charAt(0).toUpperCase();
 }
 
 // ===== PÁGINA DE USUÁRIOS =====
@@ -3149,13 +3216,13 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pagEl = document.getElementById('page-' + id);
   if (pagEl) pagEl.classList.add('active');
-  document.querySelectorAll('nav button').forEach((b,i) => {
+  document.querySelectorAll('nav > button').forEach((b,i) => {
     b.classList.remove('active');
     if (['dashboard','estoque','vendas','historico','cadastro','relatorios','clientes','financeiro','usuarios'][i] === id) b.classList.add('active');
   });
   // Match by onclick instead
   if (id === 'cadastro') { aplicarFeatureFlagsUI(); }
-  document.querySelectorAll('nav button').forEach(b => {
+  document.querySelectorAll('nav > button').forEach(b => {
     const m = (b.getAttribute('onclick')||'').match(/showPage\('(\w+)'\)/);
     if (m && m[1] === id) b.classList.add('active');
   });
@@ -8396,6 +8463,15 @@ async function aplicarConfigLoja() {
       h.textContent = nomeSistema;
     }
   });
+
+  // Nome da loja no rodapé da sidebar (e inicial no avatar, como fallback antes do login)
+  const nomeLojaSidebar = nomeSistema.replace(' · Gestão', '').trim();
+  const sbLojaNome = document.getElementById('sidebar-loja-nome');
+  if (sbLojaNome) sbLojaNome.textContent = nomeLojaSidebar;
+  const sbAvatarFallback = document.getElementById('sidebar-avatar');
+  if (sbAvatarFallback && nomeLojaSidebar) {
+    sbAvatarFallback.textContent = nomeLojaSidebar.charAt(0).toUpperCase();
+  }
 
   // Logos (header + login) — todas as <img> que usam data:image como logo
   document.querySelectorAll('img[alt="Fátima Cigani"], img[alt="Logo"]').forEach(img => {
