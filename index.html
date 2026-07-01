@@ -1670,6 +1670,7 @@
             <option value="90">Sem compra há 90+ dias</option>
           </select>
           <div style="display:flex;gap:6px;">
+            <button class="btn btn-outline btn-sm" onclick="visualizarGerencial()" title="Visualizar relatório em tela cheia">👁 Visualizar</button>
             <button class="btn btn-outline btn-sm" onclick="exportarCSVGerencial()" title="Exportar tabela como CSV">📥 CSV</button>
             <button class="btn btn-outline btn-sm" onclick="imprimirGerencial()" title="Imprimir relatório">🖨 Imprimir</button>
             <button class="btn btn-primary btn-sm" onclick="gerarPDFGerencial()" title="Gerar PDF">📄 PDF</button>
@@ -7710,26 +7711,83 @@ function gerTabela(titulo, headers, rows, emptyMsg) {
     </div>`;
 }
 
+// Busca a tabela principal dentro do ger-conteudo (independente do id)
+function _gerGetTabela() {
+  const cont = document.getElementById('ger-conteudo');
+  if (!cont) return null;
+  return cont.querySelector('table') || null;
+}
+
+function _gerGetHTML() {
+  const cont = document.getElementById('ger-conteudo');
+  return cont ? cont.innerHTML : '';
+}
+
+function visualizarGerencial() {
+  const titulo = document.getElementById('ger-detalhe-titulo')?.textContent || 'Relatório';
+  const html = _gerGetHTML();
+  if (!html || html.includes('Sem dados') || html.includes('Nenhum')) {
+    alert('Nenhum relatório carregado para visualizar.'); return;
+  }
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>${titulo}</title>
+    <style>
+      body { font-family: Arial, sans-serif; font-size: 13px; padding: 28px; background: #FAF7F4; color: #241B16; }
+      h2 { color: #8B4A2B; margin-bottom: 4px; font-size: 20px; }
+      .sub { color: #8A7A6D; font-size: 11px; margin-bottom: 20px; }
+      .cards { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+      .card { background:#fff; border:1px solid #E8DDD3; border-radius:8px; padding:14px 18px; min-width:130px; }
+      .card-label { font-size:11px; color:#8A7A6D; text-transform:uppercase; letter-spacing:.5px; }
+      .card-value { font-size:20px; font-weight:700; color:#241B16; margin-top:4px; }
+      .table-wrap { background:#fff; border:1px solid #E8DDD3; border-radius:8px; overflow:auto; }
+      table { width:100%; border-collapse:collapse; }
+      th { background:#8B4A2B; color:#fff; padding:10px 12px; text-align:left; font-size:12px; }
+      td { padding:9px 12px; border-bottom:1px solid #E8DDD3; font-size:12px; }
+      tr:nth-child(even) td { background:#FAF7F4; }
+      .no-print { margin-bottom:16px; }
+      button { background:#8B4A2B; color:#fff; border:none; border-radius:6px; padding:8px 18px; font-size:13px; cursor:pointer; margin-right:8px; }
+      button.sec { background:#fff; color:#8B4A2B; border:1px solid #8B4A2B; }
+      @media print { .no-print { display:none; } @page { margin:1cm; } }
+      .bar-wrap { display:inline-block; width:120px; background:#E8DDD3; border-radius:4px; height:8px; vertical-align:middle; }
+      .bar-fill { background:#8B4A2B; border-radius:4px; height:8px; }
+    </style></head><body>
+    <div class="no-print">
+      <button onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+      <button class="sec" onclick="window.close()">✕ Fechar</button>
+    </div>
+    <h2>${titulo}</h2>
+    <p class="sub">Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+    ${html}
+  </body></html>`);
+  w.document.close();
+}
+
 function imprimirGerencial() {
   const titulo = document.getElementById('ger-detalhe-titulo')?.textContent || 'Relatório';
-  const tabela = document.getElementById('ger-tabela-atual');
-  if (!tabela) { alert('Nenhum relatório carregado para imprimir.'); return; }
+  const tabela = _gerGetTabela();
+  const html = _gerGetHTML();
+  if (!html || (!tabela && !html)) { alert('Nenhum relatório carregado para imprimir.'); return; }
   const w = window.open('', '_blank');
   w.document.write(`<!DOCTYPE html><html><head><title>${titulo}</title>
     <style>
       body { font-family: Arial, sans-serif; font-size: 12px; padding: 20px; }
       h2 { color: #8B4A2B; margin-bottom: 4px; }
       p { color: #8A7A6D; font-size: 11px; margin-bottom: 16px; }
-      table { width: 100%; border-collapse: collapse; }
-      th { background: #8B4A2B; color: #fff; padding: 8px 10px; text-align: left; font-size: 11px; }
-      td { padding: 7px 10px; border-bottom: 1px solid #E8DDD3; font-size: 11px; }
-      tr:nth-child(even) td { background: #FAF7F4; }
+      .cards { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+      .card { border:1px solid #E8DDD3; border-radius:6px; padding:10px 14px; min-width:110px; }
+      .card-label { font-size:10px; color:#8A7A6D; }
+      .card-value { font-size:16px; font-weight:700; }
+      table { width:100%; border-collapse:collapse; }
+      th { background:#8B4A2B; color:#fff; padding:8px 10px; text-align:left; font-size:11px; }
+      td { padding:7px 10px; border-bottom:1px solid #E8DDD3; font-size:11px; }
+      tr:nth-child(even) td { background:#FAF7F4; }
+      .bar-wrap,.bar-fill { display:none; }
       @media print { @page { margin: 1cm; } }
     </style></head><body>
     <h2>${titulo}</h2>
     <p>Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
-    ${tabela.outerHTML}
-    <script>window.onload=()=>{window.print();window.close();}<\/script>
+    ${html}
+    <script>window.onload=()=>{window.print();}<\/script>
   </body></html>`);
   w.document.close();
 }
@@ -7740,21 +7798,19 @@ function gerarPDFGerencial() {
 
 function exportarCSVGerencial() {
   const titulo = document.getElementById('ger-detalhe-titulo')?.textContent || 'relatorio';
-  const tabela = document.getElementById('ger-tabela-atual');
-  if (!tabela) { alert('Nenhum relatório carregado para exportar.'); return; }
+  const tabela = _gerGetTabela();
+  if (!tabela) { alert('Nenhum dado em tabela disponível para exportar.'); return; }
   const rows = [];
-  // Cabeçalho
   const ths = tabela.querySelectorAll('thead th');
-  rows.push([...ths].map(th => '"' + th.textContent.replace(/"/g,'""') + '"').join(','));
-  // Dados
+  rows.push([...ths].map(th => '"' + th.textContent.trim().replace(/"/g,'""') + '"').join(','));
   tabela.querySelectorAll('tbody tr').forEach(tr => {
     const cols = [...tr.querySelectorAll('td')].map(td => {
       const txt = td.textContent.trim().replace(/"/g,'""');
       return '"' + txt + '"';
     });
-    rows.push(cols.join(','));
+    if (cols.length) rows.push(cols.join(','));
   });
-  const csv = '\uFEFF' + rows.join('\n'); // BOM para Excel reconhecer UTF-8
+  const csv = '\uFEFF' + rows.join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
