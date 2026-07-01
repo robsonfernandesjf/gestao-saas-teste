@@ -1645,7 +1645,7 @@
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
         <button class="btn btn-outline btn-sm" onclick="voltarMenuGer()">← Voltar</button>
         <h2 id="ger-detalhe-titulo" style="font-size:16px;font-weight:700;"></h2>
-        <div style="margin-left:auto;display:flex;gap:10px;align-items:center;">
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <select id="ger-periodo" onchange="onGerPeriodoChange()" style="min-width:160px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
             <option value="7">Últimos 7 dias</option>
             <option value="15">Últimos 15 dias</option>
@@ -1670,6 +1670,11 @@
             <option value="60">Sem compra há 60+ dias</option>
             <option value="90">Sem compra há 90+ dias</option>
           </select>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-outline btn-sm" onclick="exportarCSVGerencial()" title="Exportar tabela como CSV">📥 CSV</button>
+            <button class="btn btn-outline btn-sm" onclick="imprimirGerencial()" title="Imprimir relatório">🖨 Imprimir</button>
+            <button class="btn btn-primary btn-sm" onclick="gerarPDFGerencial()" title="Gerar PDF">📄 PDF</button>
+          </div>
         </div>
       </div>
 
@@ -7705,11 +7710,65 @@ function gerTabela(titulo, headers, rows, emptyMsg) {
   }
   cont.innerHTML = `
     <div class="table-wrap">
-      <table>
+      <table id="ger-tabela-atual">
         <thead><tr>${headers.map(h => `<th${h.custo?' class="col-custo"':''}>${h.label}</th>`).join('')}</tr></thead>
         <tbody>${rows.join('')}</tbody>
       </table>
     </div>`;
+}
+
+function imprimirGerencial() {
+  const titulo = document.getElementById('ger-detalhe-titulo')?.textContent || 'Relatório';
+  const tabela = document.getElementById('ger-tabela-atual');
+  if (!tabela) { alert('Nenhum relatório carregado para imprimir.'); return; }
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>${titulo}</title>
+    <style>
+      body { font-family: Arial, sans-serif; font-size: 12px; padding: 20px; }
+      h2 { color: #8B4A2B; margin-bottom: 4px; }
+      p { color: #8A7A6D; font-size: 11px; margin-bottom: 16px; }
+      table { width: 100%; border-collapse: collapse; }
+      th { background: #8B4A2B; color: #fff; padding: 8px 10px; text-align: left; font-size: 11px; }
+      td { padding: 7px 10px; border-bottom: 1px solid #E8DDD3; font-size: 11px; }
+      tr:nth-child(even) td { background: #FAF7F4; }
+      @media print { @page { margin: 1cm; } }
+    </style></head><body>
+    <h2>${titulo}</h2>
+    <p>Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+    ${tabela.outerHTML}
+    <script>window.onload=()=>{window.print();window.close();}<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+function gerarPDFGerencial() {
+  imprimirGerencial();
+}
+
+function exportarCSVGerencial() {
+  const titulo = document.getElementById('ger-detalhe-titulo')?.textContent || 'relatorio';
+  const tabela = document.getElementById('ger-tabela-atual');
+  if (!tabela) { alert('Nenhum relatório carregado para exportar.'); return; }
+  const rows = [];
+  // Cabeçalho
+  const ths = tabela.querySelectorAll('thead th');
+  rows.push([...ths].map(th => '"' + th.textContent.replace(/"/g,'""') + '"').join(','));
+  // Dados
+  tabela.querySelectorAll('tbody tr').forEach(tr => {
+    const cols = [...tr.querySelectorAll('td')].map(td => {
+      const txt = td.textContent.trim().replace(/"/g,'""');
+      return '"' + txt + '"';
+    });
+    rows.push(cols.join(','));
+  });
+  const csv = '\uFEFF' + rows.join('\n'); // BOM para Excel reconhecer UTF-8
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = titulo.replace(/[^a-zA-Z0-9À-ú ]/g,'').trim() + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function gerCards(cards) {
