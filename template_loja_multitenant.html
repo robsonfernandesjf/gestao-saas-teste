@@ -1291,59 +1291,12 @@
         </div>
         <div class="form-grid" id="cad-csosn-extra">
           <div class="form-row">
-            <label>Alíquota ICMS (%) <span style="font-size:10px;color:var(--muted);font-weight:400;">— geralmente 0 no Simples</span></label>
+            <label>Alíquota ICMS (%) <span style="font-size:10px;color:var(--muted);font-weight:400;">— informativo, geralmente 0 no Simples</span></label>
             <input type="text" inputmode="decimal" id="cad-aliquota-icms" placeholder="0,00">
           </div>
           <div class="form-row">
             <label>Cód. benefício fiscal (opcional)</label>
             <input type="text" id="cad-cod-beneficio" placeholder="conforme tabela da SEFAZ/UF">
-          </div>
-        </div>
-        <div class="form-grid">
-          <div class="form-row">
-            <label>CEST <span style="font-size:10px;color:var(--muted);font-weight:400;">Substituição Tributária</span></label>
-            <input type="text" id="cad-cest" placeholder="Ex: 2800700" maxlength="7" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-          </div>
-          <div class="form-row">
-            <label>CFOP</label>
-            <select id="cad-cfop">
-              <option value="">Selecione...</option>
-              <option value="5102">5102 — Venda dentro do estado</option>
-              <option value="5405">5405 — Venda com ST (dentro do estado)</option>
-              <option value="6102">6102 — Venda fora do estado</option>
-              <option value="6404">6404 — Venda com ST (fora do estado)</option>
-              <option value="5910">5910 — Remessa para demonstração</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-grid">
-          <div class="form-row">
-            <label>CST PIS</label>
-            <select id="cad-cst-pis"><option value="">Carregando...</option></select>
-          </div>
-          <div class="form-row">
-            <label>Alíquota PIS (%)</label>
-            <input type="text" inputmode="decimal" id="cad-aliquota-pis" placeholder="0,00">
-          </div>
-        </div>
-        <div class="form-grid">
-          <div class="form-row">
-            <label>CST COFINS</label>
-            <select id="cad-cst-cofins"><option value="">Carregando...</option></select>
-          </div>
-          <div class="form-row">
-            <label>Alíquota COFINS (%)</label>
-            <input type="text" inputmode="decimal" id="cad-aliquota-cofins" placeholder="0,00">
-          </div>
-        </div>
-        <div class="form-grid">
-          <div class="form-row">
-            <label>Peso líquido (kg)</label>
-            <input type="text" inputmode="decimal" id="cad-peso-liq" placeholder="Ex: 0,350">
-          </div>
-          <div class="form-row">
-            <label>Peso bruto (kg)</label>
-            <input type="text" inputmode="decimal" id="cad-peso-bruto" placeholder="Ex: 0,400">
           </div>
         </div>
       </div>
@@ -2702,6 +2655,10 @@ function usuarioAtual() {
 
 // Inicia usuário admin padrão se não existir
 function initUsuarios() {
+  // Carregar dados da empresa quando disponível
+  if (typeof LOJA_ID !== 'undefined') {
+    setTimeout(carregarDadosEmpresa, 800);
+  }
   const lista = getUsuarios();
   if (lista.length === 0) {
     const admin = {
@@ -4139,73 +4096,6 @@ async function confirmarImportacaoExcel() {
 }
 
 // Esconde alíquota ICMS quando o CSOSN não tem incidência (isento/imune/não tributado)
-// ── CST PIS/COFINS — carrega do Supabase com fallback completo ──
-var _CST_FALLBACK = [
-  {c:'01',d:'Tributável — alíquota básica (1,65% PIS / 7,6% COFINS)'},
-  {c:'02',d:'Tributável — alíquota diferenciada'},
-  {c:'03',d:'Tributável — alíquota por unidade de medida'},
-  {c:'04',d:'Tributável — monofásica — revenda a alíquota zero'},
-  {c:'05',d:'Tributável — substituição tributária'},
-  {c:'06',d:'Tributável — alíquota zero'},
-  {c:'07',d:'Isenta da contribuição'},
-  {c:'08',d:'Sem incidência da contribuição'},
-  {c:'09',d:'Com suspensão da contribuição'},
-  {c:'49',d:'Outras operações de saída'},
-  {c:'50',d:'Crédito — receita tributada (exclusivo)'},
-  {c:'51',d:'Crédito — receita não tributada (exclusivo)'},
-  {c:'52',d:'Crédito — receita de exportação (exclusivo)'},
-  {c:'53',d:'Crédito — receitas tributadas e não tributadas'},
-  {c:'54',d:'Crédito — receitas tributadas e de exportação'},
-  {c:'55',d:'Crédito — receitas não tributadas e de exportação'},
-  {c:'56',d:'Crédito — receitas tributadas, não tributadas e exportação'},
-  {c:'60',d:'Crédito presumido — aquisição vinculada a receita tributada'},
-  {c:'61',d:'Crédito presumido — aquisição vinculada a receita não tributada'},
-  {c:'62',d:'Crédito presumido — aquisição vinculada a exportação'},
-  {c:'63',d:'Crédito presumido — aquisição mista tributada/não tributada'},
-  {c:'64',d:'Crédito presumido — aquisição mista tributada/exportação'},
-  {c:'65',d:'Crédito presumido — aquisição mista não tributada/exportação'},
-  {c:'66',d:'Crédito presumido — aquisição mista tributada/não tributada/exportação'},
-  {c:'67',d:'Crédito presumido — outras operações'},
-  {c:'70',d:'Aquisição sem direito a crédito'},
-  {c:'71',d:'Aquisição com isenção'},
-  {c:'72',d:'Aquisição com suspensão'},
-  {c:'73',d:'Aquisição a alíquota zero'},
-  {c:'74',d:'Aquisição sem incidência'},
-  {c:'75',d:'Aquisição por substituição tributária'},
-  {c:'98',d:'Outras operações de entrada'},
-  {c:'99',d:'Outras operações'}
-];
-var _cstCache = null;
-
-async function carregarCstPisCofins() {
-  if (_cstCache) return _cstCache;
-  try {
-    var r = await fetch(SB_URL + '/rest/v1/tab_cst_piscofins?select=codigo,descricao&order=codigo.asc', { headers: SB_HEADS });
-    if (r.ok) {
-      var data = await r.json();
-      if (data && data.length > 0) { _cstCache = data; return _cstCache; }
-    }
-  } catch(e) {}
-  // fallback: usar lista embutida
-  _cstCache = _CST_FALLBACK.map(function(x){ return {codigo: x.c, descricao: x.c + ' — ' + x.d}; });
-  return _cstCache;
-}
-
-function popularSelectCst(selectId, valorPadrao) {
-  var sel = document.getElementById(selectId);
-  if (!sel) return;
-  sel.innerHTML = '<option value="">Selecione...</option>';
-  carregarCstPisCofins().then(function(lista) {
-    sel.innerHTML = '<option value="">Selecione...</option>' + lista.map(function(i) {
-      var cod = i.codigo || i.c || '';
-      var desc = i.descricao || i.d || '';
-      // evitar duplicar código na descrição
-      var label = desc.startsWith(cod) ? desc : cod + ' — ' + desc;
-      return '<option value="' + cod + '"' + (cod === valorPadrao ? ' selected' : '') + '>' + label + '</option>';
-    }).join('');
-  });
-}
-
 function toggleCamposCsosn() {
   const csosn = document.getElementById('cad-csosn').value;
   const semIcms = ['103','300','400'].includes(csosn);
@@ -4450,11 +4340,7 @@ function aplicarFeatureFlagsUI() {
   if (secGrade) secGrade.style.display = LOJA_USA_GRADE ? 'block' : 'none';
   if (secFiscal) secFiscal.style.display = LOJA_USA_NFCE ? 'block' : 'none';
   if (secCatalogo) secCatalogo.style.display = LOJA_USA_CATALOGO ? 'block' : 'none';
-  if (LOJA_USA_NFCE) {
-    toggleCamposCsosn();
-    popularSelectCst('cad-cst-pis', '07');
-    popularSelectCst('cad-cst-cofins', '07');
-  }
+  if (LOJA_USA_NFCE) toggleCamposCsosn();
   const secXml = document.getElementById('secao-import-xml');
   if (secXml) secXml.style.display = 'block';
   popularSelectFornecedores();
@@ -4741,20 +4627,12 @@ async function salvarCadastro() {
   }
 
   if (LOJA_USA_NFCE) {
-    novoProduto.ncm           = document.getElementById('cad-ncm').value.trim() || null;
-    novoProduto.unidade       = document.getElementById('cad-unidade').value;
-    novoProduto.origem        = document.getElementById('cad-origem').value;
-    novoProduto.csosn         = document.getElementById('cad-csosn').value;
+    novoProduto.ncm = document.getElementById('cad-ncm').value.trim() || null;
+    novoProduto.unidade = document.getElementById('cad-unidade').value;
+    novoProduto.origem = document.getElementById('cad-origem').value;
+    novoProduto.csosn = document.getElementById('cad-csosn').value;
     novoProduto.aliquota_icms = parseFloat((document.getElementById('cad-aliquota-icms').value||'0').replace(',','.')) || 0;
     novoProduto.cod_beneficio = document.getElementById('cad-cod-beneficio').value.trim() || null;
-    novoProduto.cest          = document.getElementById('cad-cest').value.trim() || null;
-    novoProduto.cfop          = document.getElementById('cad-cfop').value || null;
-    novoProduto.cst_pis       = document.getElementById('cad-cst-pis').value || null;
-    novoProduto.aliquota_pis  = parseFloat((document.getElementById('cad-aliquota-pis').value||'0').replace(',','.')) || 0;
-    novoProduto.cst_cofins    = document.getElementById('cad-cst-cofins').value || null;
-    novoProduto.aliquota_cofins = parseFloat((document.getElementById('cad-aliquota-cofins').value||'0').replace(',','.')) || 0;
-    novoProduto.peso_liq      = parseFloat((document.getElementById('cad-peso-liq').value||'0').replace(',','.')) || 0;
-    novoProduto.peso_bruto    = parseFloat((document.getElementById('cad-peso-bruto').value||'0').replace(',','.')) || 0;
   }
 
   if (LOJA_USA_CATALOGO) {
@@ -5954,18 +5832,8 @@ function editarCliente(id) {
   document.getElementById('cli-nome').value = cl.nome;
   document.getElementById('cli-tel').value = cl.tel||'';
   document.getElementById('cli-nasc').value = cl.nasc||'';
-  document.getElementById('cli-end').value = cl.end||cl.endereco||'';
+  document.getElementById('cli-end').value = cl.end||'';
   document.getElementById('cli-obs').value = cl.obs||'';
-  if (LOJA_USA_NFCE) {
-    var setF=function(id,v){var e=document.getElementById(id);if(e)e.value=v||'';};
-    setF('cli-nome-fantasia',cl.nome_fantasia); setF('cli-ie',cl.ie);
-    setF('cli-email',cl.email); setF('cli-cep',cl.cep);
-    setF('cli-logradouro',cl.logradouro); setF('cli-numero',cl.numero);
-    setF('cli-complemento',cl.complemento); setF('cli-bairro',cl.bairro);
-    setF('cli-municipio',cl.municipio); setF('cli-ibge',cl.ibge);
-    var uf=document.getElementById('cli-uf'); if(uf) uf.value=cl.uf||'';
-    var rg=document.getElementById('cli-regime'); if(rg) rg.value=cl.regime||'1';
-  }
   document.getElementById('cli-eh-fornecedor').checked = !!cl.eh_fornecedor;
   document.getElementById('cli-doc-tipo').value = cl.doc_tipo || 'cpf';
   document.getElementById('cli-doc-numero').value = cl.doc_numero || '';
@@ -5975,27 +5843,11 @@ function editarCliente(id) {
 }
 
 // Esconde data de nascimento quando é fornecedor (não faz sentido para PJ)
-function buscarCepFornecedor(cep) {
-  var cp = cep.replace(/[^0-9]/g,'');
-  if (cp.length !== 8) return;
-  fetch('https://viacep.com.br/ws/' + cp + '/json/')
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if (d.erro) return;
-      var set = function(id,val){var el=document.getElementById(id);if(el)el.value=val||'';};
-      set('cli-logradouro',d.logradouro); set('cli-bairro',d.bairro);
-      set('cli-municipio',d.localidade); set('cli-ibge',d.ibge);
-      var uf=document.getElementById('cli-uf'); if(uf) uf.value=d.uf||'';
-    }).catch(function(){});
-}
-
 function toggleTipoCliente() {
   const ehFornecedor = document.getElementById('cli-eh-fornecedor').checked;
   document.getElementById('cli-nasc-wrap').style.display = ehFornecedor ? 'none' : 'block';
   document.getElementById('cli-doc-tipo').value = ehFornecedor ? 'cnpj' : 'cpf';
   mascaraDocCliente();
-  var sf = document.getElementById('secao-fiscal-fornecedor');
-  if (sf) sf.style.display = (ehFornecedor && LOJA_USA_NFCE) ? 'block' : 'none';
 }
 
 // Aplica máscara dinâmica de CPF ou CNPJ conforme o tipo selecionado
@@ -6031,19 +5883,7 @@ async function salvarCliente() {
     obs: document.getElementById('cli-obs').value.trim(),
     eh_fornecedor: document.getElementById('cli-eh-fornecedor').checked,
     doc_tipo: document.getElementById('cli-doc-tipo').value,
-    doc_numero: document.getElementById('cli-doc-numero').value.trim(),
-    nome_fantasia: LOJA_USA_NFCE?(document.getElementById('cli-nome-fantasia').value.trim()||null):undefined,
-    ie:          LOJA_USA_NFCE?(document.getElementById('cli-ie').value.trim()||null):undefined,
-    regime:      LOJA_USA_NFCE?(document.getElementById('cli-regime').value||null):undefined,
-    email:       LOJA_USA_NFCE?(document.getElementById('cli-email').value.trim()||null):undefined,
-    cep:         LOJA_USA_NFCE?(document.getElementById('cli-cep').value.trim()||null):undefined,
-    logradouro:  LOJA_USA_NFCE?(document.getElementById('cli-logradouro').value.trim()||null):undefined,
-    numero:      LOJA_USA_NFCE?(document.getElementById('cli-numero').value.trim()||null):undefined,
-    complemento: LOJA_USA_NFCE?(document.getElementById('cli-complemento').value.trim()||null):undefined,
-    bairro:      LOJA_USA_NFCE?(document.getElementById('cli-bairro').value.trim()||null):undefined,
-    municipio:   LOJA_USA_NFCE?(document.getElementById('cli-municipio').value.trim()||null):undefined,
-    uf:          LOJA_USA_NFCE?(document.getElementById('cli-uf').value||null):undefined,
-    ibge:        LOJA_USA_NFCE?(document.getElementById('cli-ibge').value.trim()||null):undefined
+    doc_numero: document.getElementById('cli-doc-numero').value.trim()
   };
 
   try {
@@ -8400,6 +8240,116 @@ if (_sessaoAtual) {
     }
   })();
 }
+
+// ── EMPRESA: ViaCEP ──────────────────────────────────────
+function buscarCepEmpresa(cep) {
+  var cp = cep.replace(/[^0-9]/g,'');
+  if (cp.length !== 8) return;
+  fetch('https://viacep.com.br/ws/' + cp + '/json/')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (d.erro) return;
+      var s = function(id,v){var e=document.getElementById(id);if(e)e.value=v||'';};
+      s('emp-logradouro',d.logradouro); s('emp-bairro',d.bairro);
+      s('emp-municipio',d.localidade); s('emp-ibge',d.ibge);
+      var uf=document.getElementById('emp-uf'); if(uf) uf.value=d.uf||'';
+    }).catch(function(){});
+}
+
+function mascaraCNPJEmp(el) {
+  var v = el.value.replace(/[^0-9]/g,'').slice(0,14);
+  v = v.replace(/^(\d{2})(\d)/,'$1.$2')
+       .replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3')
+       .replace(/\.(\d{3})(\d)/,'.$1/$2')
+       .replace(/(\d{4})(\d)/,'$1-$2');
+  el.value = v;
+}
+
+// ── EMPRESA: Carregar dados salvos ───────────────────────
+async function carregarDadosEmpresa() {
+  try {
+    var dados = await sbGet('lojas', 'loja_id=eq.' + LOJA_ID + '&select=dados_empresa&limit=1');
+    if (dados && dados[0] && dados[0].dados_empresa) {
+      var emp = typeof dados[0].dados_empresa === 'string'
+        ? JSON.parse(dados[0].dados_empresa) : dados[0].dados_empresa;
+      var set = function(id,v){var e=document.getElementById(id);if(e)e.value=v||'';};
+      set('emp-razao-social', emp.razao_social); set('emp-nome-fantasia', emp.nome_fantasia);
+      set('emp-cnpj', emp.cnpj); set('emp-ie', emp.ie); set('emp-im', emp.im);
+      set('emp-telefone', emp.telefone); set('emp-email', emp.email);
+      set('emp-cep', emp.cep); set('emp-logradouro', emp.logradouro);
+      set('emp-numero', emp.numero); set('emp-complemento', emp.complemento);
+      set('emp-bairro', emp.bairro); set('emp-municipio', emp.municipio);
+      set('emp-ibge', emp.ibge);
+      if (emp.serie_nfce) set('emp-serie-nfce', emp.serie_nfce);
+      if (emp.num_inicial) set('emp-num-inicial', emp.num_inicial);
+      var reg = document.getElementById('emp-regime'); if(reg && emp.regime) reg.value = emp.regime;
+      var uf = document.getElementById('emp-uf'); if(uf && emp.uf) uf.value = emp.uf;
+      var amb = document.getElementById('emp-ambiente'); if(amb && emp.ambiente) amb.value = emp.ambiente;
+    }
+  } catch(e) {
+    // dados_empresa ainda não existe — campo será criado no primeiro save
+  }
+  // Mostrar dados fiscais se usa_nfce
+  var fw = document.getElementById('emp-fiscal-wrap');
+  if (fw) fw.style.display = LOJA_USA_NFCE ? 'block' : 'none';
+  // Preencher login master atual
+  var ml = document.getElementById('master-login-atual');
+  if (ml) ml.value = CONFIG_LOJA.masterLogin || 'master';
+}
+
+// ── EMPRESA: Salvar ──────────────────────────────────────
+async function salvarDadosEmpresa() {
+  var get = function(id){ var e=document.getElementById(id); return e ? e.value.trim() : ''; };
+  var emp = {
+    razao_social: get('emp-razao-social'), nome_fantasia: get('emp-nome-fantasia'),
+    cnpj: get('emp-cnpj'), ie: get('emp-ie'), im: get('emp-im'),
+    regime: document.getElementById('emp-regime').value,
+    telefone: get('emp-telefone'), email: get('emp-email'),
+    cep: get('emp-cep'), logradouro: get('emp-logradouro'), numero: get('emp-numero'),
+    complemento: get('emp-complemento'), bairro: get('emp-bairro'),
+    municipio: get('emp-municipio'), ibge: get('emp-ibge'),
+    uf: document.getElementById('emp-uf').value,
+    serie_nfce: get('emp-serie-nfce'), num_inicial: get('emp-num-inicial'),
+    ambiente: document.getElementById('emp-ambiente')?.value || '2',
+    atualizado_em: new Date().toISOString()
+  };
+  var msg = document.getElementById('emp-msg');
+  try {
+    await sbPatch('lojas', 'loja_id=eq.' + LOJA_ID, { dados_empresa: JSON.stringify(emp) });
+    msg.style.color = 'var(--success)'; msg.textContent = '✅ Dados salvos!';
+  } catch(e) {
+    msg.style.color = 'var(--danger)'; msg.textContent = '❌ Erro ao salvar: ' + e.message;
+  }
+  setTimeout(function(){ msg.textContent = ''; }, 4000);
+}
+
+// ── MASTER: Atualizar credenciais ────────────────────────
+async function salvarCredenciaisMaster() {
+  var loginNovo = (document.getElementById('master-login-novo').value||'').trim();
+  var senhaNova = (document.getElementById('master-senha-nova').value||'').trim();
+  var senhaConf = (document.getElementById('master-senha-conf').value||'').trim();
+  var msg = document.getElementById('master-msg');
+  if (!loginNovo && !senhaNova) { msg.style.color='var(--warn)'; msg.textContent='Preencha ao menos um campo.'; return; }
+  if (senhaNova && senhaNova.length < 6) { msg.style.color='var(--danger)'; msg.textContent='Senha mínima: 6 caracteres.'; return; }
+  if (senhaNova && senhaNova !== senhaConf) { msg.style.color='var(--danger)'; msg.textContent='As senhas não coincidem.'; return; }
+  try {
+    var patch = {};
+    if (loginNovo) patch.master_login = loginNovo;
+    if (senhaNova) patch.master_senha = senhaNova;
+    await sbPatch('lojas', 'loja_id=eq.' + LOJA_ID, patch);
+    if (loginNovo) CONFIG_LOJA.masterLogin = loginNovo;
+    if (senhaNova) CONFIG_LOJA.masterSenha = senhaNova;
+    document.getElementById('master-login-atual').value = CONFIG_LOJA.masterLogin;
+    document.getElementById('master-login-novo').value = '';
+    document.getElementById('master-senha-nova').value = '';
+    document.getElementById('master-senha-conf').value = '';
+    msg.style.color = 'var(--success)'; msg.textContent = '✅ Credenciais atualizadas!';
+  } catch(e) {
+    msg.style.color = 'var(--danger)'; msg.textContent = '❌ Erro: ' + e.message;
+  }
+  setTimeout(function(){ msg.textContent = ''; }, 4000);
+}
+
 setInterval(atualizarHora, 1000);
 atualizarHora();
 </script>
@@ -8424,6 +8374,92 @@ atualizarHora();
       </div>
       <p style="font-size:11px;color:var(--warn);margin-top:8px;">⚠️ Se a validade expirar, todos os usuários (exceto Master) serão bloqueados automaticamente.</p>
     </div>
+
+
+<!-- ── CADASTRO DA EMPRESA ────────────────────────────── -->
+<div style="margin-bottom:24px;">
+  <div class="section-title">🏢 Dados da Empresa</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;">
+    <div class="form-grid">
+      <div class="form-row"><label>Razão Social</label><input type="text" id="emp-razao-social" placeholder="Ex: Fátima Cigani Comércio de Roupas LTDA"></div>
+      <div class="form-row"><label>Nome Fantasia</label><input type="text" id="emp-nome-fantasia" placeholder="Ex: Fátima Cigani"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>CNPJ</label><input type="text" id="emp-cnpj" placeholder="00.000.000/0000-00" inputmode="numeric" maxlength="18" oninput="mascaraCNPJEmp(this)"></div>
+      <div class="form-row"><label>Inscrição Estadual (IE)</label><input type="text" id="emp-ie" placeholder="Somente números" inputmode="numeric"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Inscrição Municipal (IM)</label><input type="text" id="emp-im" placeholder="Somente números (se prestador de serviço)"></div>
+      <div class="form-row">
+        <label>Regime Tributário</label>
+        <select id="emp-regime">
+          <option value="1">1 — Simples Nacional</option>
+          <option value="2">2 — Simples Nacional — Excesso de Sublimite</option>
+          <option value="3">3 — Regime Normal (Lucro Presumido / Real)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Telefone</label><input type="tel" id="emp-telefone" placeholder="(32) 99999-9999" oninput="mascaraTel(this)"></div>
+      <div class="form-row"><label>E-mail</label><input type="email" id="emp-email" placeholder="contato@suaempresa.com.br"></div>
+    </div>
+    <p style="font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.5px;">Endereço</p>
+    <div class="form-grid">
+      <div class="form-row"><label>CEP</label><input type="text" id="emp-cep" placeholder="00000-000" maxlength="9" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'').replace(/^([0-9]{5})([0-9])/,'$1-$2')" onblur="buscarCepEmpresa(this.value)"></div>
+      <div class="form-row"><label>UF</label><select id="emp-uf"><option value="">—</option><option>AC</option><option>AL</option><option>AM</option><option>AP</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option><option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option><option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option><option>SP</option><option>TO</option></select></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Logradouro</label><input type="text" id="emp-logradouro" placeholder="Rua, Av, Travessa..."></div>
+      <div class="form-row" style="max-width:140px;"><label>Número</label><input type="text" id="emp-numero" placeholder="123"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Bairro</label><input type="text" id="emp-bairro" placeholder="Ex: Centro"></div>
+      <div class="form-row"><label>Complemento</label><input type="text" id="emp-complemento" placeholder="Sala 2, Loja A..."></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Município</label><input type="text" id="emp-municipio" placeholder="Ex: Juiz de Fora"></div>
+      <div class="form-row"><label>Cód. IBGE</label><input type="text" id="emp-ibge" placeholder="Ex: 3136702" maxlength="7" inputmode="numeric"></div>
+    </div>
+    <div id="emp-fiscal-wrap" style="display:none;">
+      <p style="font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.5px;">🧾 Dados fiscais NF-e / NFC-e</p>
+      <div class="form-grid">
+        <div class="form-row"><label>Série NFC-e</label><input type="text" id="emp-serie-nfce" placeholder="1" maxlength="3" inputmode="numeric" value="1"></div>
+        <div class="form-row"><label>Número inicial NFC-e</label><input type="text" id="emp-num-inicial" placeholder="1" inputmode="numeric" value="1"></div>
+      </div>
+      <div class="form-row">
+        <label>Ambiente</label>
+        <select id="emp-ambiente">
+          <option value="2">2 — Homologação (testes — notas sem validade fiscal)</option>
+          <option value="1">1 — Produção (notas com validade fiscal real)</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="salvarDadosEmpresa()">💾 Salvar dados da empresa</button>
+      <span id="emp-msg" style="font-size:12px;align-self:center;"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ── TROCAR SENHA MASTER ────────────────────────────── -->
+<div style="margin-bottom:24px;" id="secao-trocar-senha-master">
+  <div class="section-title">🔐 Credenciais Master</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;">
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">O login e senha master ficam armazenados no sistema da loja. Altere após o primeiro acesso.</p>
+    <div class="form-grid">
+      <div class="form-row"><label>Login master atual</label><input type="text" id="master-login-atual" placeholder="master" readonly style="color:var(--muted);background:var(--bg);"></div>
+      <div class="form-row"><label>Novo login</label><input type="text" id="master-login-novo" placeholder="Ex: admin-fatima" autocomplete="off"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Nova senha</label><input type="password" id="master-senha-nova" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
+      <div class="form-row"><label>Confirmar nova senha</label><input type="password" id="master-senha-conf" placeholder="Repita a senha" autocomplete="new-password"></div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="salvarCredenciaisMaster()">🔐 Atualizar credenciais</button>
+      <span id="master-msg" style="font-size:12px;align-self:center;"></span>
+    </div>
+  </div>
+</div>
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div class="section-title" style="margin-bottom:0;border:none;">Usuários cadastrados</div>
@@ -8542,41 +8578,6 @@ atualizarHora();
       <div class="form-row">
         <label>Observações (opcional)</label>
         <input type="text" id="cli-obs" placeholder="Ex: cliente VIP, preferências...">
-      </div>
-      <div id="secao-fiscal-fornecedor" style="display:none;border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
-        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--accent);margin-bottom:12px;">🧾 Dados fiscais (NF-e / NFC-e)</p>
-        <div class="form-grid">
-          <div class="form-row"><label>Nome fantasia</label><input type="text" id="cli-nome-fantasia" placeholder="Ex: Moda Sul"></div>
-          <div class="form-row"><label>Inscrição Estadual (IE)</label><input type="text" id="cli-ie" placeholder="Somente números" inputmode="numeric"></div>
-        </div>
-        <div class="form-grid">
-          <div class="form-row">
-            <label>Regime tributário</label>
-            <select id="cli-regime">
-              <option value="1">1 — Simples Nacional</option>
-              <option value="2">2 — Simples Nacional — Excesso</option>
-              <option value="3">3 — Regime Normal (Lucro Presumido / Real)</option>
-            </select>
-          </div>
-          <div class="form-row"><label>E-mail (DANFE)</label><input type="email" id="cli-email" placeholder="contato@fornecedor.com.br"></div>
-        </div>
-        <p style="font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 8px;">Endereço fiscal</p>
-        <div class="form-grid">
-          <div class="form-row"><label>CEP</label><input type="text" id="cli-cep" placeholder="00000-000" maxlength="9" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'').replace(/^([0-9]{5})([0-9])/,'$1-$2')" onblur="buscarCepFornecedor(this.value)"></div>
-          <div class="form-row"><label>UF</label><select id="cli-uf"><option value="">—</option><option>AC</option><option>AL</option><option>AM</option><option>AP</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option><option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option><option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option><option>SP</option><option>TO</option></select></div>
-        </div>
-        <div class="form-grid">
-          <div class="form-row"><label>Logradouro</label><input type="text" id="cli-logradouro" placeholder="Rua, Av..."></div>
-          <div class="form-row" style="max-width:140px;"><label>Número</label><input type="text" id="cli-numero" placeholder="123"></div>
-        </div>
-        <div class="form-grid">
-          <div class="form-row"><label>Bairro</label><input type="text" id="cli-bairro" placeholder="Ex: Centro"></div>
-          <div class="form-row"><label>Complemento</label><input type="text" id="cli-complemento" placeholder="Sala 2"></div>
-        </div>
-        <div class="form-grid">
-          <div class="form-row"><label>Município</label><input type="text" id="cli-municipio" placeholder="Ex: Juiz de Fora"></div>
-          <div class="form-row"><label>Cód. IBGE</label><input type="text" id="cli-ibge" placeholder="3136702" maxlength="7" inputmode="numeric"></div>
-        </div>
       </div>
     </div>
     <div class="modal-footer">
