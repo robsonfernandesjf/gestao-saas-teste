@@ -2527,7 +2527,19 @@ function buscarTaxaPercentual(tipo, parcelas) {
 }
 
 // ---- DÉBITOS ----
-function getDebitos() { return _cache.debitos || JSON.parse(localStorage.getItem(FIN_KEY) || '[]'); }
+function getDebitos() {
+  const lista = _cache.debitos || JSON.parse(localStorage.getItem(FIN_KEY) || '[]');
+  // Normaliza nomes de campo: a tabela no Supabase usa valor_total/produto/created_at,
+  // mas o resto do sistema (dSaldo, dStatus, renderização) usa total/itens/data_venda.
+  // Débitos criados só localmente (a prazo, cartão) já vêm com os nomes certos — por
+  // isso os '||'/'??' abaixo priorizam o que já existir antes de usar o fallback.
+  return lista.map(d => ({
+    ...d,
+    total: (d.total ?? d.valor_total) || 0,
+    data_venda: d.data_venda || (d.created_at ? new Date(d.created_at).toLocaleString('pt-BR') : ''),
+    itens: d.itens || (d.produto ? [{ produto: d.produto, qtd: 1, valor: d.valor_total || 0 }] : [])
+  }));
+}
 
 async function saveDebitoSB(d) {
   const { id, ...dados } = d;
@@ -5138,17 +5150,27 @@ async function confirmarVenda() {
     };
     debitos.unshift(novoDebito);
     saveDebitos(debitos);
-    // Salvar no Supabase
+    // Salvar no Supabase — nomes de coluna REAIS da tabela debitos
+    // (valor_total/valor_pago/produto), confirmados direto no banco.
+    // getDebitos() é quem traduz isso de volta pros nomes que o resto do
+    // sistema usa (total/itens/data_venda) na hora da leitura.
     try {
-      await sbPost('debitos', {
+      const criado = await sbPost('debitos', {
+        venda_id: novoDebito.venda_id,
         cliente: novoDebito.cliente,
-        produto: carrinho.map(c=>c.produto).join(', '),
+        produto: carrinho.map(c => c.produto).join(', '),
         valor_total: totalFat,
         valor_pago: totalFat,
         vencimento: dataFmt,
         obs: novoDebito.obs,
         pagamentos: novoDebito.pagamentos
       });
+      const registro = Array.isArray(criado) ? criado[0] : criado;
+      if (registro && registro.id) {
+        const idx = debitos.findIndex(d => d.id === novoDebito.id);
+        if (idx >= 0) debitos[idx] = { ...debitos[idx], ...registro };
+        saveDebitos(debitos);
+      }
       invalidarCache('debitos');
     } catch(e) { console.warn('Débito salvo localmente:', e.message); }
   }
