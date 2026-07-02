@@ -5086,9 +5086,11 @@ async function confirmarVenda() {
   if (pag === 'Cartão crédito' || pag === 'Cartão débito') {
     const dataBase = dataInput || new Date().toISOString().slice(0,10);
     const debitos = getDebitos();
-    // Chave do dia: "cartao_YYYY-MM-DD" (mesma chave para débito e crédito — soma tudo junto)
-    const chaveCartaoDia = 'cartao_' + dataBase;
-    const existente = debitos.find(d => d.id === chaveCartaoDia);
+    // Agrupa pelo campo cartao_dia (não pelo id — o id de verdade só existe
+    // depois que o Supabase cria a linha; antes disso era usado um id local
+    // fixo tipo "cartao_2026-07-02", que nunca batia com nenhuma linha real
+    // no banco, então o lançamento nunca sincronizava).
+    const existente = debitos.find(d => d.cartao_dia === dataBase);
 
     // Calcula a taxa desta venda com base na modalidade/parcelas, usando a tabela cadastrada
     const taxaPct = buscarTaxaPercentual(pag, parcelas);
@@ -5106,13 +5108,50 @@ async function confirmarVenda() {
       existente.movimentos = existente.movimentos || [];
       existente.movimentos.push({ tipo: movimentoLabel, valor: totalFat, taxaPct, taxaValor });
       existente.obs = `${existente.venda_ids.length} venda(s) no cartão em ${existente.data_venda.split(',')[0]} · taxa estimada ${R(existente.taxa_total)}`;
+      saveDebitos(debitos);
+
+      // Atualiza a linha já existente no Supabase (se o id atual for um id
+      // real do banco; senão, tenta criar agora mesmo — recupera lançamentos
+      // de dias anteriores a este ajuste que ainda não tinham sido salvos).
+      try {
+        const ehIdReal = existente.id && !String(existente.id).startsWith('cartao_');
+        if (ehIdReal) {
+          await sbPatch('debitos', existente.id, {
+            produto: existente.itens.map(i => i.produto).join(', '),
+            valor_total: existente.total,
+            obs: existente.obs,
+            taxa_total: existente.taxa_total,
+            movimentos: existente.movimentos,
+            venda_ids: existente.venda_ids
+          });
+        } else {
+          const criado = await sbPost('debitos', {
+            venda_id: existente.venda_id,
+            venda_ids: existente.venda_ids,
+            cliente: 'Cartão',
+            produto: existente.itens.map(i => i.produto).join(', '),
+            valor_total: existente.total,
+            valor_pago: 0,
+            vencimento: existente.vencimento,
+            obs: existente.obs,
+            taxa_total: existente.taxa_total,
+            movimentos: existente.movimentos,
+            pagamentos: [],
+            cartao_dia: dataBase
+          });
+          const registro = Array.isArray(criado) ? criado[0] : criado;
+          if (registro && registro.id) existente.id = registro.id;
+          saveDebitos(debitos);
+        }
+        invalidarCache('debitos');
+      } catch (e) { console.warn('Cartão salvo localmente:', e.message); }
     } else {
       // Calcula próximo dia útil
       const proxUtil = proximoDiaUtil(dataBase);
       const [pu_y, pu_m, pu_d] = proxUtil.split('-');
       const vencFmt = pu_d + '/' + pu_m + '/' + pu_y;
-      debitos.unshift({
-        id: chaveCartaoDia,
+      const novoCartao = {
+        id: 'cartao_' + dataBase,  // provisório, até o Supabase devolver o id real
         venda_id: vendaId,         // primeira venda do dia
         venda_ids: [vendaId],
         cliente: 'Cartão',
@@ -5125,9 +5164,30 @@ async function confirmarVenda() {
         movimentos: [{ tipo: movimentoLabel, valor: totalFat, taxaPct, taxaValor }],
         pagamentos: [],
         cartao_dia: dataBase   // marca para identificação
-      });
+      };
+      debitos.unshift(novoCartao);
+      saveDebitos(debitos);
+
+      try {
+        const criado = await sbPost('debitos', {
+          venda_id: vendaId,
+          venda_ids: [vendaId],
+          cliente: 'Cartão',
+          produto: carrinho.map(c => c.produto).join(', '),
+          valor_total: totalFat,
+          valor_pago: 0,
+          vencimento: vencFmt,
+          obs: novoCartao.obs,
+          taxa_total: taxaValor,
+          movimentos: novoCartao.movimentos,
+          pagamentos: [],
+          cartao_dia: dataBase
+        });
+        const registro = Array.isArray(criado) ? criado[0] : criado;
+        if (registro && registro.id) { novoCartao.id = registro.id; saveDebitos(debitos); }
+        invalidarCache('debitos');
+      } catch (e) { console.warn('Cartão salvo localmente:', e.message); }
     }
-    saveDebitos(debitos);
   }
 
   // Dinheiro, Pix ou À vista → débito gerado já quitado (para histórico financeiro completo)
@@ -6886,9 +6946,9 @@ function renderCartaoDiaBanner() {
   `;
 }
 
-function consolidarCartaoDia(dataISO) {
+async function consolidarCartaoDia(dataISO) {
   const debitos = getDebitos();
-  const idx = debitos.findIndex(d => d.id === 'cartao_' + dataISO);
+  const idx = debitos.findIndex(d => d.cartao_dia === dataISO);
   if (idx < 0) return;
   const d = debitos[idx];
   const proxUtil = proximoDiaUtil(dataISO);
@@ -6906,6 +6966,10 @@ function consolidarCartaoDia(dataISO) {
   if (!confirm(msg)) return;
   debitos[idx].vencimento = vencFmt;
   saveDebitos(debitos);
+  try {
+    const ehIdReal = d.id && !String(d.id).startsWith('cartao_');
+    if (ehIdReal) { await sbPatch('debitos', d.id, { vencimento: vencFmt }); invalidarCache('debitos'); }
+  } catch (e) { console.warn('Vencimento salvo localmente:', e.message); }
   renderSubReceber();
 }
 
