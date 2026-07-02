@@ -4324,6 +4324,73 @@ function autoPreencherEstoque() {
 }
 
 // Esconde alíquota ICMS quando o CSOSN não tem incidência (isento/imune/não tributado)
+// ── CST PIS/COFINS — carrega do Supabase com fallback completo ──
+var _CST_FALLBACK = [
+  {c:'01',d:'Tributável — alíquota básica (1,65% PIS / 7,6% COFINS)'},
+  {c:'02',d:'Tributável — alíquota diferenciada'},
+  {c:'03',d:'Tributável — alíquota por unidade de medida'},
+  {c:'04',d:'Tributável — monofásica — revenda a alíquota zero'},
+  {c:'05',d:'Tributável — substituição tributária'},
+  {c:'06',d:'Tributável — alíquota zero'},
+  {c:'07',d:'Isenta da contribuição'},
+  {c:'08',d:'Sem incidência da contribuição'},
+  {c:'09',d:'Com suspensão da contribuição'},
+  {c:'49',d:'Outras operações de saída'},
+  {c:'50',d:'Crédito — receita tributada (exclusivo)'},
+  {c:'51',d:'Crédito — receita não tributada (exclusivo)'},
+  {c:'52',d:'Crédito — receita de exportação (exclusivo)'},
+  {c:'53',d:'Crédito — receitas tributadas e não tributadas'},
+  {c:'54',d:'Crédito — receitas tributadas e de exportação'},
+  {c:'55',d:'Crédito — receitas não tributadas e de exportação'},
+  {c:'56',d:'Crédito — receitas tributadas, não tributadas e exportação'},
+  {c:'60',d:'Crédito presumido — aquisição vinculada a receita tributada'},
+  {c:'61',d:'Crédito presumido — aquisição vinculada a receita não tributada'},
+  {c:'62',d:'Crédito presumido — aquisição vinculada a exportação'},
+  {c:'63',d:'Crédito presumido — aquisição mista tributada/não tributada'},
+  {c:'64',d:'Crédito presumido — aquisição mista tributada/exportação'},
+  {c:'65',d:'Crédito presumido — aquisição mista não tributada/exportação'},
+  {c:'66',d:'Crédito presumido — aquisição mista tributada/não tributada/exportação'},
+  {c:'67',d:'Crédito presumido — outras operações'},
+  {c:'70',d:'Aquisição sem direito a crédito'},
+  {c:'71',d:'Aquisição com isenção'},
+  {c:'72',d:'Aquisição com suspensão'},
+  {c:'73',d:'Aquisição a alíquota zero'},
+  {c:'74',d:'Aquisição sem incidência'},
+  {c:'75',d:'Aquisição por substituição tributária'},
+  {c:'98',d:'Outras operações de entrada'},
+  {c:'99',d:'Outras operações'}
+];
+var _cstCache = null;
+
+async function carregarCstPisCofins() {
+  if (_cstCache) return _cstCache;
+  try {
+    var r = await fetch(SB_URL + '/rest/v1/tab_cst_piscofins?select=codigo,descricao&order=codigo.asc', { headers: SB_HEADS });
+    if (r.ok) {
+      var data = await r.json();
+      if (data && data.length > 0) { _cstCache = data; return _cstCache; }
+    }
+  } catch(e) {}
+  // fallback: usar lista embutida
+  _cstCache = _CST_FALLBACK.map(function(x){ return {codigo: x.c, descricao: x.c + ' — ' + x.d}; });
+  return _cstCache;
+}
+
+function popularSelectCst(selectId, valorPadrao) {
+  var sel = document.getElementById(selectId);
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Selecione...</option>';
+  carregarCstPisCofins().then(function(lista) {
+    sel.innerHTML = '<option value="">Selecione...</option>' + lista.map(function(i) {
+      var cod = i.codigo || i.c || '';
+      var desc = i.descricao || i.d || '';
+      // evitar duplicar código na descrição
+      var label = desc.startsWith(cod) ? desc : cod + ' — ' + desc;
+      return '<option value="' + cod + '"' + (cod === valorPadrao ? ' selected' : '') + '>' + label + '</option>';
+    }).join('');
+  });
+}
+
 function toggleCamposCsosn() {
   const csosn = document.getElementById('cad-csosn').value;
   const semIcms = ['103','300','400'].includes(csosn);
@@ -5884,23 +5951,14 @@ function editarCliente(id) {
   document.getElementById('cli-end').value = cl.end||cl.endereco||'';
   document.getElementById('cli-obs').value = cl.obs||'';
   if (LOJA_USA_NFCE) {
-    var setF = function(id,val){var el=document.getElementById(id);if(el)el.value=val||'';};
-    setF('cli-nome-fantasia', cl.nome_fantasia);
-    setF('cli-ie', cl.ie);
-    setF('cli-email', cl.email);
-    setF('cli-cep', cl.cep);
-    setF('cli-logradouro', cl.logradouro);
-    setF('cli-numero', cl.numero);
-    setF('cli-complemento', cl.complemento);
-    setF('cli-bairro', cl.bairro);
-    setF('cli-municipio', cl.municipio);
-    setF('cli-ibge', cl.ibge);
-    var ufEl = document.getElementById('cli-uf');
-    if (ufEl) ufEl.value = cl.uf||'';
-    var regEl = document.getElementById('cli-regime');
-    if (regEl) regEl.value = cl.regime||'1';
-    popularSelectCst('cad-cst-pis', null);
-    popularSelectCst('cad-cst-cofins', null);
+    var setF=function(id,v){var e=document.getElementById(id);if(e)e.value=v||'';};
+    setF('cli-nome-fantasia',cl.nome_fantasia); setF('cli-ie',cl.ie);
+    setF('cli-email',cl.email); setF('cli-cep',cl.cep);
+    setF('cli-logradouro',cl.logradouro); setF('cli-numero',cl.numero);
+    setF('cli-complemento',cl.complemento); setF('cli-bairro',cl.bairro);
+    setF('cli-municipio',cl.municipio); setF('cli-ibge',cl.ibge);
+    var uf=document.getElementById('cli-uf'); if(uf) uf.value=cl.uf||'';
+    var rg=document.getElementById('cli-regime'); if(rg) rg.value=cl.regime||'1';
   }
   document.getElementById('cli-eh-fornecedor').checked = !!cl.eh_fornecedor;
   document.getElementById('cli-doc-tipo').value = cl.doc_tipo || 'cpf';
@@ -5911,41 +5969,6 @@ function editarCliente(id) {
 }
 
 // Esconde data de nascimento quando é fornecedor (não faz sentido para PJ)
-// Carrega CST PIS/COFINS da tabela do Supabase e popula os selects
-let _cstPisCofinsCache = null;
-async function carregarCstPisCofins() {
-  if (_cstPisCofinsCache) return _cstPisCofinsCache;
-  try {
-    const r = await fetch(SB_URL + '/rest/v1/tab_cst_piscofins?select=codigo,descricao&order=codigo.asc', { headers: SB_HEADS });
-    if (!r.ok) throw new Error();
-    _cstPisCofinsCache = await r.json();
-  } catch(e) {
-    // fallback com os mais usados no Simples Nacional
-    _cstPisCofinsCache = [
-      { codigo: '07', descricao: '07 — Operação isenta (Simples Nacional)' },
-      { codigo: '08', descricao: '08 — Operação sem incidência' },
-      { codigo: '09', descricao: '09 — Operação com suspensão' },
-      { codigo: '49', descricao: '49 — Outras operações de saída' },
-      { codigo: '01', descricao: '01 — Tributável à alíquota básica' },
-      { codigo: '99', descricao: '99 — Outras operações' }
-    ];
-  }
-  return _cstPisCofinsCache;
-}
-
-function popularSelectCst(selectId, valorAtual) {
-  carregarCstPisCofins().then(function(lista) {
-    var sel = document.getElementById(selectId);
-    if (!sel) return;
-    sel.innerHTML = '<option value="">Selecione...</option>' +
-      lista.map(function(i) {
-        var desc = i.codigo + ' — ' + i.descricao.replace(/^\d+ — /,'');
-        var sel2 = (i.codigo === valorAtual) ? ' selected' : '';
-        return '<option value="' + i.codigo + '"' + sel2 + '>' + desc + '</option>';
-      }).join('');
-  });
-}
-
 function buscarCepFornecedor(cep) {
   var cp = cep.replace(/[^0-9]/g,'');
   if (cp.length !== 8) return;
@@ -5954,12 +5977,9 @@ function buscarCepFornecedor(cep) {
     .then(function(d){
       if (d.erro) return;
       var set = function(id,val){var el=document.getElementById(id);if(el)el.value=val||'';};
-      set('cli-logradouro', d.logradouro);
-      set('cli-bairro', d.bairro);
-      set('cli-municipio', d.localidade);
-      set('cli-ibge', d.ibge);
-      var ufEl = document.getElementById('cli-uf');
-      if (ufEl) ufEl.value = d.uf || '';
+      set('cli-logradouro',d.logradouro); set('cli-bairro',d.bairro);
+      set('cli-municipio',d.localidade); set('cli-ibge',d.ibge);
+      var uf=document.getElementById('cli-uf'); if(uf) uf.value=d.uf||'';
     }).catch(function(){});
 }
 
@@ -5968,8 +5988,8 @@ function toggleTipoCliente() {
   document.getElementById('cli-nasc-wrap').style.display = ehFornecedor ? 'none' : 'block';
   document.getElementById('cli-doc-tipo').value = ehFornecedor ? 'cnpj' : 'cpf';
   mascaraDocCliente();
-  var secFiscal = document.getElementById('secao-fiscal-fornecedor');
-  if (secFiscal) secFiscal.style.display = (ehFornecedor && LOJA_USA_NFCE) ? 'block' : 'none';
+  var sf = document.getElementById('secao-fiscal-fornecedor');
+  if (sf) sf.style.display = (ehFornecedor && LOJA_USA_NFCE) ? 'block' : 'none';
 }
 
 // Aplica máscara dinâmica de CPF ou CNPJ conforme o tipo selecionado
@@ -6006,18 +6026,18 @@ async function salvarCliente() {
     eh_fornecedor: document.getElementById('cli-eh-fornecedor').checked,
     doc_tipo: document.getElementById('cli-doc-tipo').value,
     doc_numero: document.getElementById('cli-doc-numero').value.trim(),
-    nome_fantasia: LOJA_USA_NFCE ? (document.getElementById('cli-nome-fantasia').value.trim()||null) : undefined,
-    ie:            LOJA_USA_NFCE ? (document.getElementById('cli-ie').value.trim()||null) : undefined,
-    regime:        LOJA_USA_NFCE ? (document.getElementById('cli-regime').value||null) : undefined,
-    email:         LOJA_USA_NFCE ? (document.getElementById('cli-email').value.trim()||null) : undefined,
-    cep:           LOJA_USA_NFCE ? (document.getElementById('cli-cep').value.trim()||null) : undefined,
-    logradouro:    LOJA_USA_NFCE ? (document.getElementById('cli-logradouro').value.trim()||null) : undefined,
-    numero:        LOJA_USA_NFCE ? (document.getElementById('cli-numero').value.trim()||null) : undefined,
-    complemento:   LOJA_USA_NFCE ? (document.getElementById('cli-complemento').value.trim()||null) : undefined,
-    bairro:        LOJA_USA_NFCE ? (document.getElementById('cli-bairro').value.trim()||null) : undefined,
-    municipio:     LOJA_USA_NFCE ? (document.getElementById('cli-municipio').value.trim()||null) : undefined,
-    uf:            LOJA_USA_NFCE ? (document.getElementById('cli-uf').value||null) : undefined,
-    ibge:          LOJA_USA_NFCE ? (document.getElementById('cli-ibge').value.trim()||null) : undefined
+    nome_fantasia: LOJA_USA_NFCE?(document.getElementById('cli-nome-fantasia').value.trim()||null):undefined,
+    ie:          LOJA_USA_NFCE?(document.getElementById('cli-ie').value.trim()||null):undefined,
+    regime:      LOJA_USA_NFCE?(document.getElementById('cli-regime').value||null):undefined,
+    email:       LOJA_USA_NFCE?(document.getElementById('cli-email').value.trim()||null):undefined,
+    cep:         LOJA_USA_NFCE?(document.getElementById('cli-cep').value.trim()||null):undefined,
+    logradouro:  LOJA_USA_NFCE?(document.getElementById('cli-logradouro').value.trim()||null):undefined,
+    numero:      LOJA_USA_NFCE?(document.getElementById('cli-numero').value.trim()||null):undefined,
+    complemento: LOJA_USA_NFCE?(document.getElementById('cli-complemento').value.trim()||null):undefined,
+    bairro:      LOJA_USA_NFCE?(document.getElementById('cli-bairro').value.trim()||null):undefined,
+    municipio:   LOJA_USA_NFCE?(document.getElementById('cli-municipio').value.trim()||null):undefined,
+    uf:          LOJA_USA_NFCE?(document.getElementById('cli-uf').value||null):undefined,
+    ibge:        LOJA_USA_NFCE?(document.getElementById('cli-ibge').value.trim()||null):undefined
   };
 
   try {
@@ -8520,14 +8540,8 @@ atualizarHora();
       <div id="secao-fiscal-fornecedor" style="display:none;border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
         <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--accent);margin-bottom:12px;">🧾 Dados fiscais (NF-e / NFC-e)</p>
         <div class="form-grid">
-          <div class="form-row">
-            <label>Nome fantasia</label>
-            <input type="text" id="cli-nome-fantasia" placeholder="Ex: Moda Sul">
-          </div>
-          <div class="form-row">
-            <label>Inscrição Estadual (IE)</label>
-            <input type="text" id="cli-ie" placeholder="Somente números" inputmode="numeric">
-          </div>
+          <div class="form-row"><label>Nome fantasia</label><input type="text" id="cli-nome-fantasia" placeholder="Ex: Moda Sul"></div>
+          <div class="form-row"><label>Inscrição Estadual (IE)</label><input type="text" id="cli-ie" placeholder="Somente números" inputmode="numeric"></div>
         </div>
         <div class="form-grid">
           <div class="form-row">
@@ -8538,62 +8552,24 @@ atualizarHora();
               <option value="3">3 — Regime Normal (Lucro Presumido / Real)</option>
             </select>
           </div>
-          <div class="form-row">
-            <label>E-mail (para envio da DANFE)</label>
-            <input type="email" id="cli-email" placeholder="contato@fornecedor.com.br">
-          </div>
+          <div class="form-row"><label>E-mail (DANFE)</label><input type="email" id="cli-email" placeholder="contato@fornecedor.com.br"></div>
         </div>
-        <p style="font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 8px;">Endereço completo</p>
+        <p style="font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 8px;">Endereço fiscal</p>
         <div class="form-grid">
-          <div class="form-row">
-            <label>CEP</label>
-            <input type="text" id="cli-cep" placeholder="00000-000" maxlength="9" inputmode="numeric"
-              oninput="this.value=this.value.replace(/[^0-9]/g,'').replace(/^([0-9]{5})([0-9])/,'$1-$2')"
-              onblur="buscarCepFornecedor(this.value)">
-          </div>
-          <div class="form-row">
-            <label>UF</label>
-            <select id="cli-uf">
-              <option value="">—</option>
-              <option>AC</option><option>AL</option><option>AM</option><option>AP</option>
-              <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
-              <option>GO</option><option>MA</option><option>MG</option><option>MS</option>
-              <option>MT</option><option>PA</option><option>PB</option><option>PE</option>
-              <option>PI</option><option>PR</option><option>RJ</option><option>RN</option>
-              <option>RO</option><option>RR</option><option>RS</option><option>SC</option>
-              <option>SE</option><option>SP</option><option>TO</option>
-            </select>
-          </div>
+          <div class="form-row"><label>CEP</label><input type="text" id="cli-cep" placeholder="00000-000" maxlength="9" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'').replace(/^([0-9]{5})([0-9])/,'$1-$2')" onblur="buscarCepFornecedor(this.value)"></div>
+          <div class="form-row"><label>UF</label><select id="cli-uf"><option value="">—</option><option>AC</option><option>AL</option><option>AM</option><option>AP</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option><option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option><option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option><option>SP</option><option>TO</option></select></div>
         </div>
         <div class="form-grid">
-          <div class="form-row">
-            <label>Logradouro</label>
-            <input type="text" id="cli-logradouro" placeholder="Rua, Av, Travessa...">
-          </div>
-          <div class="form-row" style="max-width:140px;">
-            <label>Número</label>
-            <input type="text" id="cli-numero" placeholder="Ex: 123">
-          </div>
+          <div class="form-row"><label>Logradouro</label><input type="text" id="cli-logradouro" placeholder="Rua, Av..."></div>
+          <div class="form-row" style="max-width:140px;"><label>Número</label><input type="text" id="cli-numero" placeholder="123"></div>
         </div>
         <div class="form-grid">
-          <div class="form-row">
-            <label>Bairro</label>
-            <input type="text" id="cli-bairro" placeholder="Ex: Centro">
-          </div>
-          <div class="form-row">
-            <label>Complemento (opcional)</label>
-            <input type="text" id="cli-complemento" placeholder="Ex: Sala 2">
-          </div>
+          <div class="form-row"><label>Bairro</label><input type="text" id="cli-bairro" placeholder="Ex: Centro"></div>
+          <div class="form-row"><label>Complemento</label><input type="text" id="cli-complemento" placeholder="Sala 2"></div>
         </div>
         <div class="form-grid">
-          <div class="form-row">
-            <label>Município</label>
-            <input type="text" id="cli-municipio" placeholder="Ex: Juiz de Fora">
-          </div>
-          <div class="form-row">
-            <label>Cód. IBGE</label>
-            <input type="text" id="cli-ibge" placeholder="Ex: 3136702" maxlength="7" inputmode="numeric">
-          </div>
+          <div class="form-row"><label>Município</label><input type="text" id="cli-municipio" placeholder="Ex: Juiz de Fora"></div>
+          <div class="form-row"><label>Cód. IBGE</label><input type="text" id="cli-ibge" placeholder="3136702" maxlength="7" inputmode="numeric"></div>
         </div>
       </div>
     </div>
