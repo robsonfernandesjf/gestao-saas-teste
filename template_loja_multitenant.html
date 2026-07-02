@@ -2307,12 +2307,7 @@ const CONFIG_LOJA = {
   // outra é o "lojaId" abaixo — TEM que ser único para cada loja!
   supabaseUrl: 'https://SEU-PROJETO-AQUI.supabase.co',
   supabaseKey: 'SUA-ANON-KEY-AQUI',
-  lojaId: 'nome-da-loja-id',  // ex: 'fatima-cigani', 'loja-maria-jose' — sem espaços/acentos
-
-  // Login Master (dono da loja, nunca bloqueado pela licença)
-  masterLogin: 'master',
-  masterSenha: 'troque-esta-senha',
-  masterNome: 'Nome da Loja · Master'
+  lojaId: 'nome-da-loja-id'  // ex: 'fatima-cigani', 'loja-maria-jose' — sem espaços/acentos
 };
 
 // ===== DESCOBERTA AUTOMÁTICA DO LOJA_ID PELA URL =====
@@ -2632,16 +2627,6 @@ const MODULOS = [
   { id: 'financeiro',  label: '💰 Financeiro',         icon: '💰' },
 ];
 
-// Usuário Master fixo (hard-coded - dono do sistema)
-const MASTER_USER = {
-  id: 'master',
-  nome: CONFIG_LOJA.masterNome,
-  login: CONFIG_LOJA.masterLogin,
-  senha: CONFIG_LOJA.masterSenha,
-  perfil: 'admin',
-  modulos: MODULOS.map(m => m.id)
-};
-
 function getUsuarios() {
   const raw = localStorage.getItem(USR_KEY);
   return raw ? JSON.parse(raw) : [];
@@ -2672,8 +2657,6 @@ function clearSessao() { sessionStorage.removeItem(SES_KEY); }
 function usuarioAtual() {
   const ses = getSessao();
   if (!ses) return null;
-  if (ses.id === 'master') return MASTER_USER;
-  // Retorna o objeto completo salvo na sessão
   return ses.dados || null;
 }
 
@@ -2765,9 +2748,9 @@ function mostrarNotificacao(msg, tipo = 'success') {
   setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
 }
 
-function dcodeIO_bcrypt_compare(plano, hash) {
-  try { return dcodeIO.bcrypt.compareSync(plano, hash); } catch (e) { return false; }
-}
+// URL da Edge Function de login (mesmo domínio do Supabase, path /functions/v1/<nome>)
+const EDGE_LOGIN_URL = `${SB_URL}/functions/v1/clever-action`;
+
 async function fazerLogin() {
   const login = document.getElementById('login-user').value.trim();
   const senha = document.getElementById('login-pass').value;
@@ -2779,46 +2762,40 @@ async function fazerLogin() {
   blkEl.style.display = 'none';
   if (btnLogin) { btnLogin.textContent = 'Verificando...'; btnLogin.disabled = true; }
 
-  let usuario = null;
-
   try {
-    // Verificar master primeiro (sempre local)
-    if (login === MASTER_USER.login && senha === MASTER_USER.senha) {
-      usuario = MASTER_USER;
-    } else {
-      // Busca por login (sem senha na query) e compara o hash no cliente.
-      // Suporta transição: se a senha salva ainda não é hash bcrypt, compara em texto puro
-      // (usuários antigos) — assim que logar, o ideal é forçar redefinição de senha.
-      const lista = await sbGet('usuarios', `login=eq.${encodeURIComponent(login)}`);
-      const candidato = lista && lista[0];
-      if (candidato) {
-        const senhaSalva = candidato.senha || '';
-        const ehHash = /^\$2[aby]\$/.test(senhaSalva);
-        const ok = ehHash ? dcodeIO_bcrypt_compare(senha, senhaSalva) : senha === senhaSalva;
-        if (ok) usuario = candidato;
-      }
-    }
+    // Login e verificação de senha acontecem no servidor (Edge Function), nunca no
+    // navegador. Ela devolve um token assinado com o loja_id — é esse token que
+    // as políticas de RLS no banco usam pra isolar os dados de cada loja.
+    const resp = await fetch(EDGE_LOGIN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+      body: JSON.stringify({ loja_id: LOJA_ID, login, senha })
+    });
 
-    if (!usuario) {
-      errEl.textContent = 'Usuário ou senha incorretos.';
+    if (!resp.ok) {
+      const corpo = await resp.json().catch(() => ({}));
+      errEl.textContent = corpo.error || 'Usuário ou senha incorretos.';
       errEl.style.display = 'block';
       return;
     }
 
-    // Verificar licença (Master nunca é bloqueado)
-    if (usuario.perfil !== 'master') {
-      const lic = await getLicencaSB().catch(() => ({ validade: null }));
-      if (lic.validade) {
-        const agora = new Date();
-        const mes = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0');
-        if (mes > lic.validade) {
-          blkEl.style.display = 'block';
-          return;
-        }
+    const { token, usuario } = await resp.json();
+
+    // Verificar licença
+    const lic = await getLicencaSB().catch(() => ({ validade: null }));
+    if (lic.validade) {
+      const agora = new Date();
+      const mes = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0');
+      if (mes > lic.validade) {
+        blkEl.style.display = 'block';
+        return;
       }
     }
 
-    saveSessao({ id: usuario.id, dados: usuario });
+    // A partir daqui, todas as chamadas ao Supabase usam o token da sessão
+    // em vez da anon key pura.
+    SB_HEADS.Authorization = 'Bearer ' + token;
+    saveSessao({ id: usuario.id, token, dados: usuario });
     document.getElementById('login-screen').classList.add('hidden');
 
     await carregarDadosNuvem();
@@ -2847,7 +2824,7 @@ function fazerLogout() {
 function verCusto() {
   const u = usuarioAtual();
   if (!u) return false;
-  return u.perfil === 'master' || u.perfil === 'admin';
+  return u.perfil === 'admin';
 }
 
 function aplicarPermissoes(usuario) {
@@ -2857,7 +2834,7 @@ function aplicarPermissoes(usuario) {
   } else {
     document.body.classList.remove('ocultar-custo');
   }
-  const isMaster = usuario.perfil === 'master' || usuario.perfil === 'admin';
+  const isMaster = usuario.perfil === 'admin';
   const isAdmin  = usuario.perfil === 'admin';
   const modulos = Array.isArray(usuario.modulos) ? usuario.modulos : (typeof usuario.modulos === 'string' ? JSON.parse(usuario.modulos||'[]') : []);
 
@@ -2894,7 +2871,7 @@ function atualizarHeaderUsuario(usuario) {
   const roleEl = document.getElementById('header-user-role');
   if (nomeEl) nomeEl.textContent = usuario.nome;
   if (roleEl) {
-    const labels = { master: '⭐ Master', admin: 'Admin', user: 'Vendedor' };
+    const labels = { admin: 'Admin', user: 'Vendedor' };
     roleEl.textContent = labels[usuario.perfil] || usuario.perfil;
   }
 }
@@ -2910,7 +2887,7 @@ async function renderUsuarios() {
   }
 
   const perfil = atual ? atual.perfil : 'user';
-  const isMaster = perfil === 'master' || perfil === 'admin';
+  const isMaster = perfil === 'admin';
   const isAdmin  = perfil === 'admin';
 
   // Licença — só master vê
@@ -2943,18 +2920,6 @@ async function renderUsuarios() {
   }
 
   let html = '';
-
-  // Card Master — sempre aparece no topo (fixo, hard-coded)
-  html += `
-  <div class="user-card">
-    <div class="user-avatar master">★</div>
-    <div class="user-info">
-      <strong>${MASTER_USER.nome}</strong>
-      <p>Login: <code>master</code> · Acesso total · Controle de licença</p>
-    </div>
-    <span class="user-role-badge role-master">Master</span>
-    ${isMaster ? '<span style="font-size:11px;color:var(--muted);margin-left:8px;">👤 Você</span>' : ''}
-  </div>`;
 
   if (lista.length === 0) {
     html += '<div class="empty" style="margin-top:12px;">Nenhum outro usuário cadastrado. Clique em "+ Novo Usuário" para adicionar.</div>';
@@ -3017,7 +2982,7 @@ let _delUsrId = null;
 
 async function abrirModalUsuario(id) {
   const atual = usuarioAtual();
-  if (!atual || (atual.perfil !== 'master' && atual.perfil !== 'admin')) return;
+  if (!atual || atual.perfil !== 'admin') return;
 
   document.getElementById('usr-id').value = id || '';
   document.getElementById('usr-nome').value = '';
@@ -3131,7 +3096,7 @@ function showPage(id) {
   // Verificar permissão
   const usr = usuarioAtual();
   if (usr) {
-    const isMaster = usr.perfil === 'master' || usr.perfil === 'admin';
+    const isMaster = usr.perfil === 'admin';
     const isAdmin  = usr.perfil === 'admin';
     const modulos  = usr.modulos || [];
     if (!isMaster && !isAdmin && id !== 'usuarios') {
@@ -8355,27 +8320,25 @@ const _sessaoAtual = getSessao();
 if (_sessaoAtual) {
   (async () => {
     try {
-      let _usrAtual;
-      if (_sessaoAtual.id === 'master') {
-        _usrAtual = MASTER_USER;
-      } else {
-        const lista = await sbGet('usuarios', `id=eq.${_sessaoAtual.id}`);
-        _usrAtual = lista && lista[0] ? lista[0] : null;
-      }
+      // Restaura o token assinado ANTES de qualquer chamada ao Supabase — as
+      // tabelas protegidas por RLS exigem esse token pra devolver dados.
+      if (_sessaoAtual.token) SB_HEADS.Authorization = 'Bearer ' + _sessaoAtual.token;
+
+      const lista = await sbGet('usuarios', `id=eq.${_sessaoAtual.id}`);
+      const _usrAtual = lista && lista[0] ? lista[0] : null;
 
       if (!_usrAtual) { clearSessao(); return; }
 
-      // Atualizar sessão com dados completos
-      saveSessao({ id: _usrAtual.id, dados: _usrAtual });
-      if (_usrAtual.perfil !== 'master') {
-        const lic = await getLicencaSB().catch(() => ({ validade: null }));
-        if (lic && lic.validade) {
-          const agora = new Date();
-          const mes = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0');
-          if (mes > lic.validade) {
-            document.getElementById('blocked-screen').classList.add('show');
-            return;
-          }
+      // Atualizar sessão com dados completos (preserva o token já validado)
+      saveSessao({ id: _usrAtual.id, token: _sessaoAtual.token, dados: _usrAtual });
+
+      const lic = await getLicencaSB().catch(() => ({ validade: null }));
+      if (lic && lic.validade) {
+        const agora = new Date();
+        const mes = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0');
+        if (mes > lic.validade) {
+          document.getElementById('blocked-screen').classList.add('show');
+          return;
         }
       }
 
