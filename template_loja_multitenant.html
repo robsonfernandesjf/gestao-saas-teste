@@ -5399,7 +5399,7 @@ async function confirmarVenda() {
   _ultimoCupom = {
     itens: carrinho.map(c => ({ produto: c.produto, qtd: c.qtd, valor_unit: c.valor_unit })),
     total: totalFat,
-    desconto,
+    desconto: valorMoeda('venda-desconto'),
     pagamento: pag,
     parcelas,
     cliente,
