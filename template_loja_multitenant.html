@@ -654,12 +654,24 @@
 
     <div class="toolbar" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;">
       <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">Período</span>
-      <select id="exec-periodo" onchange="renderDashExecutivo()" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
-        <option value="30" selected>Este mês</option>
-        <option value="7">Últimos 7 dias</option>
-        <option value="90">Últimos 90 dias</option>
-        <option value="0">Todos os dados</option>
+      <select id="dash-modo" onchange="alternarModoFiltroDash()" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+        <option value="periodo">Por período</option>
+        <option value="data">Por intervalo de datas</option>
       </select>
+      <div id="dash-periodo-wrap" style="display:flex;">
+        <select id="exec-periodo" onchange="renderDashExecutivo()" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+          <option value="30" selected>Este mês</option>
+          <option value="7">Últimos 7 dias</option>
+          <option value="90">Últimos 90 dias</option>
+          <option value="0">Todos os dados</option>
+        </select>
+      </div>
+      <div id="dash-exec-data-wrap" style="display:none;gap:10px;align-items:center;">
+        <label style="font-size:12px;color:var(--muted);white-space:nowrap;">De</label>
+        <input type="date" id="dash-exec-data-ini" onchange="renderDashExecutivo()" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+        <label style="font-size:12px;color:var(--muted);white-space:nowrap;">até</label>
+        <input type="date" id="dash-exec-data-fim" onchange="renderDashExecutivo()" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+      </div>
     </div>
 
     <!-- Linha 1: Waterfall + Margem + Receita/Despesa -->
@@ -1129,12 +1141,7 @@
       <div class="form-grid">
         <div class="form-row" style="grid-column:1 / -1;">
           <label>Categoria</label>
-          <select id="cad-cat">
-            <option>Acessórios</option><option>Blazers</option><option>Blusas</option>
-            <option>Calças</option><option>Casacos</option><option>Coletes</option>
-            <option>Conjuntos</option><option>Macacões</option><option>Saias</option>
-            <option>Shorts</option><option>Vestidos</option>
-          </select>
+          <select id="cad-cat"></select>
         </div>
       </div>
       <div class="form-row">
@@ -1879,11 +1886,46 @@
         <option value="pago">Quitados</option>
       </select>
       <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="abrirModalNovaReceber()">+ Nova Conta a Receber</button>
         <button class="btn btn-outline" onclick="gerarPDFClienteReceber()">📄 PDF</button>
       </div>
     </div>
     <div id="cartao-dia-banner" style="display:none;"></div>
     <div id="rel-receber-lista"></div>
+  </div>
+
+  <!-- MODAL NOVA CONTA A RECEBER (manual) -->
+  <div class="modal-bg" id="modal-nova-receber">
+    <div class="modal" style="max-width:520px;">
+      <div class="modal-header">
+        <h2>Nova Conta a Receber</h2>
+        <button class="modal-close" onclick="fecharModal('modal-nova-receber')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <label>Cliente</label>
+          <input type="text" id="nr-cliente" placeholder="Ex: Maria Silva" list="lista-clientes-venda">
+        </div>
+        <div class="form-row">
+          <label>Descrição (opcional)</label>
+          <input type="text" id="nr-obs" placeholder="Ex: Encomenda especial, acerto de conta...">
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Valor (R$)</label>
+            <input type="text" inputmode="numeric" id="nr-valor" placeholder="0,00" oninput="mascaraMoeda(this)">
+          </div>
+          <div class="form-row">
+            <label>Vencimento</label>
+            <input type="date" id="nr-vencimento">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="fecharModal('modal-nova-receber')">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarNovaReceber()">Salvar</button>
+      </div>
+    </div>
   </div>
 
   <!-- SUB: A PAGAR -->
@@ -1937,6 +1979,25 @@
         <option value="parcial">Parcialmente pago</option>
         <option value="pago">Quitados</option>
       </select>
+      <select id="fin-modo" onchange="alternarModoFiltroFin()" style="min-width:160px;">
+        <option value="periodo">Por período</option>
+        <option value="data">Por intervalo de datas</option>
+      </select>
+      <div id="fin-periodo-wrap" style="display:flex;gap:10px;align-items:center;">
+        <select id="fin-periodo" onchange="renderFinanceiro()">
+          <option value="7">Últimos 7 dias</option>
+          <option value="15">Últimos 15 dias</option>
+          <option value="30">Últimos 30 dias</option>
+          <option value="90">Últimos 90 dias</option>
+          <option value="0" selected>Todos</option>
+        </select>
+      </div>
+      <div id="fin-data-wrap" style="display:none;gap:10px;align-items:center;">
+        <label style="font-size:12px;color:var(--muted);white-space:nowrap;">De</label>
+        <input type="date" id="fin-data-ini" onchange="renderFinanceiro()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+        <label style="font-size:12px;color:var(--muted);white-space:nowrap;">até</label>
+        <input type="date" id="fin-data-fim" onchange="renderFinanceiro()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+      </div>
       <div style="margin-left:auto;">
         <button class="btn btn-outline" onclick="renderFinanceiro()">↺ Atualizar</button>
       </div>
@@ -2706,7 +2767,7 @@ function initUsuarios() {
 async function carregarDadosNuvem() {
   mostrarLoading(true);
   try {
-    const [produtos, vendas, clientes, debitos, contas, vendedores, taxasCartao] = await Promise.all([
+    const [produtos, vendas, clientes, debitos, contas, vendedores, taxasCartao, lojaRow] = await Promise.all([
       sbGet('produtos', 'order=ref.asc'),
       sbGet('vendas', 'order=created_at.desc'),
       sbGet('clientes', 'order=nome.asc'),
@@ -2714,6 +2775,7 @@ async function carregarDadosNuvem() {
       sbGet('contas_pagar', 'order=vencimento.asc'),
       sbGet('vendedores', 'order=nome.asc').catch(() => []),
       sbGet('taxas_cartao', 'order=tipo.asc').catch(() => []),
+      sbGet('lojas', 'loja_id=eq.' + LOJA_ID + '&select=dados_empresa&limit=1').catch(() => []),
     ]);
     _cache.produtos = produtos;
     _cache.vendas = vendas;
@@ -2722,6 +2784,13 @@ async function carregarDadosNuvem() {
     _cache.contasPagar = contas;
     _cache.vendedores = vendedores;
     _cache.taxasCartao = taxasCartao;
+    if (lojaRow && lojaRow[0] && lojaRow[0].dados_empresa) {
+      try {
+        _dadosEmpresaCache = typeof lojaRow[0].dados_empresa === 'string'
+          ? JSON.parse(lojaRow[0].dados_empresa) : lojaRow[0].dados_empresa;
+      } catch(e) { _dadosEmpresaCache = {}; }
+    }
+    popularCategoriasCadastro();
 
     // Se produtos vazio, importar produtos iniciais
     if (produtos.length === 0) {
@@ -3105,7 +3174,7 @@ function initDB() {
 // ===== UTILS =====
 const R = v => 'R$ ' + (v||0).toFixed(2).replace('.', ',');
 const pct = v => (v||0).toFixed(1).replace('.', ',') + '%';
-const CATS = [...new Set(PRODUTOS_INICIAIS.map(p=>p.categoria))].sort();
+function CATS_ATUAIS() { return getCategoriasLoja().slice().sort(); }
 
 function estoqueBadge(n) {
   if (n <= 0) return '<span class="badge badge-out">Zerado</span>';
@@ -3185,17 +3254,44 @@ function toggleDashView(view) {
   if (view === 'classic') renderDashboard();
 }
 
+function alternarModoFiltroDash() {
+  const modo = document.getElementById('dash-modo').value;
+  document.getElementById('dash-periodo-wrap').style.display = modo === 'periodo' ? 'flex' : 'none';
+  document.getElementById('dash-exec-data-wrap').style.display = modo === 'data' ? 'flex' : 'none';
+  renderDashExecutivo();
+}
+
 function execGetVendasPeriodo() {
-  const dias = parseInt(document.getElementById('exec-periodo')?.value || '30');
+  const modo = document.getElementById('dash-modo')?.value || 'periodo';
   const vendas = getVendas();
+
+  function dataVendaISO(v) {
+    const p = (v.data||'').split('/');
+    if (p.length < 3) return '';
+    return `${p[2].substring(0,4)}-${p[1]}-${p[0]}`;
+  }
+
+  if (modo === 'data') {
+    const ini = document.getElementById('dash-exec-data-ini')?.value || '';
+    const fim = document.getElementById('dash-exec-data-fim')?.value || '';
+    if (!ini && !fim) return vendas;
+    return vendas.filter(v => {
+      const iso = dataVendaISO(v);
+      if (!iso) return false;
+      if (ini && iso < ini) return false;
+      if (fim && iso > fim) return false;
+      return true;
+    });
+  }
+
+  const dias = parseInt(document.getElementById('exec-periodo')?.value || '30');
   if (dias === 0) return vendas;
   const corte = new Date();
   corte.setDate(corte.getDate() - dias);
   return vendas.filter(v => {
-    const p = (v.data||'').split('/');
-    if (p.length < 3) return false;
-    const d = new Date(`${p[2].substring(0,4)}-${p[1]}-${p[0]}`);
-    return d >= corte;
+    const iso = dataVendaISO(v);
+    if (!iso) return false;
+    return new Date(iso) >= corte;
   });
 }
 
@@ -3701,15 +3797,24 @@ const PER_PAGE = 30;
 
 function populateCatFilter() {
   const sel = document.getElementById('filtro-cat');
-  if (sel.options.length > 1) return;
-  CATS.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+  if (sel) {
+    const atual = sel.value;
+    sel.innerHTML = '<option value="">Todas as categorias</option>';
+    CATS_ATUAIS().forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+    if (atual) sel.value = atual;
+  }
   const sel2 = document.getElementById('filtro-hist-cat');
-  if (sel2 && sel2.options.length <= 1) CATS.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel2.appendChild(o); });
+  if (sel2) {
+    const atual2 = sel2.value;
+    sel2.innerHTML = '<option value="">Todas as categorias</option>';
+    CATS_ATUAIS().forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel2.appendChild(o); });
+    if (atual2) sel2.value = atual2;
+  }
 }
 
 function populateHistFilter() {
   const sel2 = document.getElementById('filtro-hist-cat');
-  if (sel2 && sel2.options.length <= 1) CATS.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel2.appendChild(o); });
+  if (sel2 && sel2.options.length <= 1) CATS_ATUAIS().forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel2.appendChild(o); });
 }
 
 function sortEstoque(col) {
@@ -5410,7 +5515,7 @@ function renderRelatorios() {
   // Populate cat filter
   const relCat = document.getElementById('rel-cat');
   if (relCat.options.length <= 1) {
-    CATS.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; relCat.appendChild(o); });
+    CATS_ATUAIS().forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; relCat.appendChild(o); });
   }
   
   let vendas = getVendas();
@@ -5526,7 +5631,7 @@ function renderRelEstoque() {
   // populate cat filter
   const sel = document.getElementById('rel-est-cat');
   if (sel.options.length <= 1) {
-    CATS.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+    CATS_ATUAIS().forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
   }
 
   const vendas = getVendas();
@@ -6471,6 +6576,31 @@ const FIN_KEY = 'oi2026_debitos';
 
 let _baixaDebitoId = null;
 
+function alternarModoFiltroFin() {
+  const modo = document.getElementById('fin-modo').value;
+  document.getElementById('fin-periodo-wrap').style.display = modo === 'periodo' ? 'flex' : 'none';
+  document.getElementById('fin-data-wrap').style.display = modo === 'data' ? 'flex' : 'none';
+  renderFinanceiro();
+}
+
+function dentroDoPeriodoFin(dataISO) {
+  if (!dataISO) return true; // sem data conhecida, não filtra fora
+  const modo = document.getElementById('fin-modo')?.value || 'periodo';
+  if (modo === 'periodo') {
+    const dias = parseInt(document.getElementById('fin-periodo')?.value || '0');
+    if (!dias) return true; // "Todos"
+    const limite = new Date();
+    limite.setDate(limite.getDate() - dias);
+    return new Date(dataISO) >= limite;
+  } else {
+    const ini = document.getElementById('fin-data-ini')?.value || '';
+    const fim = document.getElementById('fin-data-fim')?.value || '';
+    if (ini && dataISO < ini) return false;
+    if (fim && dataISO > fim) return false;
+    return true;
+  }
+}
+
 function renderFinanceiro() {
   const busca     = (document.getElementById('busca-financeiro')?.value || '').toLowerCase();
   const statusFil = document.getElementById('filtro-financeiro-status')?.value || '';
@@ -6504,7 +6634,8 @@ function renderFinanceiro() {
 
     const ok1 = !busca || (d.cliente||'').toLowerCase().includes(busca) || desc.toLowerCase().includes(busca);
     const ok2 = !statusFil || st === statusFil || statusFil === '';
-    if (!ok1 || !ok2) return;
+    const ok3 = dentroDoPeriodoFin(dataRef);
+    if (!ok1 || !ok2 || !ok3) return;
 
     eventos.push({
       tipo:    'receber',
@@ -6532,7 +6663,8 @@ function renderFinanceiro() {
     // mapeamento de status: pago = 'pago', aberto/vencido = 'aberto'
     const stMapped = st === 'pago' ? 'pago' : 'aberto';
     const ok2 = !statusFil || stMapped === statusFil || statusFil === '' || (statusFil === 'parcial' && false);
-    if (!ok1 || !ok2) return;
+    const ok3 = dentroDoPeriodoFin(dataRef);
+    if (!ok1 || !ok2 || !ok3) return;
 
     eventos.push({
       tipo:    'pagar',
@@ -6641,6 +6773,67 @@ function renderFinanceiro() {
   `;
 }
 
+
+// ===== NOVA CONTA A RECEBER (lançamento manual, sem vínculo com venda) =====
+function abrirModalNovaReceber() {
+  document.getElementById('nr-cliente').value = '';
+  document.getElementById('nr-obs').value = '';
+  document.getElementById('nr-valor').value = '';
+  document.getElementById('nr-vencimento').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('modal-nova-receber').classList.add('open');
+}
+
+async function salvarNovaReceber() {
+  const cliente = document.getElementById('nr-cliente').value.trim();
+  const valor = valorMoeda('nr-valor');
+  const vencInput = document.getElementById('nr-vencimento').value;
+  const obs = document.getElementById('nr-obs').value.trim();
+  if (!cliente) { alert('Informe o cliente.'); return; }
+  if (!valor || valor <= 0) { alert('Informe um valor válido.'); return; }
+  if (!vencInput) { alert('Informe o vencimento.'); return; }
+  const [y, m, d] = vencInput.split('-');
+  const vencFmt = d + '/' + m + '/' + y;
+  const descricao = obs || 'Lançamento manual';
+
+  const debitos = getDebitos();
+  const novoDebito = {
+    id: 'manual_' + Date.now(),
+    cliente,
+    data_venda: new Date().toLocaleString('pt-BR'),
+    total: valor,
+    vencimento: vencFmt,
+    obs: descricao,
+    itens: [],
+    pagamentos: []
+  };
+  debitos.unshift(novoDebito);
+  saveDebitos(debitos);
+
+  try {
+    mostrarLoading(true);
+    const criado = await sbPost('debitos', {
+      cliente,
+      produto: descricao,
+      valor_total: valor,
+      valor_pago: 0,
+      vencimento: vencFmt,
+      obs: descricao,
+      pagamentos: []
+    });
+    const registro = Array.isArray(criado) ? criado[0] : criado;
+    if (registro && registro.id) { novoDebito.id = registro.id; saveDebitos(debitos); }
+    invalidarCache('debitos');
+    mostrarNotificacao('✅ Conta a receber criada!');
+  } catch (e) {
+    console.error('Erro ao salvar conta a receber:', e);
+    alert('⚠ Erro ao salvar na nuvem. O lançamento ficou salvo localmente.');
+  } finally {
+    mostrarLoading(false);
+  }
+
+  fecharModal('modal-nova-receber');
+  renderSubReceber();
+}
 
 function abrirBaixa(id) {
   const d = getDebitos().find(x=>x.id===id);
@@ -8465,6 +8658,63 @@ function mascaraCNPJEmp(el) {
   el.value=v;
 }
 
+// Categorias padrão (usadas até a loja personalizar em Configurações)
+const CATEGORIAS_PADRAO = ['Acessórios','Blazers','Blusas','Calças','Casacos','Coletes','Conjuntos','Macacões','Saias','Shorts','Vestidos'];
+let _dadosEmpresaCache = {};
+
+function getCategoriasLoja() {
+  return (_dadosEmpresaCache.categorias && _dadosEmpresaCache.categorias.length)
+    ? _dadosEmpresaCache.categorias : CATEGORIAS_PADRAO;
+}
+
+function popularCategoriasCadastro() {
+  const sel = document.getElementById('cad-cat');
+  if (!sel) return;
+  const atual = sel.value;
+  sel.innerHTML = getCategoriasLoja().map(c => `<option>${c}</option>`).join('');
+  if (atual && getCategoriasLoja().includes(atual)) sel.value = atual;
+}
+
+function renderListaCategorias() {
+  const box = document.getElementById('lista-categorias');
+  if (!box) return;
+  box.innerHTML = getCategoriasLoja().map(c => `
+    <span style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-light);border:1px solid #D4C0B5;border-radius:999px;padding:5px 8px 5px 12px;font-size:12px;">
+      ${c}
+      <button onclick="removerCategoria('${c.replace(/'/g,"\\'")}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;line-height:1;padding:2px;" title="Remover">×</button>
+    </span>
+  `).join('') || '<span style="font-size:12px;color:var(--muted);">Nenhuma categoria — adicione a primeira acima.</span>';
+}
+
+function adicionarCategoria() {
+  const input = document.getElementById('cat-nova');
+  const nome = input.value.trim();
+  if (!nome) return;
+  const atuais = getCategoriasLoja().slice();
+  if (atuais.some(c => c.toLowerCase() === nome.toLowerCase())) { input.value = ''; return; }
+  atuais.push(nome);
+  _dadosEmpresaCache.categorias = atuais;
+  input.value = '';
+  renderListaCategorias();
+}
+
+function removerCategoria(nome) {
+  if (!confirm(`Remover a categoria "${nome}"? Produtos já cadastrados com ela não são afetados.`)) return;
+  _dadosEmpresaCache.categorias = getCategoriasLoja().filter(c => c !== nome);
+  renderListaCategorias();
+}
+
+async function salvarCategorias() {
+  const msg = document.getElementById('cat-msg');
+  try {
+    await sbPatchWhere('lojas', 'loja_id', LOJA_ID, { dados_empresa: JSON.stringify(_dadosEmpresaCache) });
+    popularCategoriasCadastro();
+    populateCatFilter(); // atualiza os filtros também
+    msg.style.color = 'var(--success)'; msg.textContent = '✅ Categorias salvas!';
+  } catch(e) { msg.style.color = 'var(--danger)'; msg.textContent = '❌ Erro: ' + e.message; }
+  setTimeout(() => { msg.textContent = ''; }, 4000);
+}
+
 async function carregarDadosEmpresa() {
   var fw=document.getElementById('emp-fiscal-wrap');
   if(fw) fw.style.display=LOJA_USA_NFCE?'block':'none';
@@ -8472,6 +8722,7 @@ async function carregarDadosEmpresa() {
     var dados=await sbGet('lojas','loja_id=eq.'+LOJA_ID+'&select=dados_empresa&limit=1');
     if(dados&&dados[0]&&dados[0].dados_empresa){
       var emp=typeof dados[0].dados_empresa==='string'?JSON.parse(dados[0].dados_empresa):dados[0].dados_empresa;
+      _dadosEmpresaCache = emp;
       var set=function(id,v){var e=document.getElementById(id);if(e)e.value=v||'';};
       set('emp-razao-social',emp.razao_social);set('emp-nome-fantasia',emp.nome_fantasia);
       set('emp-cnpj',emp.cnpj);set('emp-ie',emp.ie);set('emp-im',emp.im);
@@ -8486,11 +8737,13 @@ async function carregarDadosEmpresa() {
       var amb=document.getElementById('emp-ambiente');if(amb&&emp.ambiente)amb.value=emp.ambiente;
     }
   } catch(e){}
+  renderListaCategorias();
 }
 
 async function salvarDadosEmpresa() {
   var get=function(id){var e=document.getElementById(id);return e?e.value.trim():'';};
   var emp={
+    ..._dadosEmpresaCache, // preserva categorias e outros campos não editados nesta tela
     razao_social:get('emp-razao-social'),nome_fantasia:get('emp-nome-fantasia'),
     cnpj:get('emp-cnpj'),ie:get('emp-ie'),im:get('emp-im'),
     regime:(document.getElementById('emp-regime')||{}).value||'1',
@@ -8505,7 +8758,8 @@ async function salvarDadosEmpresa() {
   };
   var msg=document.getElementById('emp-msg');
   try{
-    await sbPatch('lojas','loja_id=eq.'+LOJA_ID,{dados_empresa:JSON.stringify(emp)});
+    await sbPatchWhere('lojas', 'loja_id', LOJA_ID, {dados_empresa:JSON.stringify(emp)});
+    _dadosEmpresaCache = emp;
     msg.style.color='var(--success)';msg.textContent='✅ Dados salvos!';
   }catch(e){msg.style.color='var(--danger)';msg.textContent='❌ Erro: '+e.message;}
   setTimeout(function(){msg.textContent='';},4000);
@@ -8588,6 +8842,25 @@ atualizarHora();
         <div style="margin-top:16px;display:flex;gap:10px;">
           <button class="btn btn-primary" onclick="salvarDadosEmpresa()">💾 Salvar dados da empresa</button>
           <span id="emp-msg" style="font-size:12px;align-self:center;"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CATEGORIAS DE PRODUTO -->
+    <div style="margin-bottom:24px;">
+      <div class="section-title">🏷️ Categorias de Produto</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
+          Essas categorias aparecem no cadastro de produto e nos filtros do sistema. Personalize de acordo com o tipo de mercadoria da sua loja.
+        </p>
+        <div style="display:flex;gap:10px;margin-bottom:14px;">
+          <input type="text" id="cat-nova" placeholder="Ex: Pijamas" onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarCategoria();}">
+          <button class="btn btn-primary" style="white-space:nowrap;" onclick="adicionarCategoria()">+ Adicionar</button>
+        </div>
+        <div id="lista-categorias" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;">
+          <button class="btn btn-primary" onclick="salvarCategorias()">💾 Salvar categorias</button>
+          <span id="cat-msg" style="font-size:12px;align-self:center;"></span>
         </div>
       </div>
     </div>
