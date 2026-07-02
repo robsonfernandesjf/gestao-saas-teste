@@ -1257,7 +1257,7 @@
         <div class="form-grid">
           <div class="form-row">
             <label>NCM <span id="cad-ncm-check" style="font-size:10px;font-weight:400;"></span></label>
-            <input type="text" id="cad-ncm" placeholder="Ex: 62042200" maxlength="8" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'');validarNcm(this.value);" onblur="validarNcm(this.value)">
+            <input type="text" id="cad-ncm" placeholder="Ex: 6204.22.00" maxlength="10" inputmode="numeric" oninput="mascaraNCM(this);validarNcm(this.value);" onblur="validarNcm(this.value)">
           </div>
           <div class="form-row">
             <label>Unidade</label>
@@ -1303,7 +1303,7 @@
         <div class="form-grid">
           <div class="form-row">
             <label>CEST <span style="font-size:10px;color:var(--muted);font-weight:400;">— obrigatório p/ produtos com Substituição Tributária</span></label>
-            <input type="text" id="cad-cest" placeholder="Ex: 2800100" maxlength="7" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'');validarCest(this.value);" onblur="validarCest(this.value)">
+            <input type="text" id="cad-cest" placeholder="Ex: 28.001.00" maxlength="9" inputmode="numeric" oninput="mascaraCEST(this);validarCest(this.value);" onblur="validarCest(this.value)">
             <span id="cad-cest-check" style="font-size:11px;"></span>
           </div>
         </div>
@@ -4321,6 +4321,20 @@ function toggleCamposCsosn() {
   document.getElementById('cad-csosn-extra').style.display = semIcms ? 'none' : 'grid';
 }
 
+// ===== Máscaras de NCM (4-2-2, ex: 3307.20.10) e CEST (2-3-2, ex: 20.027.00) =====
+// Padrão oficial (TIPI / Convênio ICMS 92/2015) — as tabelas fiscais (tab_ncm/tab_cest)
+// guardam o código EXATAMENTE nesse formato, então a máscara aqui precisa bater 1:1.
+function mascaraNCM(el) {
+  let v = el.value.replace(/\D/g, '').slice(0, 8);
+  v = v.replace(/^(\d{4})(\d)/, '$1.$2').replace(/^(\d{4})\.(\d{2})(\d)/, '$1.$2.$3');
+  el.value = v;
+}
+function mascaraCEST(el) {
+  let v = el.value.replace(/\D/g, '').slice(0, 7);
+  v = v.replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+  el.value = v;
+}
+
 // ===== Validação de NCM / CEST contra as tabelas fiscais globais (tab_ncm, tab_cest) =====
 const _fiscalCache = { ncm: {}, cest: {} };
 let _ncmCheckTimer = null, _cestCheckTimer = null;
@@ -4358,7 +4372,7 @@ async function cestValido(codigo) {
 function validarNcm(valor) {
   clearTimeout(_ncmCheckTimer);
   const el = document.getElementById('cad-ncm-check');
-  if (!valor || valor.length < 8) { el.textContent = ''; return; }
+  if (!valor || valor.length < 10) { el.textContent = ''; return; }
   el.textContent = '⏳ verificando...'; el.style.color = 'var(--muted)';
   _ncmCheckTimer = setTimeout(async () => {
     const ok = await ncmValido(valor);
@@ -4370,7 +4384,7 @@ function validarNcm(valor) {
 function validarCest(valor) {
   clearTimeout(_cestCheckTimer);
   const el = document.getElementById('cad-cest-check');
-  if (!valor || valor.length < 7) { el.textContent = ''; return; }
+  if (!valor || valor.length < 9) { el.textContent = ''; return; }
   el.textContent = '⏳ verificando...'; el.style.color = 'var(--muted)';
   _cestCheckTimer = setTimeout(async () => {
     const ok = await cestValido(valor);
