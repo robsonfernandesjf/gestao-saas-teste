@@ -632,7 +632,8 @@
   <button onclick="showPage('clientes')">👥 Clientes/Fornecedores</button>
   <button onclick="showPage('vendedores')">🧑‍💼 Vendedores</button>
   <button onclick="showPage('financeiro')">💰 Financeiro</button>
-  <button id="nav-usuarios" onclick="showPage('usuarios')" style="display:none;">🔐 Usuários</button>
+  <button id="nav-usuarios" onclick="showPage('usuarios')" style="display:none;">👥 Usuários</button>
+  <button id="nav-empresa" onclick="showPage('empresa'); carregarDadosEmpresa();" style="display:none;">⚙️ Config. Empresa</button>
 </nav>
 <div id="nav-overlay" onclick="toggleMenuMobile()"></div>
 
@@ -2614,7 +2615,7 @@ const MASTER_USER = {
   nome: CONFIG_LOJA.masterNome,
   login: CONFIG_LOJA.masterLogin,
   senha: CONFIG_LOJA.masterSenha,
-  perfil: 'master',
+  perfil: 'admin',
   modulos: MODULOS.map(m => m.id)
 };
 
@@ -2655,10 +2656,6 @@ function usuarioAtual() {
 
 // Inicia usuário admin padrão se não existir
 function initUsuarios() {
-  // Carregar dados da empresa quando disponível
-  if (typeof LOJA_ID !== 'undefined') {
-    setTimeout(carregarDadosEmpresa, 800);
-  }
   const lista = getUsuarios();
   if (lista.length === 0) {
     const admin = {
@@ -2826,13 +2823,15 @@ function aplicarPermissoes(usuario) {
   } else {
     document.body.classList.remove('ocultar-custo');
   }
-  const isMaster = usuario.perfil === 'master';
+  const isMaster = usuario.perfil === 'master' || usuario.perfil === 'admin';
   const isAdmin  = usuario.perfil === 'admin';
   const modulos = Array.isArray(usuario.modulos) ? usuario.modulos : (typeof usuario.modulos === 'string' ? JSON.parse(usuario.modulos||'[]') : []);
 
   // Aba usuários: só master e admin veem
   const navUsr = document.getElementById('nav-usuarios');
+  const navEmp = document.getElementById('nav-empresa');
   if (navUsr) navUsr.style.display = (isMaster || isAdmin) ? 'block' : 'none';
+  if (navEmp) navEmp.style.display = (isMaster || isAdmin) ? 'block' : 'none';
 
   // Esconder/mostrar botões de nav por módulo
   const navBtns = document.querySelectorAll('nav button[onclick^="showPage"]');
@@ -2877,7 +2876,7 @@ async function renderUsuarios() {
   }
 
   const perfil = atual ? atual.perfil : 'user';
-  const isMaster = perfil === 'master';
+  const isMaster = perfil === 'master' || perfil === 'admin';
   const isAdmin  = perfil === 'admin';
 
   // Licença — só master vê
@@ -3098,7 +3097,7 @@ function showPage(id) {
   // Verificar permissão
   const usr = usuarioAtual();
   if (usr) {
-    const isMaster = usr.perfil === 'master';
+    const isMaster = usr.perfil === 'master' || usr.perfil === 'admin';
     const isAdmin  = usr.perfil === 'admin';
     const modulos  = usr.modulos || [];
     if (!isMaster && !isAdmin && id !== 'usuarios') {
@@ -3124,6 +3123,7 @@ function showPage(id) {
   if (id === 'estoque') { populateCatFilter(); renderEstoque(); aplicarFeatureFlagsUI(); popularSelectFornecedoresManual(); }
   if (id === 'historico') { populateHistFilter(); renderHistorico(); }
   if (id === 'relatorios') { renderRelatorios(); renderRelEstoque(); }
+  if (id === 'empresa') { carregarDadosEmpresa(); }
   if (id === 'rel-estoque') { renderRelEstoque(); }
   if (id === 'clientes') { renderClientes(); }
   if (id === 'vendedores') { renderVendedores(); }
@@ -8241,115 +8241,94 @@ if (_sessaoAtual) {
   })();
 }
 
-// ── EMPRESA: ViaCEP ──────────────────────────────────────
+// ── Empresa: ViaCEP ──────────────────────────────────────
 function buscarCepEmpresa(cep) {
-  var cp = cep.replace(/[^0-9]/g,'');
-  if (cp.length !== 8) return;
-  fetch('https://viacep.com.br/ws/' + cp + '/json/')
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if (d.erro) return;
-      var s = function(id,v){var e=document.getElementById(id);if(e)e.value=v||'';};
-      s('emp-logradouro',d.logradouro); s('emp-bairro',d.bairro);
-      s('emp-municipio',d.localidade); s('emp-ibge',d.ibge);
-      var uf=document.getElementById('emp-uf'); if(uf) uf.value=d.uf||'';
-    }).catch(function(){});
+  var cp=cep.replace(/[^0-9]/g,'');if(cp.length!==8)return;
+  fetch('https://viacep.com.br/ws/'+cp+'/json/').then(function(r){return r.json();}).then(function(d){
+    if(d.erro)return;
+    var s=function(id,v){var e=document.getElementById(id);if(e)e.value=v||'';};
+    s('emp-logradouro',d.logradouro);s('emp-bairro',d.bairro);s('emp-municipio',d.localidade);s('emp-ibge',d.ibge);
+    var uf=document.getElementById('emp-uf');if(uf)uf.value=d.uf||'';
+  }).catch(function(){});
 }
 
 function mascaraCNPJEmp(el) {
-  var v = el.value.replace(/[^0-9]/g,'').slice(0,14);
-  v = v.replace(/^(\d{2})(\d)/,'$1.$2')
-       .replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3')
-       .replace(/\.(\d{3})(\d)/,'.$1/$2')
-       .replace(/(\d{4})(\d)/,'$1-$2');
-  el.value = v;
+  var v=el.value.replace(/[^0-9]/g,'').slice(0,14);
+  v=v.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2');
+  el.value=v;
 }
 
-// ── EMPRESA: Carregar dados salvos ───────────────────────
 async function carregarDadosEmpresa() {
+  var ml=document.getElementById('master-login-atual');
+  if(ml) ml.value=CONFIG_LOJA.masterLogin||'admin';
+  var fw=document.getElementById('emp-fiscal-wrap');
+  if(fw) fw.style.display=LOJA_USA_NFCE?'block':'none';
   try {
-    var dados = await sbGet('lojas', 'loja_id=eq.' + LOJA_ID + '&select=dados_empresa&limit=1');
-    if (dados && dados[0] && dados[0].dados_empresa) {
-      var emp = typeof dados[0].dados_empresa === 'string'
-        ? JSON.parse(dados[0].dados_empresa) : dados[0].dados_empresa;
-      var set = function(id,v){var e=document.getElementById(id);if(e)e.value=v||'';};
-      set('emp-razao-social', emp.razao_social); set('emp-nome-fantasia', emp.nome_fantasia);
-      set('emp-cnpj', emp.cnpj); set('emp-ie', emp.ie); set('emp-im', emp.im);
-      set('emp-telefone', emp.telefone); set('emp-email', emp.email);
-      set('emp-cep', emp.cep); set('emp-logradouro', emp.logradouro);
-      set('emp-numero', emp.numero); set('emp-complemento', emp.complemento);
-      set('emp-bairro', emp.bairro); set('emp-municipio', emp.municipio);
-      set('emp-ibge', emp.ibge);
-      if (emp.serie_nfce) set('emp-serie-nfce', emp.serie_nfce);
-      if (emp.num_inicial) set('emp-num-inicial', emp.num_inicial);
-      var reg = document.getElementById('emp-regime'); if(reg && emp.regime) reg.value = emp.regime;
-      var uf = document.getElementById('emp-uf'); if(uf && emp.uf) uf.value = emp.uf;
-      var amb = document.getElementById('emp-ambiente'); if(amb && emp.ambiente) amb.value = emp.ambiente;
+    var dados=await sbGet('lojas','loja_id=eq.'+LOJA_ID+'&select=dados_empresa&limit=1');
+    if(dados&&dados[0]&&dados[0].dados_empresa){
+      var emp=typeof dados[0].dados_empresa==='string'?JSON.parse(dados[0].dados_empresa):dados[0].dados_empresa;
+      var set=function(id,v){var e=document.getElementById(id);if(e)e.value=v||'';};
+      set('emp-razao-social',emp.razao_social);set('emp-nome-fantasia',emp.nome_fantasia);
+      set('emp-cnpj',emp.cnpj);set('emp-ie',emp.ie);set('emp-im',emp.im);
+      set('emp-telefone',emp.telefone);set('emp-email',emp.email);
+      set('emp-cep',emp.cep);set('emp-logradouro',emp.logradouro);set('emp-numero',emp.numero);
+      set('emp-complemento',emp.complemento);set('emp-bairro',emp.bairro);
+      set('emp-municipio',emp.municipio);set('emp-ibge',emp.ibge);
+      if(emp.serie_nfce)set('emp-serie-nfce',emp.serie_nfce);
+      if(emp.num_inicial)set('emp-num-inicial',emp.num_inicial);
+      var reg=document.getElementById('emp-regime');if(reg&&emp.regime)reg.value=emp.regime;
+      var uf=document.getElementById('emp-uf');if(uf&&emp.uf)uf.value=emp.uf;
+      var amb=document.getElementById('emp-ambiente');if(amb&&emp.ambiente)amb.value=emp.ambiente;
     }
-  } catch(e) {
-    // dados_empresa ainda não existe — campo será criado no primeiro save
-  }
-  // Mostrar dados fiscais se usa_nfce
-  var fw = document.getElementById('emp-fiscal-wrap');
-  if (fw) fw.style.display = LOJA_USA_NFCE ? 'block' : 'none';
-  // Preencher login master atual
-  var ml = document.getElementById('master-login-atual');
-  if (ml) ml.value = CONFIG_LOJA.masterLogin || 'master';
+  } catch(e){}
 }
 
-// ── EMPRESA: Salvar ──────────────────────────────────────
 async function salvarDadosEmpresa() {
-  var get = function(id){ var e=document.getElementById(id); return e ? e.value.trim() : ''; };
-  var emp = {
-    razao_social: get('emp-razao-social'), nome_fantasia: get('emp-nome-fantasia'),
-    cnpj: get('emp-cnpj'), ie: get('emp-ie'), im: get('emp-im'),
-    regime: document.getElementById('emp-regime').value,
-    telefone: get('emp-telefone'), email: get('emp-email'),
-    cep: get('emp-cep'), logradouro: get('emp-logradouro'), numero: get('emp-numero'),
-    complemento: get('emp-complemento'), bairro: get('emp-bairro'),
-    municipio: get('emp-municipio'), ibge: get('emp-ibge'),
-    uf: document.getElementById('emp-uf').value,
-    serie_nfce: get('emp-serie-nfce'), num_inicial: get('emp-num-inicial'),
-    ambiente: document.getElementById('emp-ambiente')?.value || '2',
-    atualizado_em: new Date().toISOString()
+  var get=function(id){var e=document.getElementById(id);return e?e.value.trim():'';};
+  var emp={
+    razao_social:get('emp-razao-social'),nome_fantasia:get('emp-nome-fantasia'),
+    cnpj:get('emp-cnpj'),ie:get('emp-ie'),im:get('emp-im'),
+    regime:document.getElementById('emp-regime').value,
+    telefone:get('emp-telefone'),email:get('emp-email'),
+    cep:get('emp-cep'),logradouro:get('emp-logradouro'),numero:get('emp-numero'),
+    complemento:get('emp-complemento'),bairro:get('emp-bairro'),
+    municipio:get('emp-municipio'),ibge:get('emp-ibge'),
+    uf:document.getElementById('emp-uf').value,
+    serie_nfce:get('emp-serie-nfce'),num_inicial:get('emp-num-inicial'),
+    ambiente:(document.getElementById('emp-ambiente')||{}).value||'2',
+    atualizado_em:new Date().toISOString()
   };
-  var msg = document.getElementById('emp-msg');
-  try {
-    await sbPatch('lojas', 'loja_id=eq.' + LOJA_ID, { dados_empresa: JSON.stringify(emp) });
-    msg.style.color = 'var(--success)'; msg.textContent = '✅ Dados salvos!';
-  } catch(e) {
-    msg.style.color = 'var(--danger)'; msg.textContent = '❌ Erro ao salvar: ' + e.message;
-  }
-  setTimeout(function(){ msg.textContent = ''; }, 4000);
+  var msg=document.getElementById('emp-msg');
+  try{
+    await sbPatch('lojas','loja_id=eq.'+LOJA_ID,{dados_empresa:JSON.stringify(emp)});
+    msg.style.color='var(--success)';msg.textContent='✅ Dados salvos!';
+  }catch(e){msg.style.color='var(--danger)';msg.textContent='❌ Erro: '+e.message;}
+  setTimeout(function(){msg.textContent='';},4000);
 }
 
-// ── MASTER: Atualizar credenciais ────────────────────────
-async function salvarCredenciaisMaster() {
-  var loginNovo = (document.getElementById('master-login-novo').value||'').trim();
-  var senhaNova = (document.getElementById('master-senha-nova').value||'').trim();
-  var senhaConf = (document.getElementById('master-senha-conf').value||'').trim();
-  var msg = document.getElementById('master-msg');
-  if (!loginNovo && !senhaNova) { msg.style.color='var(--warn)'; msg.textContent='Preencha ao menos um campo.'; return; }
-  if (senhaNova && senhaNova.length < 6) { msg.style.color='var(--danger)'; msg.textContent='Senha mínima: 6 caracteres.'; return; }
-  if (senhaNova && senhaNova !== senhaConf) { msg.style.color='var(--danger)'; msg.textContent='As senhas não coincidem.'; return; }
-  try {
-    var patch = {};
-    if (loginNovo) patch.master_login = loginNovo;
-    if (senhaNova) patch.master_senha = senhaNova;
-    await sbPatch('lojas', 'loja_id=eq.' + LOJA_ID, patch);
-    if (loginNovo) CONFIG_LOJA.masterLogin = loginNovo;
-    if (senhaNova) CONFIG_LOJA.masterSenha = senhaNova;
-    document.getElementById('master-login-atual').value = CONFIG_LOJA.masterLogin;
-    document.getElementById('master-login-novo').value = '';
-    document.getElementById('master-senha-nova').value = '';
-    document.getElementById('master-senha-conf').value = '';
-    msg.style.color = 'var(--success)'; msg.textContent = '✅ Credenciais atualizadas!';
-  } catch(e) {
-    msg.style.color = 'var(--danger)'; msg.textContent = '❌ Erro: ' + e.message;
-  }
-  setTimeout(function(){ msg.textContent = ''; }, 4000);
+async function salvarCredenciaisAdmin() {
+  var loginNovo=(document.getElementById('master-login-novo').value||'').trim();
+  var senhaNova=(document.getElementById('master-senha-nova').value||'').trim();
+  var senhaConf=(document.getElementById('master-senha-conf').value||'').trim();
+  var msg=document.getElementById('master-msg');
+  if(!loginNovo&&!senhaNova){msg.style.color='var(--warn)';msg.textContent='Preencha ao menos um campo.';return;}
+  if(senhaNova&&senhaNova.length<6){msg.style.color='var(--danger)';msg.textContent='Senha mínima: 6 caracteres.';return;}
+  if(senhaNova&&senhaNova!==senhaConf){msg.style.color='var(--danger)';msg.textContent='Senhas não coincidem.';return;}
+  try{
+    var patch={};
+    if(loginNovo)patch.master_login=loginNovo;
+    if(senhaNova)patch.master_senha=senhaNova;
+    await sbPatch('lojas','loja_id=eq.'+LOJA_ID,patch);
+    if(loginNovo)CONFIG_LOJA.masterLogin=loginNovo;
+    if(senhaNova)CONFIG_LOJA.masterSenha=senhaNova;
+    var ml=document.getElementById('master-login-atual');if(ml)ml.value=CONFIG_LOJA.masterLogin;
+    document.getElementById('master-login-novo').value='';
+    document.getElementById('master-senha-nova').value='';
+    document.getElementById('master-senha-conf').value='';
+    msg.style.color='var(--success)';msg.textContent='✅ Credenciais atualizadas!';
+  }catch(e){msg.style.color='var(--danger)';msg.textContent='❌ Erro: '+e.message;}
+  setTimeout(function(){msg.textContent='';},4000);
 }
-
 setInterval(atualizarHora, 1000);
 atualizarHora();
 </script>
@@ -8375,98 +8354,98 @@ atualizarHora();
       <p style="font-size:11px;color:var(--warn);margin-top:8px;">⚠️ Se a validade expirar, todos os usuários (exceto Master) serão bloqueados automaticamente.</p>
     </div>
 
-
-<!-- ── CADASTRO DA EMPRESA ────────────────────────────── -->
-<div style="margin-bottom:24px;">
-  <div class="section-title">🏢 Dados da Empresa</div>
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;">
-    <div class="form-grid">
-      <div class="form-row"><label>Razão Social</label><input type="text" id="emp-razao-social" placeholder="Ex: Fátima Cigani Comércio de Roupas LTDA"></div>
-      <div class="form-row"><label>Nome Fantasia</label><input type="text" id="emp-nome-fantasia" placeholder="Ex: Fátima Cigani"></div>
-    </div>
-    <div class="form-grid">
-      <div class="form-row"><label>CNPJ</label><input type="text" id="emp-cnpj" placeholder="00.000.000/0000-00" inputmode="numeric" maxlength="18" oninput="mascaraCNPJEmp(this)"></div>
-      <div class="form-row"><label>Inscrição Estadual (IE)</label><input type="text" id="emp-ie" placeholder="Somente números" inputmode="numeric"></div>
-    </div>
-    <div class="form-grid">
-      <div class="form-row"><label>Inscrição Municipal (IM)</label><input type="text" id="emp-im" placeholder="Somente números (se prestador de serviço)"></div>
-      <div class="form-row">
-        <label>Regime Tributário</label>
-        <select id="emp-regime">
-          <option value="1">1 — Simples Nacional</option>
-          <option value="2">2 — Simples Nacional — Excesso de Sublimite</option>
-          <option value="3">3 — Regime Normal (Lucro Presumido / Real)</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-grid">
-      <div class="form-row"><label>Telefone</label><input type="tel" id="emp-telefone" placeholder="(32) 99999-9999" oninput="mascaraTel(this)"></div>
-      <div class="form-row"><label>E-mail</label><input type="email" id="emp-email" placeholder="contato@suaempresa.com.br"></div>
-    </div>
-    <p style="font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.5px;">Endereço</p>
-    <div class="form-grid">
-      <div class="form-row"><label>CEP</label><input type="text" id="emp-cep" placeholder="00000-000" maxlength="9" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'').replace(/^([0-9]{5})([0-9])/,'$1-$2')" onblur="buscarCepEmpresa(this.value)"></div>
-      <div class="form-row"><label>UF</label><select id="emp-uf"><option value="">—</option><option>AC</option><option>AL</option><option>AM</option><option>AP</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option><option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option><option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option><option>SP</option><option>TO</option></select></div>
-    </div>
-    <div class="form-grid">
-      <div class="form-row"><label>Logradouro</label><input type="text" id="emp-logradouro" placeholder="Rua, Av, Travessa..."></div>
-      <div class="form-row" style="max-width:140px;"><label>Número</label><input type="text" id="emp-numero" placeholder="123"></div>
-    </div>
-    <div class="form-grid">
-      <div class="form-row"><label>Bairro</label><input type="text" id="emp-bairro" placeholder="Ex: Centro"></div>
-      <div class="form-row"><label>Complemento</label><input type="text" id="emp-complemento" placeholder="Sala 2, Loja A..."></div>
-    </div>
-    <div class="form-grid">
-      <div class="form-row"><label>Município</label><input type="text" id="emp-municipio" placeholder="Ex: Juiz de Fora"></div>
-      <div class="form-row"><label>Cód. IBGE</label><input type="text" id="emp-ibge" placeholder="Ex: 3136702" maxlength="7" inputmode="numeric"></div>
-    </div>
-    <div id="emp-fiscal-wrap" style="display:none;">
-      <p style="font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.5px;">🧾 Dados fiscais NF-e / NFC-e</p>
-      <div class="form-grid">
-        <div class="form-row"><label>Série NFC-e</label><input type="text" id="emp-serie-nfce" placeholder="1" maxlength="3" inputmode="numeric" value="1"></div>
-        <div class="form-row"><label>Número inicial NFC-e</label><input type="text" id="emp-num-inicial" placeholder="1" inputmode="numeric" value="1"></div>
-      </div>
-      <div class="form-row">
-        <label>Ambiente</label>
-        <select id="emp-ambiente">
-          <option value="2">2 — Homologação (testes — notas sem validade fiscal)</option>
-          <option value="1">1 — Produção (notas com validade fiscal real)</option>
-        </select>
-      </div>
-    </div>
-    <div style="margin-top:16px;display:flex;gap:10px;">
-      <button class="btn btn-primary" onclick="salvarDadosEmpresa()">💾 Salvar dados da empresa</button>
-      <span id="emp-msg" style="font-size:12px;align-self:center;"></span>
-    </div>
-  </div>
-</div>
-
-<!-- ── TROCAR SENHA MASTER ────────────────────────────── -->
-<div style="margin-bottom:24px;" id="secao-trocar-senha-master">
-  <div class="section-title">🔐 Credenciais Master</div>
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;">
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">O login e senha master ficam armazenados no sistema da loja. Altere após o primeiro acesso.</p>
-    <div class="form-grid">
-      <div class="form-row"><label>Login master atual</label><input type="text" id="master-login-atual" placeholder="master" readonly style="color:var(--muted);background:var(--bg);"></div>
-      <div class="form-row"><label>Novo login</label><input type="text" id="master-login-novo" placeholder="Ex: admin-fatima" autocomplete="off"></div>
-    </div>
-    <div class="form-grid">
-      <div class="form-row"><label>Nova senha</label><input type="password" id="master-senha-nova" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
-      <div class="form-row"><label>Confirmar nova senha</label><input type="password" id="master-senha-conf" placeholder="Repita a senha" autocomplete="new-password"></div>
-    </div>
-    <div style="margin-top:12px;display:flex;gap:10px;">
-      <button class="btn btn-primary" onclick="salvarCredenciaisMaster()">🔐 Atualizar credenciais</button>
-      <span id="master-msg" style="font-size:12px;align-self:center;"></span>
-    </div>
-  </div>
-</div>
-
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div class="section-title" style="margin-bottom:0;border:none;">Usuários cadastrados</div>
       <button class="btn btn-primary" id="btn-novo-usuario" onclick="abrirModalUsuario()" style="display:none;">+ Novo Usuário</button>
     </div>
 
     <div id="lista-usuarios"></div>
+  </div>
+</div>
+
+<!-- CONFIGURAÇÕES DA EMPRESA -->
+<div id="page-empresa" class="page">
+  <div style="max-width:860px;">
+    <div style="margin-bottom:24px;">
+      <div class="section-title">🏢 Dados da Empresa</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;">
+        <div class="form-grid">
+          <div class="form-row"><label>Razão Social</label><input type="text" id="emp-razao-social" placeholder="Ex: Fátima Cigani Comércio de Roupas LTDA"></div>
+          <div class="form-row"><label>Nome Fantasia</label><input type="text" id="emp-nome-fantasia" placeholder="Ex: Fátima Cigani"></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row"><label>CNPJ</label><input type="text" id="emp-cnpj" placeholder="00.000.000/0000-00" inputmode="numeric" maxlength="18" oninput="mascaraCNPJEmp(this)"></div>
+          <div class="form-row"><label>Inscrição Estadual (IE)</label><input type="text" id="emp-ie" placeholder="Somente números" inputmode="numeric"></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row"><label>Inscrição Municipal (IM)</label><input type="text" id="emp-im" placeholder="Somente números (prestador de serviço)"></div>
+          <div class="form-row"><label>Regime Tributário</label>
+            <select id="emp-regime">
+              <option value="1">1 — Simples Nacional</option>
+              <option value="2">2 — Simples Nacional — Excesso de Sublimite</option>
+              <option value="3">3 — Regime Normal (Lucro Presumido / Real)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row"><label>Telefone</label><input type="tel" id="emp-telefone" placeholder="(32) 99999-9999" oninput="mascaraTel(this)"></div>
+          <div class="form-row"><label>E-mail</label><input type="email" id="emp-email" placeholder="contato@suaempresa.com.br"></div>
+        </div>
+        <p style="font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.5px;">Endereço</p>
+        <div class="form-grid">
+          <div class="form-row"><label>CEP</label><input type="text" id="emp-cep" placeholder="00000-000" maxlength="9" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'').replace(/^([0-9]{5})([0-9])/,'$1-$2')" onblur="buscarCepEmpresa(this.value)"></div>
+          <div class="form-row"><label>UF</label><select id="emp-uf"><option value="">—</option><option>AC</option><option>AL</option><option>AM</option><option>AP</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option><option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option><option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option><option>SP</option><option>TO</option></select></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row"><label>Logradouro</label><input type="text" id="emp-logradouro" placeholder="Rua, Av, Travessa..."></div>
+          <div class="form-row" style="max-width:140px;"><label>Número</label><input type="text" id="emp-numero" placeholder="123"></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row"><label>Bairro</label><input type="text" id="emp-bairro" placeholder="Ex: Centro"></div>
+          <div class="form-row"><label>Complemento</label><input type="text" id="emp-complemento" placeholder="Sala 2, Loja A..."></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row"><label>Município</label><input type="text" id="emp-municipio" placeholder="Ex: Juiz de Fora"></div>
+          <div class="form-row"><label>Cód. IBGE</label><input type="text" id="emp-ibge" placeholder="Ex: 3136702" maxlength="7" inputmode="numeric"></div>
+        </div>
+        <div id="emp-fiscal-wrap" style="display:none;">
+          <p style="font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.5px;">🧾 Dados NF-e / NFC-e</p>
+          <div class="form-grid">
+            <div class="form-row"><label>Série NFC-e</label><input type="text" id="emp-serie-nfce" placeholder="1" maxlength="3" inputmode="numeric" value="1"></div>
+            <div class="form-row"><label>Número inicial NFC-e</label><input type="text" id="emp-num-inicial" placeholder="1" inputmode="numeric" value="1"></div>
+          </div>
+          <div class="form-row"><label>Ambiente</label>
+            <select id="emp-ambiente">
+              <option value="2">2 — Homologação (testes)</option>
+              <option value="1">1 — Produção (notas com validade fiscal)</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:10px;">
+          <button class="btn btn-primary" onclick="salvarDadosEmpresa()">💾 Salvar dados da empresa</button>
+          <span id="emp-msg" style="font-size:12px;align-self:center;"></span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <div class="section-title">🔐 Credenciais do Administrador</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Altere o login e senha do administrador principal da loja.</p>
+        <div class="form-grid">
+          <div class="form-row"><label>Login atual</label><input type="text" id="master-login-atual" readonly style="color:var(--muted);background:var(--bg);"></div>
+          <div class="form-row"><label>Novo login</label><input type="text" id="master-login-novo" placeholder="Ex: fatima.admin" autocomplete="off"></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row"><label>Nova senha</label><input type="password" id="master-senha-nova" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
+          <div class="form-row"><label>Confirmar senha</label><input type="password" id="master-senha-conf" placeholder="Repita a senha" autocomplete="new-password"></div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:10px;">
+          <button class="btn btn-primary" onclick="salvarCredenciaisAdmin()">🔐 Atualizar credenciais</button>
+          <span id="master-msg" style="font-size:12px;align-self:center;"></span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
