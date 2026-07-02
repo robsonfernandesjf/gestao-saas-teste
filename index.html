@@ -2759,7 +2759,11 @@ async function fazerLogin() {
     // as políticas de RLS no banco usam pra isolar os dados de cada loja.
     const resp = await fetch(EDGE_LOGIN_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY
+      },
       body: JSON.stringify({ loja_id: LOJA_ID, login, senha })
     });
 
