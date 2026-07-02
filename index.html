@@ -5119,22 +5119,16 @@ async function confirmarVenda() {
           await sbPatch('debitos', existente.id, {
             produto: existente.itens.map(i => i.produto).join(', '),
             valor_total: existente.total,
-            obs: existente.obs,
-            taxa_total: existente.taxa_total,
-            movimentos: existente.movimentos,
-            venda_ids: existente.venda_ids
+            obs: existente.obs
           });
         } else {
           const criado = await sbPost('debitos', {
-            venda_ids: existente.venda_ids,
             cliente: 'Cartão',
             produto: existente.itens.map(i => i.produto).join(', '),
             valor_total: existente.total,
             valor_pago: 0,
             vencimento: existente.vencimento,
             obs: existente.obs,
-            taxa_total: existente.taxa_total,
-            movimentos: existente.movimentos,
             pagamentos: [],
             cartao_dia: dataBase
           });
@@ -5169,15 +5163,12 @@ async function confirmarVenda() {
 
       try {
         const criado = await sbPost('debitos', {
-          venda_ids: [vendaId],
           cliente: 'Cartão',
           produto: carrinho.map(c => c.produto).join(', '),
           valor_total: totalFat,
           valor_pago: 0,
           vencimento: vencFmt,
           obs: novoCartao.obs,
-          taxa_total: taxaValor,
-          movimentos: novoCartao.movimentos,
           pagamentos: [],
           cartao_dia: dataBase
         });
