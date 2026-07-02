@@ -1867,8 +1867,8 @@
     <div class="cat-tab active" onclick="mostrarSubFin('receber')">📥 A Receber</div>
     <div class="cat-tab" onclick="mostrarSubFin('pagar')">💸 A Pagar</div>
     <div class="cat-tab" onclick="mostrarSubFin('extrato')">📋 Extrato Geral</div>
-    <div class="cat-tab" onclick="mostrarSubFin('taxas')">💳 Taxas de Cartão</div>
   </div>
+  <p style="font-size:12px;color:var(--muted);margin:-12px 0 16px;">💳 Taxas de Cartão agora fica em Config. Empresa.</p>
 
   <!-- Cards unificados sempre visíveis -->
   <div class="cards" id="cards-fin-unif" style="margin-bottom:20px;"></div>
@@ -1885,6 +1885,25 @@
         <option value="parcial">Parcialmente pago</option>
         <option value="pago">Quitados</option>
       </select>
+      <select id="receber-modo" onchange="alternarModoFiltroReceber()" style="min-width:160px;">
+        <option value="periodo">Por período</option>
+        <option value="data">Por intervalo de datas</option>
+      </select>
+      <div id="receber-periodo-wrap" style="display:flex;gap:10px;align-items:center;">
+        <select id="receber-periodo" onchange="renderSubReceber()">
+          <option value="7">Últimos 7 dias</option>
+          <option value="15">Últimos 15 dias</option>
+          <option value="30">Últimos 30 dias</option>
+          <option value="90">Últimos 90 dias</option>
+          <option value="0" selected>Todos</option>
+        </select>
+      </div>
+      <div id="receber-data-wrap" style="display:none;gap:10px;align-items:center;">
+        <label style="font-size:12px;color:var(--muted);white-space:nowrap;">De</label>
+        <input type="date" id="receber-data-ini" onchange="renderSubReceber()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+        <label style="font-size:12px;color:var(--muted);white-space:nowrap;">até</label>
+        <input type="date" id="receber-data-fim" onchange="renderSubReceber()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+      </div>
       <div style="margin-left:auto;display:flex;gap:8px;">
         <button class="btn btn-primary" onclick="abrirModalNovaReceber()">+ Nova Conta a Receber</button>
         <button class="btn btn-outline" onclick="gerarPDFClienteReceber()">📄 PDF</button>
@@ -1950,6 +1969,25 @@
         <option value="Taxa de Cartão">Taxa de Cartão</option>
         <option value="Outros">Outros</option>
       </select>
+      <select id="pagar-modo" onchange="alternarModoFiltroPagar()" style="min-width:160px;">
+        <option value="periodo">Por período</option>
+        <option value="data">Por intervalo de datas</option>
+      </select>
+      <div id="pagar-periodo-wrap" style="display:flex;gap:10px;align-items:center;">
+        <select id="pagar-periodo" onchange="renderContasPagar()">
+          <option value="7">Últimos 7 dias</option>
+          <option value="15">Últimos 15 dias</option>
+          <option value="30">Últimos 30 dias</option>
+          <option value="90">Últimos 90 dias</option>
+          <option value="0" selected>Todos</option>
+        </select>
+      </div>
+      <div id="pagar-data-wrap" style="display:none;gap:10px;align-items:center;">
+        <label style="font-size:12px;color:var(--muted);white-space:nowrap;">De</label>
+        <input type="date" id="pagar-data-ini" onchange="renderContasPagar()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+        <label style="font-size:12px;color:var(--muted);white-space:nowrap;">até</label>
+        <input type="date" id="pagar-data-fim" onchange="renderContasPagar()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+      </div>
       <div style="margin-left:auto;display:flex;gap:8px;">
         <button class="btn btn-primary" onclick="abrirModalCP()">+ Nova Conta</button>
         <button class="btn btn-outline" onclick="gerarPDFContasPagar()">📄 PDF</button>
@@ -2006,28 +2044,6 @@
   </div>
 
   <!-- ===== TAXAS DE CARTÃO ===== -->
-  <div id="subfin-taxas" style="display:none;">
-    <div class="table-wrap" style="padding:20px;margin-bottom:16px;">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
-        Cadastre aqui a taxa cobrada pela operadora para cada modalidade. Ao registrar uma venda no cartão,
-        o sistema calcula a taxa automaticamente com base nessa tabela — sem precisar digitar nada na hora.
-      </p>
-      <div class="toolbar" style="margin-bottom:14px;">
-        <button class="btn btn-primary" onclick="abrirModalTaxa()">+ Nova Modalidade</button>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Modalidade</th>
-            <th>Parcelas</th>
-            <th>Taxa (%)</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="taxas-cartao-body"></tbody>
-      </table>
-    </div>
-  </div>
 
 </div>
 
@@ -6288,16 +6304,15 @@ function selecionarFormaPagamento(btn) {
 
 // ===== FINANCEIRO UNIFICADO =====
 function mostrarSubFin(sub) {
-  ['receber','pagar','extrato','taxas'].forEach(s => {
+  ['receber','pagar','extrato'].forEach(s => {
     document.getElementById('subfin-' + s).style.display = s === sub ? 'block' : 'none';
   });
   document.querySelectorAll('#fin-subtabs .cat-tab').forEach((t, i) => {
-    t.classList.toggle('active', ['receber','pagar','extrato','taxas'][i] === sub);
+    t.classList.toggle('active', ['receber','pagar','extrato'][i] === sub);
   });
   if (sub === 'receber')  renderSubReceber();
   if (sub === 'pagar')    renderContasPagar();
   if (sub === 'extrato')  renderFinanceiro();
-  if (sub === 'taxas')    renderTaxasCartao();
 }
 
 // ===== TAXAS DE CARTÃO =====
@@ -6576,30 +6591,36 @@ const FIN_KEY = 'oi2026_debitos';
 
 let _baixaDebitoId = null;
 
-function alternarModoFiltroFin() {
-  const modo = document.getElementById('fin-modo').value;
-  document.getElementById('fin-periodo-wrap').style.display = modo === 'periodo' ? 'flex' : 'none';
-  document.getElementById('fin-data-wrap').style.display = modo === 'data' ? 'flex' : 'none';
-  renderFinanceiro();
+// ===== Filtro de período genérico (reaproveitado em Extrato, A Receber e A Pagar) =====
+function alternarModoFiltroPeriodo(prefixo, callback) {
+  const modo = document.getElementById(prefixo + '-modo').value;
+  document.getElementById(prefixo + '-periodo-wrap').style.display = modo === 'periodo' ? 'flex' : 'none';
+  document.getElementById(prefixo + '-data-wrap').style.display = modo === 'data' ? 'flex' : 'none';
+  callback();
 }
 
-function dentroDoPeriodoFin(dataISO) {
+function dentroDoPeriodo(prefixo, dataISO) {
   if (!dataISO) return true; // sem data conhecida, não filtra fora
-  const modo = document.getElementById('fin-modo')?.value || 'periodo';
+  const modo = document.getElementById(prefixo + '-modo')?.value || 'periodo';
   if (modo === 'periodo') {
-    const dias = parseInt(document.getElementById('fin-periodo')?.value || '0');
+    const dias = parseInt(document.getElementById(prefixo + '-periodo')?.value || '0');
     if (!dias) return true; // "Todos"
     const limite = new Date();
     limite.setDate(limite.getDate() - dias);
     return new Date(dataISO) >= limite;
   } else {
-    const ini = document.getElementById('fin-data-ini')?.value || '';
-    const fim = document.getElementById('fin-data-fim')?.value || '';
+    const ini = document.getElementById(prefixo + '-data-ini')?.value || '';
+    const fim = document.getElementById(prefixo + '-data-fim')?.value || '';
     if (ini && dataISO < ini) return false;
     if (fim && dataISO > fim) return false;
     return true;
   }
 }
+
+function alternarModoFiltroFin()     { alternarModoFiltroPeriodo('fin', renderFinanceiro); }
+function alternarModoFiltroReceber() { alternarModoFiltroPeriodo('receber', renderSubReceber); }
+function alternarModoFiltroPagar()   { alternarModoFiltroPeriodo('pagar', renderContasPagar); }
+function dentroDoPeriodoFin(dataISO) { return dentroDoPeriodo('fin', dataISO); }
 
 function renderFinanceiro() {
   const busca     = (document.getElementById('busca-financeiro')?.value || '').toLowerCase();
@@ -7322,9 +7343,18 @@ function gerarPDFClienteReceber() {
     return d.total - pago;
   }
 
+  function dataDebitoISO(d) {
+    const s = d.data_venda || '';
+    if (!s) return '';
+    if (s.includes('-')) return s.slice(0,10);
+    const p = s.split(',')[0].split('/');
+    return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : '';
+  }
+
   let debitos = getDebitos();
   if (clienteFil) debitos = debitos.filter(d => (d.cliente||'Sem nome') === clienteFil);
   if (statusFil) debitos = debitos.filter(d => debitoStatus(d) === statusFil);
+  debitos = debitos.filter(d => dentroDoPeriodo('receber', dataDebitoISO(d)));
 
   if (debitos.length === 0) { alert('Nenhum débito encontrado para gerar o PDF.'); return; }
 
@@ -7631,6 +7661,7 @@ function renderContasPagar() {
   if (busca) contas = contas.filter(c => (c.descricao||'').toLowerCase().includes(busca) || (c.fornecedor||'').toLowerCase().includes(busca));
   if (catFil) contas = contas.filter(c => c.cat === catFil);
   if (statusFil) contas = contas.filter(c => cpStatus(c) === statusFil);
+  contas = contas.filter(c => dentroDoPeriodo('pagar', c.vencimento || ''));
 
   // sort: vencido primeiro, depois aberto por vencimento, depois pago
   contas.sort((a,b) => {
@@ -7701,6 +7732,7 @@ function gerarPDFContasPagar() {
   if (busca) contas = contas.filter(c => (c.descricao||'').toLowerCase().includes(busca) || (c.fornecedor||'').toLowerCase().includes(busca));
   if (catFil) contas = contas.filter(c => c.cat === catFil);
   if (statusFil) contas = contas.filter(c => cpStatus(c) === statusFil);
+  contas = contas.filter(c => dentroDoPeriodo('pagar', c.vencimento || ''));
   contas.sort((a,b) => {
     const ord = {vencido:0, aberto:1, pago:2};
     const sa = cpStatus(a), sb = cpStatus(b);
@@ -8715,6 +8747,24 @@ async function salvarCategorias() {
   setTimeout(() => { msg.textContent = ''; }, 4000);
 }
 
+// ===== ACORDEÃO DE CONFIGURAÇÕES (só uma seção aberta por vez) =====
+function toggleConfigSecao(nome) {
+  const body = document.getElementById('config-body-' + nome);
+  const seta = document.getElementById('seta-config-' + nome);
+  if (!body) return;
+  const abrindo = body.style.display === 'none';
+
+  document.querySelectorAll('.config-secao-body').forEach(el => { el.style.display = 'none'; });
+  document.querySelectorAll('.config-secao-seta').forEach(el => { el.textContent = '▸'; });
+
+  if (abrindo) {
+    body.style.display = 'block';
+    if (seta) seta.textContent = '▾';
+    if (nome === 'taxas') renderTaxasCartao();
+    if (nome === 'categorias') renderListaCategorias();
+  }
+}
+
 async function carregarDadosEmpresa() {
   var fw=document.getElementById('emp-fiscal-wrap');
   if(fw) fw.style.display=LOJA_USA_NFCE?'block':'none';
@@ -8784,9 +8834,14 @@ atualizarHora();
 <!-- CONFIGURAÇÕES DA EMPRESA -->
 <div id="page-empresa" class="page">
   <div style="max-width:860px;">
-    <div style="margin-bottom:24px;">
-      <div class="section-title">🏢 Dados da Empresa</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;">
+
+    <!-- ACORDEÃO DE CONFIGURAÇÕES -->
+    <div class="config-secao" style="margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <button onclick="toggleConfigSecao('empresa')" style="width:100%;text-align:left;padding:16px 18px;background:var(--surface);border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;color:var(--text);">
+        <span>🏢 Dados da Empresa</span>
+        <span id="seta-config-empresa" class="config-secao-seta" style="font-size:12px;color:var(--muted);">▸</span>
+      </button>
+      <div id="config-body-empresa" class="config-secao-body" style="display:none;padding:18px;border-top:1px solid var(--border);">
         <div class="form-grid">
           <div class="form-row"><label>Razão Social</label><input type="text" id="emp-razao-social" placeholder="Ex: Fátima Cigani Comércio de Roupas LTDA"></div>
           <div class="form-row"><label>Nome Fantasia</label><input type="text" id="emp-nome-fantasia" placeholder="Ex: Fátima Cigani"></div>
@@ -8846,10 +8901,12 @@ atualizarHora();
       </div>
     </div>
 
-    <!-- CATEGORIAS DE PRODUTO -->
-    <div style="margin-bottom:24px;">
-      <div class="section-title">🏷️ Categorias de Produto</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;">
+    <div class="config-secao" style="margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <button onclick="toggleConfigSecao('categorias')" style="width:100%;text-align:left;padding:16px 18px;background:var(--surface);border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;color:var(--text);">
+        <span>🏷️ Categorias de Produto</span>
+        <span id="seta-config-categorias" class="config-secao-seta" style="font-size:12px;color:var(--muted);">▸</span>
+      </button>
+      <div id="config-body-categorias" class="config-secao-body" style="display:none;padding:18px;border-top:1px solid var(--border);">
         <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
           Essas categorias aparecem no cadastro de produto e nos filtros do sistema. Personalize de acordo com o tipo de mercadoria da sua loja.
         </p>
@@ -8862,6 +8919,33 @@ atualizarHora();
           <button class="btn btn-primary" onclick="salvarCategorias()">💾 Salvar categorias</button>
           <span id="cat-msg" style="font-size:12px;align-self:center;"></span>
         </div>
+      </div>
+    </div>
+
+    <div class="config-secao" style="margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <button onclick="toggleConfigSecao('taxas')" style="width:100%;text-align:left;padding:16px 18px;background:var(--surface);border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;color:var(--text);">
+        <span>💳 Taxas de Cartão</span>
+        <span id="seta-config-taxas" class="config-secao-seta" style="font-size:12px;color:var(--muted);">▸</span>
+      </button>
+      <div id="config-body-taxas" class="config-secao-body" style="display:none;padding:18px;border-top:1px solid var(--border);">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+          Cadastre aqui a taxa cobrada pela operadora para cada modalidade. Ao registrar uma venda no cartão,
+          o sistema calcula a taxa automaticamente com base nessa tabela — sem precisar digitar nada na hora.
+        </p>
+        <div class="toolbar" style="margin-bottom:14px;">
+          <button class="btn btn-primary" onclick="abrirModalTaxa()">+ Nova Modalidade</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Modalidade</th>
+              <th>Parcelas</th>
+              <th>Taxa (%)</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="taxas-cartao-body"></tbody>
+        </table>
       </div>
     </div>
   </div>
