@@ -2515,11 +2515,23 @@ function saveTaxasCartao(lista) {
   localStorage.setItem(TAXA_KEY, JSON.stringify(lista));
   _cache.taxasCartao = lista;
 }
+// Normaliza "Cartão débito", "debito", "DÉBITO" etc. para uma chave comum,
+// pra bater independente de como o registro foi salvo (o painel criava as
+// taxas padrão de loja nova só como "debito"/"credito", sem o "Cartão " e
+// sem acento — nunca batia com o texto usado aqui no PDV).
+function _normalizarTipoTaxa(s) {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .replace(/cartao/g, '').trim();
+}
+
 // Busca a taxa % configurada para uma modalidade + parcelas. Retorna 0 se não cadastrada.
 function buscarTaxaPercentual(tipo, parcelas) {
   const taxas = getTaxasCartao();
   const p = parseInt(parcelas) || 1;
-  const achou = taxas.find(t => t.tipo === tipo && parseInt(t.parcelas || 1) === p);
+  const alvo = _normalizarTipoTaxa(tipo);
+  const achou = taxas.find(t => _normalizarTipoTaxa(t.tipo) === alvo && parseInt(t.parcelas || 1) === p);
   return achou ? (parseFloat(achou.percentual) || 0) : 0;
 }
 
