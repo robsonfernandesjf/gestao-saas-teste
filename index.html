@@ -1300,6 +1300,40 @@
             <input type="text" id="cad-cod-beneficio" placeholder="conforme tabela da SEFAZ/UF">
           </div>
         </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>CEST <span style="font-size:10px;color:var(--muted);font-weight:400;">— obrigatório p/ produtos com Substituição Tributária</span></label>
+            <input type="text" id="cad-cest" placeholder="Ex: 2800100" maxlength="7" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')">
+          </div>
+          <div class="form-row">
+            <label>CFOP <span style="font-size:10px;color:var(--muted);font-weight:400;">— vazio = padrão da operação</span></label>
+            <input type="text" id="cad-cfop" placeholder="Ex: 5102" maxlength="4" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')">
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>CST PIS</label>
+            <select id="cad-cst-pis">
+              <option value="07">07 - Isento</option>
+              <option value="08">08 - Sem incidência</option>
+              <option value="49">49 - Outras operações de saída</option>
+              <option value="01">01 - Tributável (alíquota básica)</option>
+              <option value="04">04 - Tributável (alíquota zero)</option>
+              <option value="06">06 - Tributável (alíquota zero) monofásica</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>CST COFINS</label>
+            <select id="cad-cst-cofins">
+              <option value="07">07 - Isento</option>
+              <option value="08">08 - Sem incidência</option>
+              <option value="49">49 - Outras operações de saída</option>
+              <option value="01">01 - Tributável (alíquota básica)</option>
+              <option value="04">04 - Tributável (alíquota zero)</option>
+              <option value="06">06 - Tributável (alíquota zero) monofásica</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <button class="btn btn-primary" style="width:100%;padding:12px;" onclick="salvarCadastro()">+ Adicionar ao Estoque</button>
@@ -4631,6 +4665,10 @@ async function salvarCadastro() {
     novoProduto.csosn = document.getElementById('cad-csosn').value;
     novoProduto.aliquota_icms = parseFloat((document.getElementById('cad-aliquota-icms').value||'0').replace(',','.')) || 0;
     novoProduto.cod_beneficio = document.getElementById('cad-cod-beneficio').value.trim() || null;
+    novoProduto.cest = document.getElementById('cad-cest').value.trim() || null;
+    novoProduto.cfop = document.getElementById('cad-cfop').value.trim() || null;
+    novoProduto.cst_pis = document.getElementById('cad-cst-pis').value;
+    novoProduto.cst_cofins = document.getElementById('cad-cst-cofins').value;
   }
 
   if (LOJA_USA_CATALOGO) {
@@ -4652,7 +4690,9 @@ async function salvarCadastro() {
     saveProdutos(produtos);
     document.getElementById('cad-msg').style.color = 'var(--success)';
     document.getElementById('cad-msg').textContent = '✓ Produto ' + ref + ' cadastrado!';
-    ['cad-ref','cad-ean13','cad-nome','cad-custo','cad-preco','cad-cp','cad-est','cad-parcela','cad-nparcelas','cad-est-min','cad-ncm','cad-aliquota-icms','cad-cod-beneficio'].forEach(id=>document.getElementById(id).value='');
+    ['cad-ref','cad-ean13','cad-nome','cad-custo','cad-preco','cad-cp','cad-est','cad-parcela','cad-nparcelas','cad-est-min','cad-ncm','cad-aliquota-icms','cad-cod-beneficio','cad-cest','cad-cfop'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('cad-cst-pis').value = '07';
+    document.getElementById('cad-cst-cofins').value = '07';
     document.getElementById('cad-fornecedor').value = '';
     document.getElementById('cad-tem-grade').checked = false;
     _gradeAtual = [];
@@ -5818,6 +5858,9 @@ function abrirModalCliente(id) {
   document.getElementById('cli-eh-fornecedor').checked = false;
   document.getElementById('cli-doc-tipo').value = 'cpf';
   document.getElementById('cli-doc-numero').value = '';
+  document.getElementById('cli-ie').value = '';
+  document.getElementById('cli-ind-ie').value = '9';
+  document.getElementById('cli-email').value = '';
   toggleTipoCliente();
   document.getElementById('modal-cliente-titulo').textContent = 'Novo Cliente';
   document.getElementById('modal-cliente').classList.add('open');
@@ -5835,6 +5878,9 @@ function editarCliente(id) {
   document.getElementById('cli-eh-fornecedor').checked = !!cl.eh_fornecedor;
   document.getElementById('cli-doc-tipo').value = cl.doc_tipo || 'cpf';
   document.getElementById('cli-doc-numero').value = cl.doc_numero || '';
+  document.getElementById('cli-ie').value = cl.ie || '';
+  document.getElementById('cli-ind-ie').value = cl.ind_ie || '9';
+  document.getElementById('cli-email').value = cl.email || '';
   toggleTipoCliente();
   document.getElementById('modal-cliente-titulo').textContent = 'Editar Cliente';
   document.getElementById('modal-cliente').classList.add('open');
@@ -5845,6 +5891,8 @@ function toggleTipoCliente() {
   const ehFornecedor = document.getElementById('cli-eh-fornecedor').checked;
   document.getElementById('cli-nasc-wrap').style.display = ehFornecedor ? 'none' : 'block';
   document.getElementById('cli-doc-tipo').value = ehFornecedor ? 'cnpj' : 'cpf';
+  const fiscalWrap = document.getElementById('cli-fiscal-wrap');
+  if (fiscalWrap) fiscalWrap.style.display = (ehFornecedor && LOJA_USA_NFCE) ? 'block' : 'none';
   mascaraDocCliente();
 }
 
@@ -5883,6 +5931,11 @@ async function salvarCliente() {
     doc_tipo: document.getElementById('cli-doc-tipo').value,
     doc_numero: document.getElementById('cli-doc-numero').value.trim()
   };
+  if (dados.eh_fornecedor && LOJA_USA_NFCE) {
+    dados.ie = document.getElementById('cli-ie').value.trim();
+    dados.ind_ie = document.getElementById('cli-ind-ie').value;
+    dados.email = document.getElementById('cli-email').value.trim();
+  }
 
   try {
     mostrarLoading(true);
@@ -8507,6 +8560,29 @@ atualizarHora();
       <div class="form-row">
         <label>Observações (opcional)</label>
         <input type="text" id="cli-obs" placeholder="Ex: cliente VIP, preferências...">
+      </div>
+
+      <!-- SEÇÃO FISCAL (NFC-e) — só aparece para fornecedor quando loja.usa_nfce = true -->
+      <div id="cli-fiscal-wrap" style="display:none;border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--accent);margin-bottom:12px;">🧾 Dados fiscais do fornecedor (NFC-e)</p>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Inscrição Estadual</label>
+            <input type="text" id="cli-ie" placeholder="Ex: 123.456.789.000 ou ISENTO" oninput="if(document.getElementById('cli-ie-isento').checked)this.value='';">
+          </div>
+          <div class="form-row">
+            <label>Indicador de IE</label>
+            <select id="cli-ind-ie">
+              <option value="1">1 - Contribuinte ICMS</option>
+              <option value="2">2 - Contribuinte isento de IE</option>
+              <option value="9">9 - Não contribuinte</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>E-mail (para envio de nota fiscal)</label>
+          <input type="email" id="cli-email" placeholder="fornecedor@empresa.com.br">
+        </div>
       </div>
     </div>
     <div class="modal-footer">
