@@ -5104,7 +5104,15 @@ async function confirmarVenda() {
   const pag = document.getElementById('venda-pagamento').value;
   const parcelas = pag === 'Cartão crédito' ? (parseInt(document.getElementById('venda-parcelas').value) || 1) : 1;
   
-  if (pag === 'A prazo' && !cliente) { alert('Para venda a prazo, informe o nome da cliente.'); document.getElementById('venda-cliente').focus(); return; }
+  if (pag === 'A prazo') {
+    if (!cliente) { alert('Para venda a prazo, informe o nome da cliente.'); document.getElementById('venda-cliente').focus(); return; }
+    const clienteCadastrado = getClientes().find(c => (c.nome||'').trim().toLowerCase() === cliente.toLowerCase());
+    if (!clienteCadastrado) {
+      alert('Venda fiado só é permitida para clientes já cadastrados. Cadastre "' + cliente + '" em Clientes/Fornecedores antes de continuar, ou escolha o nome certinho na lista.');
+      document.getElementById('venda-cliente').focus();
+      return;
+    }
+  }
 
   const btnConfirmar = document.querySelector('#modal-confirmar-venda .btn-primary') || document.querySelector('[onclick="confirmarVenda()"]');
   if (btnConfirmar) { btnConfirmar.disabled = true; btnConfirmar.textContent = 'Salvando...'; }
@@ -5934,6 +5942,7 @@ function renderClientes() {
         ${mesFiltrado && dias !== null && !hoje2 ? `<br><span style="font-size:10px;color:var(--warn);">em ${dias} dia${dias!==1?'s':''}</span>` : ''}
       </td>
       <td style="white-space:nowrap;">
+        <button class="btn btn-outline btn-sm" onclick="abrirFinanceiroCliente('${cl.id}')" title="Histórico financeiro">📊</button>
         <button class="btn btn-outline btn-sm" onclick="editarCliente('${cl.id}')">Editar</button>
         <button class="btn btn-danger btn-sm" onclick="abrirExcluirCliente('${cl.id}')">✕</button>
       </td>
@@ -6138,6 +6147,63 @@ function abrirModalCliente(id) {
   toggleTipoCliente();
   document.getElementById('modal-cliente-titulo').textContent = 'Novo Cliente';
   document.getElementById('modal-cliente').classList.add('open');
+}
+
+// ===== HISTÓRICO FINANCEIRO DO CLIENTE (compras + contas pagas/abertas) =====
+function abrirFinanceiroCliente(id) {
+  const cl = getClientes().find(c => c.id === id);
+  if (!cl) return;
+
+  document.getElementById('modal-cliente-fin-titulo').textContent = `📊 ${cl.nome}`;
+
+  const nomeNorm = (cl.nome || '').trim().toLowerCase();
+  const compras = getVendas().filter(v => (v.cliente || '').trim().toLowerCase() === nomeNorm);
+  const contas = getDebitos().filter(d => (d.cliente || '').trim().toLowerCase() === nomeNorm);
+
+  function debStatus(d) {
+    const pg = (d.pagamentos || []).reduce((s, p) => s + p.valor, 0);
+    if (pg >= d.total) return 'pago';
+    if (pg > 0) return 'parcial';
+    return 'aberto';
+  }
+  function debSaldo(d) {
+    return d.total - (d.pagamentos || []).reduce((s, p) => s + p.valor, 0);
+  }
+
+  const totalComprado = compras.reduce((s, v) => s + (v.valor_total || 0), 0);
+  const abertas = contas.filter(d => debStatus(d) !== 'pago');
+  const pagas = contas.filter(d => debStatus(d) === 'pago');
+  const totalAberto = abertas.reduce((s, d) => s + debSaldo(d), 0);
+  const totalPago = pagas.reduce((s, d) => s + d.total, 0);
+
+  document.getElementById('cli-fin-resumo').innerHTML = `
+    <div class="card"><div class="card-label">Total comprado</div><div class="card-value" style="font-size:16px;">${R(totalComprado)}</div></div>
+    <div class="card"><div class="card-label">Em aberto</div><div class="card-value" style="font-size:16px;color:var(--danger);">${R(totalAberto)}</div></div>
+    <div class="card"><div class="card-label">Já pago</div><div class="card-value" style="font-size:16px;color:var(--success);">${R(totalPago)}</div></div>
+  `;
+
+  document.getElementById('cli-fin-compras').innerHTML = compras.length ? compras.map(v => `
+    <div style="display:flex;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;">
+      <span>${v.data || '—'} · ${v.produto || ''} ${v.qtd > 1 ? `(${v.qtd}x)` : ''}</span>
+      <strong>${R(v.valor_total || 0)}</strong>
+    </div>
+  `).join('') : '<p style="font-size:12px;color:var(--muted);padding:8px 0;">Nenhuma compra registrada.</p>';
+
+  document.getElementById('cli-fin-abertas').innerHTML = abertas.length ? abertas.map(d => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:12px;">
+      <span>${d.data_venda || '—'} · vence ${d.vencimento || '—'} · saldo <strong style="color:var(--danger);">${R(debSaldo(d))}</strong></span>
+      <button class="btn btn-secondary btn-sm" onclick="fecharModal('modal-cliente-fin');abrirBaixa('${d.id}')">Receber</button>
+    </div>
+  `).join('') : '<p style="font-size:12px;color:var(--muted);padding:8px 0;">Nenhuma conta em aberto. 🎉</p>';
+
+  document.getElementById('cli-fin-pagas').innerHTML = pagas.length ? pagas.map(d => `
+    <div style="display:flex;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;">
+      <span>${d.data_venda || '—'}</span>
+      <strong style="color:var(--success);">${R(d.total)}</strong>
+    </div>
+  `).join('') : '<p style="font-size:12px;color:var(--muted);padding:8px 0;">Nenhuma conta quitada ainda.</p>';
+
+  document.getElementById('modal-cliente-fin').classList.add('open');
 }
 
 function editarCliente(id) {
@@ -6562,7 +6628,7 @@ function renderSubReceber() {
           <div style="font-size:10px;color:var(--muted);margin-top:2px;">${pct_pago.toFixed(0)}%</div>
         </td>
         <td style="white-space:nowrap;">
-          ${st!=='pago' ? `<button class="btn btn-secondary btn-sm" onclick="abrirBaixa('${d.id}');setTimeout(()=>renderSubReceber(),500)">💳 Pagar</button>` : '<span style="font-size:11px;color:var(--success);">✓ Quitado</span>'}
+          ${st!=='pago' ? `<button class="btn btn-secondary btn-sm" onclick="abrirBaixa('${d.id}');setTimeout(()=>renderSubReceber(),500)">💳 Receber</button>` : '<span style="font-size:11px;color:var(--success);">✓ Quitado</span>'}
         </td>
       </tr>`;
     }).join('');
@@ -6884,7 +6950,7 @@ function abrirBaixa(id) {
 
   setValorMoeda('baixa-valor', valorLiquidoSugerido);
   document.getElementById('baixa-data').value = new Date().toISOString().slice(0,10);
-  document.getElementById('modal-baixa-titulo').textContent = isCartao ? 'Recebimento de Cartão' : 'Registrar Pagamento';
+  document.getElementById('modal-baixa-titulo').textContent = isCartao ? 'Recebimento de Cartão' : 'Registrar Recebimento';
 
   // Preencher forma padrão
   const formaEl = document.getElementById('baixa-forma');
@@ -7299,7 +7365,7 @@ function renderRelReceber() {
           <div style="font-size:10px;color:var(--muted);margin-top:2px;">${pct_pago.toFixed(0)}%</div>
         </td>
         <td style="white-space:nowrap;">
-          ${st !== 'pago' ? `<button class="btn btn-secondary btn-sm" onclick="abrirBaixa('${d.id}');setTimeout(()=>renderSubReceber(),500)">💳 Pagar</button>` : '<span style="font-size:11px;color:var(--success);">✓ Quitado</span>'}
+          ${st !== 'pago' ? `<button class="btn btn-secondary btn-sm" onclick="abrirBaixa('${d.id}');setTimeout(()=>renderSubReceber(),500)">💳 Receber</button>` : '<span style="font-size:11px;color:var(--success);">✓ Quitado</span>'}
         </td>
       </tr>`;
     }).join('');
@@ -9103,6 +9169,31 @@ atualizarHora();
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="fecharModal('modal-cliente')">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarCliente()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FINANCEIRO DO CLIENTE -->
+<div class="modal-bg" id="modal-cliente-fin">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-header">
+      <h2 id="modal-cliente-fin-titulo">Histórico Financeiro</h2>
+      <button class="modal-close" onclick="fecharModal('modal-cliente-fin')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="cli-fin-resumo" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;"></div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">🛍️ Compras (histórico de vendas)</p>
+      <div id="cli-fin-compras" style="max-height:180px;overflow-y:auto;margin-bottom:16px;"></div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--danger);margin-bottom:8px;">⚠ Contas em aberto</p>
+      <div id="cli-fin-abertas" style="max-height:150px;overflow-y:auto;margin-bottom:16px;"></div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--success);margin-bottom:8px;">✓ Contas pagas</p>
+      <div id="cli-fin-pagas" style="max-height:150px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-cliente-fin')">Fechar</button>
     </div>
   </div>
 </div>
