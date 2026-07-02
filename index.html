@@ -5200,6 +5200,24 @@ async function confirmarVenda() {
     }
     debitos.unshift(debito);
     saveDebitos(debitos);
+
+    // Salvar no Supabase — mesmos nomes de coluna reais confirmados no banco
+    // (valor_total/valor_pago/produto), sem venda_id (coluna é uuid, incompatível
+    // com o id numérico usado internamente pra agrupar itens da venda).
+    try {
+      const criado = await sbPost('debitos', {
+        cliente: debito.cliente,
+        produto: debito.itens.map(i => i.produto).join(', '),
+        valor_total: debito.total,
+        valor_pago: entradaVal > 0 ? entradaVal : 0,
+        vencimento: vencFmt,
+        obs: debito.obs,
+        pagamentos: debito.pagamentos
+      });
+      const registro = Array.isArray(criado) ? criado[0] : criado;
+      if (registro && registro.id) { debito.id = registro.id; saveDebitos(debitos); }
+      invalidarCache('debitos');
+    } catch (e) { console.warn('Venda a prazo salva localmente:', e.message); }
   }
 
   // Cartão (débito ou crédito) → acumula no débito do dia (um único lançamento por dia, somando débito + crédito)
