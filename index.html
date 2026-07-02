@@ -5126,7 +5126,6 @@ async function confirmarVenda() {
           });
         } else {
           const criado = await sbPost('debitos', {
-            venda_id: existente.venda_id,
             venda_ids: existente.venda_ids,
             cliente: 'Cartão',
             produto: existente.itens.map(i => i.produto).join(', '),
@@ -5170,7 +5169,6 @@ async function confirmarVenda() {
 
       try {
         const criado = await sbPost('debitos', {
-          venda_id: vendaId,
           venda_ids: [vendaId],
           cliente: 'Cartão',
           produto: carrinho.map(c => c.produto).join(', '),
@@ -5216,7 +5214,6 @@ async function confirmarVenda() {
     // sistema usa (total/itens/data_venda) na hora da leitura.
     try {
       const criado = await sbPost('debitos', {
-        venda_id: novoDebito.venda_id,
         cliente: novoDebito.cliente,
         produto: carrinho.map(c => c.produto).join(', '),
         valor_total: totalFat,
