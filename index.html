@@ -982,10 +982,11 @@
     <!-- COLUNA DIREITA: cliente, pagamento, resumo, finalizar -->
     <div class="pdv-col-direita">
 
-      <div class="form-row">
+      <div class="form-row" style="position:relative;">
         <label>Cliente (opcional)</label>
-        <input type="text" id="venda-cliente" placeholder="Nome da cliente..." list="lista-clientes-venda" autocomplete="off" oninput="filtrarClientesVenda(this)">
-        <datalist id="lista-clientes-venda"></datalist>
+        <input type="text" id="venda-cliente" placeholder="Nome da cliente..." autocomplete="off"
+               oninput="filtrarClientesVenda(this)" onfocus="filtrarClientesVenda(this)" onblur="setTimeout(()=>fecharSugestoesClienteVenda(),150)">
+        <div id="venda-cliente-sugestoes" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);max-height:200px;overflow-y:auto;margin-top:2px;"></div>
       </div>
 
       <div class="form-row">
@@ -7159,20 +7160,43 @@ async function confirmarBaixa() {
 }
 
 // ===== CLIENTES NO CAMPO VENDA =====
+// Dropdown de sugestão de cliente (substitui o datalist nativo, que é discreto
+// demais e exige clicar na setinha — aqui a lista já aparece ao digitar/focar).
 function popularListaClientesVenda() {
-  const dl = document.getElementById('lista-clientes-venda');
-  if (!dl) return;
-  dl.innerHTML = '';
-  getClientes().sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c.nome;
-    dl.appendChild(opt);
-  });
+  // Mantido por compatibilidade (chamado em outros pontos do código),
+  // mas não faz mais nada — as sugestões agora vêm direto de getClientes().
 }
 
 function filtrarClientesVenda(input) {
-  // Atualizar datalist dinamicamente ao digitar
-  popularListaClientesVenda();
+  const termo = input.value.trim().toLowerCase();
+  const box = document.getElementById('venda-cliente-sugestoes');
+  if (!box) return;
+
+  const clientes = getClientes()
+    .filter(c => !termo || c.nome.toLowerCase().includes(termo))
+    .sort((a, b) => a.nome.localeCompare(b.nome))
+    .slice(0, 8);
+
+  if (clientes.length === 0) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+  box.innerHTML = clientes.map(c => `
+    <div onclick="selecionarClienteVenda('${c.nome.replace(/'/g, "\\'")}')"
+         style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
+         onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+      ${c.nome}${c.tel ? `<span style="color:var(--muted);font-size:11px;"> · ${c.tel}</span>` : ''}
+    </div>
+  `).join('');
+  box.style.display = 'block';
+}
+
+function selecionarClienteVenda(nome) {
+  document.getElementById('venda-cliente').value = nome;
+  fecharSugestoesClienteVenda();
+}
+
+function fecharSugestoesClienteVenda() {
+  const box = document.getElementById('venda-cliente-sugestoes');
+  if (box) { box.style.display = 'none'; }
 }
 
 // ===== BANNER CARTÃO DO DIA =====
