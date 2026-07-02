@@ -2322,7 +2322,9 @@
       <button class="modal-close" onclick="fecharModal('modal-confirm-venda')">×</button>
     </div>
     <div class="modal-body" id="confirm-venda-body"></div>
-    <div class="modal-footer">
+    <div class="modal-footer" style="flex-wrap:wrap;gap:8px;">
+      <button class="btn btn-outline" onclick="abrirCupom(false)">👁️ Visualizar Cupom</button>
+      <button class="btn btn-outline" onclick="abrirCupom(true)">🖨️ Imprimir Cupom</button>
       <button class="btn btn-primary" onclick="fecharModal('modal-confirm-venda')">OK</button>
     </div>
   </div>
@@ -5388,6 +5390,18 @@ async function confirmarVenda() {
       ${(pag==='Dinheiro'||pag==='Pix'||pag==='À vista')?`<div style="margin-top:10px;padding:8px 12px;background:var(--success-light);border:1px solid #B8D9C0;border-radius:5px;font-size:12px;color:var(--success);">✅ Recebimento registrado como <strong>quitado</strong> em A Receber.</div>`:''}
     </div>
   `;
+  // Guarda os dados desta venda pra poder gerar o cupom depois (ver e/ou imprimir)
+  _ultimoCupom = {
+    itens: carrinho.map(c => ({ produto: c.produto, qtd: c.qtd, valor_unit: c.valor_unit })),
+    total: totalFat,
+    desconto,
+    pagamento: pag,
+    parcelas,
+    cliente,
+    vendedor,
+    dataHora: agora
+  };
+
   document.getElementById('modal-confirm-venda').classList.add('open');
 
   // Reabilita o botão de finalizar venda (ficava travado em "Salvando..." até recarregar a página)
@@ -5724,6 +5738,65 @@ function renderRelEstoque() {
       <td>${R(totalValor)}</td>
     </tr>
   `;
+}
+
+// ===== CUPOM DE VENDA (comprovante interno — NÃO é NFC-e, sem valor fiscal) =====
+let _ultimoCupom = null;
+
+function abrirCupom(imprimirAutomatico) {
+  if (!_ultimoCupom) { alert('Nenhuma venda recente pra gerar cupom.'); return; }
+  const v = _ultimoCupom;
+  const imp = (_dadosEmpresaCache && _dadosEmpresaCache.impressora) || {};
+  const largura = imp.largura || '80mm';
+  const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
+  const cnpj = (_dadosEmpresaCache && _dadosEmpresaCache.cnpj) || '';
+
+  const itensHtml = v.itens.map(i => `
+    <tr>
+      <td colspan="2">${i.qtd}x ${i.produto}</td>
+    </tr>
+    <tr>
+      <td style="color:#666;">${R(i.valor_unit)} un.</td>
+      <td style="text-align:right;"><strong>${R(i.valor_unit * i.qtd)}</strong></td>
+    </tr>
+  `).join('');
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+  <title>Cupom de Venda</title>
+  <style>
+    @page { size: ${largura} auto; margin: 0; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Courier New', monospace; font-size: 12px; color: #000; width: ${largura}; margin: 0 auto; padding: 8px; }
+    h1 { font-size: 14px; text-align: center; margin: 0 0 2px; }
+    .sub { text-align: center; font-size: 10px; margin-bottom: 8px; }
+    hr { border: none; border-top: 1px dashed #000; margin: 8px 0; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 1px 0; font-size: 11px; }
+    .total-row td { font-size: 13px; font-weight: bold; padding-top: 6px; }
+    .aviso { text-align: center; font-size: 9px; font-weight: bold; margin-top: 10px; border: 1px solid #000; padding: 4px; }
+    .rodape { text-align: center; font-size: 10px; margin-top: 10px; }
+  </style></head><body>
+    <h1>${nomeLoja}</h1>
+    ${cnpj ? `<p class="sub">CNPJ: ${cnpj}</p>` : ''}
+    <p class="sub">${v.dataHora}</p>
+    <hr>
+    <table>${itensHtml}</table>
+    <hr>
+    <table>
+      ${v.desconto > 0 ? `<tr><td>Desconto</td><td style="text-align:right;">- ${R(v.desconto)}</td></tr>` : ''}
+      <tr class="total-row"><td>TOTAL</td><td style="text-align:right;">${R(v.total)}</td></tr>
+      <tr><td colspan="2">Pagamento: ${v.pagamento}${v.parcelas > 1 ? ' ' + v.parcelas + 'x' : ''}</td></tr>
+      ${v.cliente ? `<tr><td colspan="2">Cliente: ${v.cliente}</td></tr>` : ''}
+      ${v.vendedor ? `<tr><td colspan="2">Vendedor(a): ${v.vendedor}</td></tr>` : ''}
+    </table>
+    <div class="aviso">DOCUMENTO NÃO FISCAL<br>Comprovante interno de venda, sem valor fiscal</div>
+    <p class="rodape">Obrigado pela preferência! 💛</p>
+    ${imprimirAutomatico ? '<script>window.onload=()=>{ window.print(); }<\/script>' : ''}
+  </body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
 }
 
 function imprimirRelEstoque() {
@@ -8866,7 +8939,27 @@ function toggleConfigSecao(nome) {
     if (nome === 'taxas') renderTaxasCartao();
     if (nome === 'categorias') renderListaCategorias();
     if (nome === 'usuarios') renderUsuarios();
+    if (nome === 'impressora') carregarImpressora();
   }
+}
+
+function carregarImpressora() {
+  const imp = (_dadosEmpresaCache && _dadosEmpresaCache.impressora) || {};
+  if (imp.modelo) document.getElementById('impr-modelo').value = imp.modelo;
+  document.getElementById('impr-largura').value = imp.largura || '80mm';
+}
+
+async function salvarImpressora() {
+  const msg = document.getElementById('impr-msg');
+  _dadosEmpresaCache.impressora = {
+    modelo: document.getElementById('impr-modelo').value,
+    largura: document.getElementById('impr-largura').value
+  };
+  try {
+    await sbPatch('lojas', LOJA_ID, { dados_empresa: JSON.stringify(_dadosEmpresaCache) });
+    msg.style.color = 'var(--success)'; msg.textContent = '✅ Impressora salva!';
+  } catch (e) { msg.style.color = 'var(--danger)'; msg.textContent = '❌ Erro: ' + e.message; }
+  setTimeout(() => { msg.textContent = ''; }, 4000);
 }
 
 async function carregarDadosEmpresa() {
@@ -9052,6 +9145,47 @@ atualizarHora();
           <button class="btn btn-primary" id="btn-novo-usuario" onclick="abrirModalUsuario()">+ Novo Usuário</button>
         </div>
         <div id="lista-usuarios"></div>
+      </div>
+    </div>
+
+    <div class="config-secao" style="margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <button onclick="toggleConfigSecao('impressora')" style="width:100%;text-align:left;padding:16px 18px;background:var(--surface);border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;color:var(--text);">
+        <span>🖨️ Impressora</span>
+        <span id="seta-config-impressora" class="config-secao-seta" style="font-size:12px;color:var(--muted);">▸</span>
+      </button>
+      <div id="config-body-impressora" class="config-secao-body" style="display:none;padding:18px;border-top:1px solid var(--border);">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
+          Configura só a largura do papel usada pra formatar o cupom de venda. A impressão em si passa pela
+          impressora que já estiver instalada no Windows — não precisa de nada especial aqui além de deixar
+          a impressora térmica configurada como impressora padrão (ou escolher ela na hora de imprimir).
+        </p>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Modelo</label>
+            <select id="impr-modelo">
+              <option>Epson TM-T20</option>
+              <option>Epson TM-T88</option>
+              <option>Elgin i9</option>
+              <option>Elgin i8</option>
+              <option>Elgin i7</option>
+              <option>Bematech MP-4200 TH</option>
+              <option>Diebold/Sweda</option>
+              <option>Daruma DR800</option>
+              <option>Outra / Genérica</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Largura do papel</label>
+            <select id="impr-largura">
+              <option value="80mm">80mm (mais comum)</option>
+              <option value="58mm">58mm</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:10px;">
+          <button class="btn btn-primary" onclick="salvarImpressora()">💾 Salvar impressora</button>
+          <span id="impr-msg" style="font-size:12px;align-self:center;"></span>
+        </div>
       </div>
     </div>
   </div>
