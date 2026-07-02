@@ -2791,7 +2791,7 @@ async function carregarDadosNuvem() {
       sbGet('contas_pagar', 'order=vencimento.asc'),
       sbGet('vendedores', 'order=nome.asc').catch(() => []),
       sbGet('taxas_cartao', 'order=tipo.asc').catch(() => []),
-      sbGet('lojas', 'loja_id=eq.' + LOJA_ID + '&select=dados_empresa&limit=1').catch(() => []),
+      sbGet('lojas', 'id=eq.' + LOJA_ID + '&select=dados_empresa&limit=1').catch(() => []),
     ]);
     _cache.produtos = produtos;
     _cache.vendas = vendas;
@@ -8739,7 +8739,7 @@ function removerCategoria(nome) {
 async function salvarCategorias() {
   const msg = document.getElementById('cat-msg');
   try {
-    await sbPatchWhere('lojas', 'loja_id', LOJA_ID, { dados_empresa: JSON.stringify(_dadosEmpresaCache) });
+    await sbPatch('lojas', LOJA_ID, { dados_empresa: JSON.stringify(_dadosEmpresaCache) });
     popularCategoriasCadastro();
     populateCatFilter(); // atualiza os filtros também
     msg.style.color = 'var(--success)'; msg.textContent = '✅ Categorias salvas!';
@@ -8769,7 +8769,7 @@ async function carregarDadosEmpresa() {
   var fw=document.getElementById('emp-fiscal-wrap');
   if(fw) fw.style.display=LOJA_USA_NFCE?'block':'none';
   try {
-    var dados=await sbGet('lojas','loja_id=eq.'+LOJA_ID+'&select=dados_empresa&limit=1');
+    var dados=await sbGet('lojas','id=eq.'+LOJA_ID+'&select=dados_empresa&limit=1');
     if(dados&&dados[0]&&dados[0].dados_empresa){
       var emp=typeof dados[0].dados_empresa==='string'?JSON.parse(dados[0].dados_empresa):dados[0].dados_empresa;
       _dadosEmpresaCache = emp;
@@ -8808,7 +8808,7 @@ async function salvarDadosEmpresa() {
   };
   var msg=document.getElementById('emp-msg');
   try{
-    await sbPatchWhere('lojas', 'loja_id', LOJA_ID, {dados_empresa:JSON.stringify(emp)});
+    await sbPatch('lojas', LOJA_ID, {dados_empresa:JSON.stringify(emp)});
     _dadosEmpresaCache = emp;
     msg.style.color='var(--success)';msg.textContent='✅ Dados salvos!';
   }catch(e){msg.style.color='var(--danger)';msg.textContent='❌ Erro: '+e.message;}
