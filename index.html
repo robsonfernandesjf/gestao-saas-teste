@@ -558,6 +558,7 @@
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
 </head>
 <body>
 
@@ -1797,16 +1798,17 @@
   </div>
 </div>
 
-<!-- MODAL: Aviso de Contas a Pagar Vencendo Hoje (splash pós-login) -->
+<!-- MODAL: Aviso de Contas a Pagar Vencidas/Vencendo Hoje (splash pós-login) -->
 <div class="modal-bg" id="modal-splash-contas">
   <div class="modal" style="max-width:460px;">
     <div class="modal-header">
-      <h2>⚠️ Contas a pagar hoje</h2>
+      <h2>⚠️ Contas a pagar</h2>
       <button class="modal-close" onclick="fecharModal('modal-splash-contas')">×</button>
     </div>
     <div class="modal-body">
       <p style="font-size:13px;margin-bottom:12px;color:var(--muted);">
-        Você tem <strong id="splash-contas-qtd"></strong> vencendo hoje (<span id="splash-contas-data"></span>), totalizando <strong id="splash-contas-total" style="color:var(--danger);"></strong>.
+        Você tem <strong id="splash-contas-qtd"></strong>, totalizando <strong id="splash-contas-total" style="color:var(--danger);"></strong>.
+        <span style="display:block;margin-top:4px;font-size:11px;">Referência: <span id="splash-contas-data"></span></span>
       </p>
       <div id="splash-contas-lista" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;"></div>
     </div>
@@ -2081,7 +2083,7 @@
       <input type="hidden" id="baixa-bruto-ref"><!-- valor bruto fixo de referência -->
       <div class="form-row">
         <label>Valor recebido (R$)</label>
-        <input type="number" id="baixa-valor" step="0.01" min="0.01" placeholder="Ex: 150,00" oninput="calcBaixaPreview(); calcTaxaCartao();">
+        <input type="text" inputmode="numeric" id="baixa-valor" placeholder="0,00" oninput="mascaraMoeda(this); calcBaixaPreview(); calcTaxaCartao();">
       </div>
       <div class="form-row">
         <label>Forma de pagamento desta parcela</label>
@@ -2487,11 +2489,6 @@ function buscarTaxaPercentual(tipo, parcelas) {
 }
 
 // ---- DÉBITOS ----
-async function getDebitosAsync() {
-  if (_cache.debitos) return _cache.debitos;
-  _cache.debitos = await sbGet('debitos', 'order=created_at.desc');
-  return _cache.debitos;
-}
 function getDebitos() { return _cache.debitos || JSON.parse(localStorage.getItem(FIN_KEY) || '[]'); }
 
 async function saveDebitoSB(d) {
@@ -2534,11 +2531,6 @@ async function salvarDebitoCompleto(debito) {
 }
 
 // ---- CONTAS A PAGAR ----
-async function getContasPagarAsync() {
-  if (_cache.contasPagar) return _cache.contasPagar;
-  _cache.contasPagar = await sbGet('contas_pagar', 'order=vencimento.asc');
-  return _cache.contasPagar;
-}
 function getContasPagar() { return _cache.contasPagar || JSON.parse(localStorage.getItem(CP_KEY) || '[]'); }
 
 async function saveContaSB(c) {
@@ -2733,6 +2725,9 @@ function mostrarNotificacao(msg, tipo = 'success') {
   setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
 }
 
+function dcodeIO_bcrypt_compare(plano, hash) {
+  try { return dcodeIO.bcrypt.compareSync(plano, hash); } catch (e) { return false; }
+}
 async function fazerLogin() {
   const login = document.getElementById('login-user').value.trim();
   const senha = document.getElementById('login-pass').value;
@@ -2751,9 +2746,17 @@ async function fazerLogin() {
     if (login === MASTER_USER.login && senha === MASTER_USER.senha) {
       usuario = MASTER_USER;
     } else {
-      // Buscar no Supabase
-      const lista = await sbGet('usuarios', `login=eq.${encodeURIComponent(login)}&senha=eq.${encodeURIComponent(senha)}`);
-      if (lista && lista.length > 0) usuario = lista[0];
+      // Busca por login (sem senha na query) e compara o hash no cliente.
+      // Suporta transição: se a senha salva ainda não é hash bcrypt, compara em texto puro
+      // (usuários antigos) — assim que logar, o ideal é forçar redefinição de senha.
+      const lista = await sbGet('usuarios', `login=eq.${encodeURIComponent(login)}`);
+      const candidato = lista && lista[0];
+      if (candidato) {
+        const senhaSalva = candidato.senha || '';
+        const ehHash = /^\$2[aby]\$/.test(senhaSalva);
+        const ok = ehHash ? dcodeIO_bcrypt_compare(senha, senhaSalva) : senha === senhaSalva;
+        if (ok) usuario = candidato;
+      }
     }
 
     if (!usuario) {
@@ -3021,9 +3024,10 @@ async function salvarUsuario() {
   const checkeds = [...document.querySelectorAll('#usr-perms-grid input[type=checkbox]:checked')].map(c => c.value);
   const modulos = perfil === 'admin' ? MODULOS.map(m => m.id) : checkeds;
 
+  const senhaHash = senha ? dcodeIO.bcrypt.hashSync(senha, 10) : null;
   try {
-    if (id) { await sbPatch('usuarios', id, { nome, login, ...(senha ? { senha } : {}), perfil, modulos }); }
-    else     { await sbPost('usuarios', { nome, login, senha, perfil, modulos }); }
+    if (id) { await sbPatch('usuarios', id, { nome, login, ...(senhaHash ? { senha: senhaHash } : {}), perfil, modulos }); }
+    else     { await sbPost('usuarios', { nome, login, senha: senhaHash, perfil, modulos }); }
     fecharModal('modal-usuario');
     mostrarNotificacao('✅ Usuário salvo!');
     renderUsuarios();
@@ -4768,6 +4772,7 @@ function adicionarAoCarrinho() {
   if (!produtoSelecionado) { alert('Selecione um produto.'); return; }
   const qtd = parseInt(document.getElementById('venda-qtd').value)||1;
   const val = valorMoeda('venda-valor');
+  if (qtd < 1) { alert('Quantidade inválida.'); return; }
   if (val <= 0) { alert('Informe o valor de venda.'); return; }
   const noCarrinho = carrinho.filter(c=>c.ref===produtoSelecionado.ref).reduce((s,c)=>s+c.qtd,0);
   if (qtd > (produtoSelecionado.estoque - noCarrinho)) { alert(`Estoque insuficiente! Disponível: ${produtoSelecionado.estoque - noCarrinho}`); return; }
@@ -6268,8 +6273,7 @@ function renderSubReceber() {
 
 // ===== FINANCEIRO (EXTRATO GERAL) =====
 const FIN_KEY = 'oi2026_debitos';
-function getDebitos() { return JSON.parse(localStorage.getItem(FIN_KEY) || '[]'); }
-function saveDebitos(d) { localStorage.setItem(FIN_KEY, JSON.stringify(d)); }
+// getDebitos()/saveDebitos() definidos na camada Supabase (com _cache) — não redefinir aqui.
 
 let _baixaDebitoId = null;
 
@@ -6458,7 +6462,7 @@ function abrirBaixa(id) {
   const taxaEstimada = isCartao ? (d.taxa_total || 0) : 0;
   const valorLiquidoSugerido = isCartao ? Math.max(0, saldo - taxaEstimada) : saldo;
 
-  document.getElementById('baixa-valor').value = valorLiquidoSugerido.toFixed(2);
+  setValorMoeda('baixa-valor', valorLiquidoSugerido);
   document.getElementById('baixa-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('modal-baixa-titulo').textContent = isCartao ? 'Recebimento de Cartão' : 'Registrar Pagamento';
 
@@ -6504,7 +6508,7 @@ function calcTaxaCartao() {
   const taxaWrap = document.getElementById('baixa-taxa-wrap');
   if (taxaWrap.style.display === 'none') return;
 
-  const liquido  = parseFloat(document.getElementById('baixa-valor').value) || 0;
+  const liquido  = valorMoeda('baixa-valor');
   const brutoRef = parseFloat(document.getElementById('baixa-bruto-ref').value) || 0; // hidden confiável
   const prev = document.getElementById('baixa-taxa-preview');
   // Atualiza campo visual readonly
@@ -6555,7 +6559,7 @@ function calcBaixaPreview() {
   if (!d) return;
   const pago     = (d.pagamentos||[]).reduce((s,p)=>s+p.valor,0);
   const saldo    = d.total - pago;
-  const val      = parseFloat(document.getElementById('baixa-valor').value)||0;
+  const val      = valorMoeda('baixa-valor');
   const isCartao = document.getElementById('baixa-is-cartao').value === '1';
   const prev     = document.getElementById('baixa-preview');
   if (!val) { prev.style.display='none'; return; }
@@ -6595,7 +6599,7 @@ function calcBaixaPreview() {
 
 async function confirmarBaixa() {
   const id       = document.getElementById('baixa-debito-id').value;
-  const val      = parseFloat(document.getElementById('baixa-valor').value)||0;
+  const val      = valorMoeda('baixa-valor');
   const forma    = document.getElementById('baixa-forma').value;
   const data     = document.getElementById('baixa-data').value;
   const isCartao = document.getElementById('baixa-is-cartao').value === '1';
@@ -7045,28 +7049,44 @@ function gerarPDFClienteReceber() {
 const CP_KEY = 'oi2026_contas_pagar';
 let _cpEditing = null;
 
-// ===== SPLASH: Contas a pagar vencendo hoje (avisa logo após o login) =====
+// ===== SPLASH: Contas a pagar vencidas OU vencendo hoje (avisa logo após o login) =====
 function verificarContasVencendoHoje() {
   const hoje = new Date().toISOString().slice(0, 10);
-  const contas = getContasPagar().filter(c => !c.pago && c.vencimento === hoje);
+  // Antes só pegava vencimento === hoje (perdia contas já vencidas). Agora pega tudo até hoje.
+  const contas = getContasPagar()
+    .filter(c => !c.pago && c.vencimento && c.vencimento <= hoje)
+    .sort((a, b) => (a.vencimento || '').localeCompare(b.vencimento || ''));
   if (contas.length === 0) return;
 
+  const vencidas = contas.filter(c => c.vencimento < hoje).length;
+  const venceHoje = contas.length - vencidas;
   const total = contas.reduce((s, c) => s + (c.valor || 0), 0);
-  document.getElementById('splash-contas-qtd').textContent =
-    contas.length === 1 ? '1 conta' : `${contas.length} contas`;
+
+  const partesQtd = [];
+  if (vencidas > 0) partesQtd.push(`${vencidas} ${vencidas === 1 ? 'vencida' : 'vencidas'}`);
+  if (venceHoje > 0) partesQtd.push(`${venceHoje} vencendo hoje`);
+
+  document.getElementById('splash-contas-qtd').textContent = partesQtd.join(' e ');
   document.getElementById('splash-contas-data').textContent =
     new Date(hoje + 'T00:00:00').toLocaleDateString('pt-BR');
   document.getElementById('splash-contas-total').textContent = R(total);
 
-  document.getElementById('splash-contas-lista').innerHTML = contas.map(c => `
+  document.getElementById('splash-contas-lista').innerHTML = contas.map(c => {
+    const atrasada = c.vencimento < hoje;
+    const rotulo = atrasada
+      ? `Vencida em ${new Date(c.vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}`
+      : 'Vence hoje';
+    return `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
       <div>
         <div style="font-size:13px;font-weight:600;">${c.fornecedor || c.descricao || 'Sem descrição'}</div>
         ${c.fornecedor && c.descricao ? `<div style="font-size:11px;color:var(--muted);">${c.descricao}</div>` : ''}
+        <div style="font-size:11px;color:${atrasada ? 'var(--danger)' : 'var(--muted)'};margin-top:2px;">${rotulo}</div>
       </div>
       <strong style="color:var(--danger);">${R(c.valor)}</strong>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   document.getElementById('modal-splash-contas').classList.add('open');
 }
