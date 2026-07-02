@@ -1257,8 +1257,8 @@
         <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--accent);margin-bottom:12px;">🧾 Dados fiscais (NFC-e)</p>
         <div class="form-grid">
           <div class="form-row">
-            <label>NCM</label>
-            <input type="text" id="cad-ncm" placeholder="Ex: 62042200" maxlength="8" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')">
+            <label>NCM <span id="cad-ncm-check" style="font-size:10px;font-weight:400;"></span></label>
+            <input type="text" id="cad-ncm" placeholder="Ex: 62042200" maxlength="8" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'');validarNcm(this.value);" onblur="validarNcm(this.value)">
           </div>
           <div class="form-row">
             <label>Unidade</label>
@@ -1304,11 +1304,8 @@
         <div class="form-grid">
           <div class="form-row">
             <label>CEST <span style="font-size:10px;color:var(--muted);font-weight:400;">— obrigatório p/ produtos com Substituição Tributária</span></label>
-            <input type="text" id="cad-cest" placeholder="Ex: 2800100" maxlength="7" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')">
-          </div>
-          <div class="form-row">
-            <label>CFOP <span style="font-size:10px;color:var(--muted);font-weight:400;">— vazio = padrão da operação</span></label>
-            <input type="text" id="cad-cfop" placeholder="Ex: 5102" maxlength="4" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')">
+            <input type="text" id="cad-cest" placeholder="Ex: 2800100" maxlength="7" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'');validarCest(this.value);" onblur="validarCest(this.value)">
+            <span id="cad-cest-check" style="font-size:11px;"></span>
           </div>
         </div>
         <div class="form-grid">
@@ -4139,6 +4136,64 @@ function toggleCamposCsosn() {
   document.getElementById('cad-csosn-extra').style.display = semIcms ? 'none' : 'grid';
 }
 
+// ===== Validação de NCM / CEST contra as tabelas fiscais globais (tab_ncm, tab_cest) =====
+const _fiscalCache = { ncm: {}, cest: {} };
+let _ncmCheckTimer = null, _cestCheckTimer = null;
+
+async function ncmValido(codigo) {
+  codigo = (codigo || '').trim();
+  if (!codigo) return true; // campo vazio não bloqueia (NCM é opcional)
+  if (codigo in _fiscalCache.ncm) return _fiscalCache.ncm[codigo];
+  try {
+    const r = await sbGet('tab_ncm', `codigo=eq.${encodeURIComponent(codigo)}&select=codigo&limit=1`);
+    const ok = Array.isArray(r) && r.length > 0;
+    _fiscalCache.ncm[codigo] = ok;
+    return ok;
+  } catch (e) {
+    console.warn('Não foi possível validar NCM (tabela ausente?):', e.message);
+    return true; // se a tabela não existir/erro de rede, não bloqueia o cadastro
+  }
+}
+
+async function cestValido(codigo) {
+  codigo = (codigo || '').trim();
+  if (!codigo) return true; // CEST só é obrigatório para produtos com ST
+  if (codigo in _fiscalCache.cest) return _fiscalCache.cest[codigo];
+  try {
+    const r = await sbGet('tab_cest', `codigo=eq.${encodeURIComponent(codigo)}&select=codigo&limit=1`);
+    const ok = Array.isArray(r) && r.length > 0;
+    _fiscalCache.cest[codigo] = ok;
+    return ok;
+  } catch (e) {
+    console.warn('Não foi possível validar CEST (tabela ausente?):', e.message);
+    return true;
+  }
+}
+
+function validarNcm(valor) {
+  clearTimeout(_ncmCheckTimer);
+  const el = document.getElementById('cad-ncm-check');
+  if (!valor || valor.length < 8) { el.textContent = ''; return; }
+  el.textContent = '⏳ verificando...'; el.style.color = 'var(--muted)';
+  _ncmCheckTimer = setTimeout(async () => {
+    const ok = await ncmValido(valor);
+    el.textContent = ok ? '✅ válido' : '⚠ não encontrado na tabela';
+    el.style.color = ok ? 'var(--success)' : 'var(--danger)';
+  }, 400);
+}
+
+function validarCest(valor) {
+  clearTimeout(_cestCheckTimer);
+  const el = document.getElementById('cad-cest-check');
+  if (!valor || valor.length < 7) { el.textContent = ''; return; }
+  el.textContent = '⏳ verificando...'; el.style.color = 'var(--muted)';
+  _cestCheckTimer = setTimeout(async () => {
+    const ok = await cestValido(valor);
+    el.textContent = ok ? '✅ válido' : '⚠ não encontrado na tabela';
+    el.style.color = ok ? 'var(--success)' : 'var(--danger)';
+  }, 400);
+}
+
 // ===== FEATURE FLAGS UI (mostra/esconde seções de grade e fiscal) =====
 // ===== SUB-ABAS DA PÁGINA ESTOQUE (Lista de Produtos / Lançamento de Nota) =====
 function mostrarSubEstoque(sub) {
@@ -4641,6 +4696,18 @@ async function salvarCadastro() {
   if (!ref || !nome) { document.getElementById('cad-msg').textContent = '⚠ Preencha ref. e nome.'; return; }
   const produtos = getProdutos();
   if (produtos.find(p=>p.ref===ref)) { document.getElementById('cad-msg').textContent = '⚠ Ref. já existe.'; return; }
+  if (LOJA_USA_NFCE) {
+    const ncmVal = document.getElementById('cad-ncm').value.trim();
+    const cestVal = document.getElementById('cad-cest').value.trim();
+    if (ncmVal && !(await ncmValido(ncmVal))) {
+      document.getElementById('cad-msg').textContent = '⚠ NCM não encontrado na tabela fiscal. Verifique o código.';
+      return;
+    }
+    if (cestVal && !(await cestValido(cestVal))) {
+      document.getElementById('cad-msg').textContent = '⚠ CEST não encontrado na tabela fiscal. Verifique o código.';
+      return;
+    }
+  }
   const parcela = valorMoeda('cad-parcela');
   const nparcelas = parseInt(document.getElementById('cad-nparcelas').value) || 0;
   const ean13 = document.getElementById('cad-ean13').value.trim();
@@ -4671,7 +4738,6 @@ async function salvarCadastro() {
     novoProduto.aliquota_icms = parseFloat((document.getElementById('cad-aliquota-icms').value||'0').replace(',','.')) || 0;
     novoProduto.cod_beneficio = document.getElementById('cad-cod-beneficio').value.trim() || null;
     novoProduto.cest = document.getElementById('cad-cest').value.trim() || null;
-    novoProduto.cfop = document.getElementById('cad-cfop').value.trim() || null;
     novoProduto.cst_pis = document.getElementById('cad-cst-pis').value;
     novoProduto.cst_cofins = document.getElementById('cad-cst-cofins').value;
   }
@@ -4695,7 +4761,9 @@ async function salvarCadastro() {
     saveProdutos(produtos);
     document.getElementById('cad-msg').style.color = 'var(--success)';
     document.getElementById('cad-msg').textContent = '✓ Produto ' + ref + ' cadastrado!';
-    ['cad-ref','cad-ean13','cad-nome','cad-custo','cad-preco','cad-cp','cad-est','cad-parcela','cad-nparcelas','cad-est-min','cad-ncm','cad-aliquota-icms','cad-cod-beneficio','cad-cest','cad-cfop'].forEach(id=>document.getElementById(id).value='');
+    ['cad-ref','cad-ean13','cad-nome','cad-custo','cad-preco','cad-cp','cad-est','cad-parcela','cad-nparcelas','cad-est-min','cad-ncm','cad-aliquota-icms','cad-cod-beneficio','cad-cest'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('cad-ncm-check').textContent = '';
+    document.getElementById('cad-cest-check').textContent = '';
     document.getElementById('cad-cst-pis').value = '07';
     document.getElementById('cad-cst-cofins').value = '07';
     document.getElementById('cad-fornecedor').value = '';
