@@ -5160,7 +5160,10 @@ async function confirmarVenda() {
     </div>
   `;
   document.getElementById('modal-confirm-venda').classList.add('open');
-  
+
+  // Reabilita o botão de finalizar venda (ficava travado em "Salvando..." até recarregar a página)
+  if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = '✓ Finalizar Venda'; }
+
   // Limpar tudo
   carrinho = [];
   renderCarrinho();
