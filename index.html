@@ -2871,8 +2871,7 @@ async function renderUsuarios() {
   const isAdmin  = perfil === 'admin';
 
   // Licença — só master vê
-  const licBox = document.getElementById('license-box');
-  if (licBox) licBox.style.display = isMaster ? 'block' : 'none';
+
 
   if (isMaster) {
     try {
@@ -8235,7 +8234,6 @@ if (_sessaoAtual) {
   })();
 }
 
-// ── Empresa: ViaCEP ──────────────────────────────────────
 function buscarCepEmpresa(cep) {
   var cp=cep.replace(/[^0-9]/g,'');if(cp.length!==8)return;
   fetch('https://viacep.com.br/ws/'+cp+'/json/').then(function(r){return r.json();}).then(function(d){
@@ -8253,8 +8251,6 @@ function mascaraCNPJEmp(el) {
 }
 
 async function carregarDadosEmpresa() {
-  var ml=document.getElementById('master-login-atual');
-  if(ml) ml.value=CONFIG_LOJA.masterLogin||'admin';
   var fw=document.getElementById('emp-fiscal-wrap');
   if(fw) fw.style.display=LOJA_USA_NFCE?'block':'none';
   try {
@@ -8282,12 +8278,12 @@ async function salvarDadosEmpresa() {
   var emp={
     razao_social:get('emp-razao-social'),nome_fantasia:get('emp-nome-fantasia'),
     cnpj:get('emp-cnpj'),ie:get('emp-ie'),im:get('emp-im'),
-    regime:document.getElementById('emp-regime').value,
+    regime:(document.getElementById('emp-regime')||{}).value||'1',
     telefone:get('emp-telefone'),email:get('emp-email'),
     cep:get('emp-cep'),logradouro:get('emp-logradouro'),numero:get('emp-numero'),
     complemento:get('emp-complemento'),bairro:get('emp-bairro'),
     municipio:get('emp-municipio'),ibge:get('emp-ibge'),
-    uf:document.getElementById('emp-uf').value,
+    uf:(document.getElementById('emp-uf')||{}).value||'',
     serie_nfce:get('emp-serie-nfce'),num_inicial:get('emp-num-inicial'),
     ambiente:(document.getElementById('emp-ambiente')||{}).value||'2',
     atualizado_em:new Date().toISOString()
@@ -8299,30 +8295,6 @@ async function salvarDadosEmpresa() {
   }catch(e){msg.style.color='var(--danger)';msg.textContent='❌ Erro: '+e.message;}
   setTimeout(function(){msg.textContent='';},4000);
 }
-
-async function salvarCredenciaisAdmin() {
-  var loginNovo=(document.getElementById('master-login-novo').value||'').trim();
-  var senhaNova=(document.getElementById('master-senha-nova').value||'').trim();
-  var senhaConf=(document.getElementById('master-senha-conf').value||'').trim();
-  var msg=document.getElementById('master-msg');
-  if(!loginNovo&&!senhaNova){msg.style.color='var(--warn)';msg.textContent='Preencha ao menos um campo.';return;}
-  if(senhaNova&&senhaNova.length<6){msg.style.color='var(--danger)';msg.textContent='Senha mínima: 6 caracteres.';return;}
-  if(senhaNova&&senhaNova!==senhaConf){msg.style.color='var(--danger)';msg.textContent='Senhas não coincidem.';return;}
-  try{
-    var patch={};
-    if(loginNovo)patch.master_login=loginNovo;
-    if(senhaNova)patch.master_senha=senhaNova;
-    await sbPatch('lojas','loja_id=eq.'+LOJA_ID,patch);
-    if(loginNovo)CONFIG_LOJA.masterLogin=loginNovo;
-    if(senhaNova)CONFIG_LOJA.masterSenha=senhaNova;
-    var ml=document.getElementById('master-login-atual');if(ml)ml.value=CONFIG_LOJA.masterLogin;
-    document.getElementById('master-login-novo').value='';
-    document.getElementById('master-senha-nova').value='';
-    document.getElementById('master-senha-conf').value='';
-    msg.style.color='var(--success)';msg.textContent='✅ Credenciais atualizadas!';
-  }catch(e){msg.style.color='var(--danger)';msg.textContent='❌ Erro: '+e.message;}
-  setTimeout(function(){msg.textContent='';},4000);
-}
 setInterval(atualizarHora, 1000);
 atualizarHora();
 </script>
@@ -8330,23 +8302,6 @@ atualizarHora();
 <!-- USUÁRIOS -->
 <div id="page-usuarios" class="page">
   <div style="max-width:860px;">
-
-    <!-- Licença Master -->
-    <div class="license-box" id="license-box" style="display:none;">
-      <h3>🔑 Controle de Licença (Master)</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;">
-        <div class="form-row" style="margin-bottom:0;">
-          <label>Validade da licença (mês/ano)</label>
-          <input type="month" id="lic-validade" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;">
-        </div>
-        <div class="form-row" style="margin-bottom:0;">
-          <label>Status atual</label>
-          <div id="lic-status" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);"></div>
-        </div>
-        <button class="btn btn-primary" onclick="salvarLicenca()" style="margin-bottom:0;">Salvar Validade</button>
-      </div>
-      <p style="font-size:11px;color:var(--warn);margin-top:8px;">⚠️ Se a validade expirar, todos os usuários (exceto Master) serão bloqueados automaticamente.</p>
-    </div>
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div class="section-title" style="margin-bottom:0;border:none;">Usuários cadastrados</div>
@@ -8418,25 +8373,6 @@ atualizarHora();
         <div style="margin-top:16px;display:flex;gap:10px;">
           <button class="btn btn-primary" onclick="salvarDadosEmpresa()">💾 Salvar dados da empresa</button>
           <span id="emp-msg" style="font-size:12px;align-self:center;"></span>
-        </div>
-      </div>
-    </div>
-
-    <div style="margin-bottom:24px;">
-      <div class="section-title">🔐 Credenciais do Administrador</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;">
-        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Altere o login e senha do administrador principal da loja.</p>
-        <div class="form-grid">
-          <div class="form-row"><label>Login atual</label><input type="text" id="master-login-atual" readonly style="color:var(--muted);background:var(--bg);"></div>
-          <div class="form-row"><label>Novo login</label><input type="text" id="master-login-novo" placeholder="Ex: fatima.admin" autocomplete="off"></div>
-        </div>
-        <div class="form-grid">
-          <div class="form-row"><label>Nova senha</label><input type="password" id="master-senha-nova" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
-          <div class="form-row"><label>Confirmar senha</label><input type="password" id="master-senha-conf" placeholder="Repita a senha" autocomplete="new-password"></div>
-        </div>
-        <div style="margin-top:12px;display:flex;gap:10px;">
-          <button class="btn btn-primary" onclick="salvarCredenciaisAdmin()">🔐 Atualizar credenciais</button>
-          <span id="master-msg" style="font-size:12px;align-self:center;"></span>
         </div>
       </div>
     </div>
