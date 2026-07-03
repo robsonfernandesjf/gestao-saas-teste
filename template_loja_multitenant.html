@@ -2326,9 +2326,25 @@
     </div>
     <div class="modal-body" id="confirm-venda-body"></div>
     <div class="modal-footer" style="flex-wrap:wrap;gap:8px;">
-      <button class="btn btn-outline" onclick="abrirCupom(false)">👁️ Visualizar Cupom</button>
-      <button class="btn btn-outline" onclick="abrirCupom(true)">🖨️ Imprimir Cupom</button>
+      <button class="btn btn-outline" onclick="mostrarModalCupom()">🧾 Ver Cupom</button>
       <button class="btn btn-primary" onclick="fecharModal('modal-confirm-venda')">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CUPOM DE VENDA (comprovante interno, não fiscal) -->
+<div class="modal-bg" id="modal-cupom">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header" style="background:var(--success);color:#fff;">
+      <h2 style="color:#fff;">🧾 Cupom da Venda</h2>
+      <button class="modal-close" style="color:#fff;" onclick="fecharModal('modal-cupom')">×</button>
+    </div>
+    <div class="modal-body" style="padding:20px;background:var(--bg);">
+      <div id="cupom-conteudo" style="background:#fff;padding:24px 22px;border:1px solid var(--border);border-radius:10px;font-family:'Courier New',monospace;font-size:15px;line-height:1.65;color:#111;box-shadow:var(--shadow);"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="imprimirCupomAgora()">🖨️ Imprimir</button>
+      <button class="btn btn-outline" onclick="fecharModal('modal-cupom')">✕ Fechar</button>
     </div>
   </div>
 </div>
@@ -5748,55 +5764,95 @@ function renderRelEstoque() {
 // ===== CUPOM DE VENDA (comprovante interno — NÃO é NFC-e, sem valor fiscal) =====
 let _ultimoCupom = null;
 
-function abrirCupom(imprimirAutomatico) {
-  if (!_ultimoCupom) { alert('Nenhuma venda recente pra gerar cupom.'); return; }
-  const v = _ultimoCupom;
-  const imp = (_dadosEmpresaCache && _dadosEmpresaCache.impressora) || {};
-  const largura = imp.largura || '80mm';
+// Numeração sequencial simples, só pra referência no cupom (não é numeração fiscal).
+function proximoNumeroCupom() {
+  const chave = 'oi2026_cupom_seq';
+  const atual = parseInt(localStorage.getItem(chave) || '0') + 1;
+  localStorage.setItem(chave, atual);
+  return String(atual).padStart(6, '0');
+}
+
+// Monta o HTML do corpo do cupom — usado tanto no preview dentro do sistema
+// quanto na janela isolada de impressão, pra ficar sempre igual.
+function montarCupomHTML(v, fontSize) {
   const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
   const cnpj = (_dadosEmpresaCache && _dadosEmpresaCache.cnpj) || '';
+  const operador = (usuarioAtual() && usuarioAtual().nome) || '—';
+  const fs = fontSize || 15;
 
-  const itensHtml = v.itens.map(i => `
-    <tr>
-      <td colspan="2">${i.qtd}x ${i.produto}</td>
-    </tr>
-    <tr>
-      <td style="color:#666;">${R(i.valor_unit)} un.</td>
-      <td style="text-align:right;"><strong>${R(i.valor_unit * i.qtd)}</strong></td>
-    </tr>
+  const itensHtml = v.itens.map((i, idx) => `
+    <div style="margin-bottom:6px;">
+      <div><strong>${idx + 1}. ${i.produto}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding-left:14px;color:#555;">
+        <span>${i.qtd} UN x ${R(i.valor_unit)}</span>
+        <strong style="color:#111;">${R(i.valor_unit * i.qtd)}</strong>
+      </div>
+    </div>
   `).join('');
+
+  const linha = `<hr style="border:none;border-top:1px dashed #999;margin:10px 0;">`;
+
+  return `
+    <div style="text-align:center;font-size:${fs + 3}px;font-weight:700;margin-bottom:2px;">${nomeLoja}</div>
+    ${cnpj ? `<div style="text-align:center;font-size:${fs - 3}px;color:#666;">CNPJ: ${cnpj}</div>` : ''}
+    <div style="text-align:center;font-size:${fs - 2}px;font-weight:700;color:#b8860b;margin-top:8px;">CUPOM NÃO FISCAL</div>
+    <div style="text-align:center;font-size:${fs - 3}px;color:#666;">Nº ${v.numero}</div>
+    ${linha}
+    <div style="font-size:${fs - 1}px;">Data: ${v.dataHora}</div>
+    <div style="font-size:${fs - 1}px;">Operador: ${operador}</div>
+    ${linha}
+    <div style="font-weight:700;margin-bottom:8px;">ITENS</div>
+    ${itensHtml}
+    ${linha}
+    ${v.desconto > 0 ? `<div style="display:flex;justify-content:space-between;"><span>Desconto</span><strong style="color:var(--danger);">- ${R(v.desconto)}</strong></div>` : ''}
+    <div style="display:flex;justify-content:space-between;">
+      <span>Subtotal</span><strong>${R(v.total + (v.desconto || 0))}</strong>
+    </div>
+    ${linha}
+    <div style="display:flex;justify-content:space-between;font-size:${fs + 4}px;font-weight:800;">
+      <span>TOTAL</span><span>${R(v.total)}</span>
+    </div>
+    ${linha}
+    <div style="font-weight:700;margin-bottom:4px;">PAGAMENTO</div>
+    <div style="display:flex;justify-content:space-between;">
+      <span>${v.pagamento}${v.parcelas > 1 ? ' ' + v.parcelas + 'x' : ''}</span>
+    </div>
+    ${v.cliente ? `<div style="margin-top:6px;">Cliente: ${v.cliente}</div>` : ''}
+    ${v.vendedor ? `<div>Vendedor(a): ${v.vendedor}</div>` : ''}
+    <div style="text-align:center;font-size:${fs - 4}px;font-weight:700;border:1px solid #999;border-radius:6px;padding:8px;margin-top:14px;">
+      DOCUMENTO NÃO FISCAL<br>Comprovante interno de venda, sem valor fiscal
+    </div>
+    <div style="text-align:center;font-size:${fs - 2}px;margin-top:12px;color:#444;">
+      ${nomeLoja}<br>Obrigado pela preferência! 💛<br>Volte sempre!
+    </div>
+  `;
+}
+
+// Mostra o preview bonito, dentro do próprio sistema (chamado pelo botão "🧾 Ver Cupom")
+function mostrarModalCupom() {
+  if (!_ultimoCupom) { alert('Nenhuma venda recente pra gerar cupom.'); return; }
+  if (!_ultimoCupom.numero) _ultimoCupom.numero = proximoNumeroCupom();
+  document.getElementById('cupom-conteudo').innerHTML = montarCupomHTML(_ultimoCupom, 15);
+  document.getElementById('modal-cupom').classList.add('open');
+}
+
+// Impressão de verdade acontece numa janela isolada, pra não brigar com o CSS
+// de impressão dos relatórios (que assume que só a página de Relatórios existe).
+function imprimirCupomAgora() {
+  if (!_ultimoCupom) return;
+  const imp = (_dadosEmpresaCache && _dadosEmpresaCache.impressora) || {};
+  const largura = imp.largura || '80mm';
+  const corpo = montarCupomHTML(_ultimoCupom, 13);
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
   <title>Cupom de Venda</title>
   <style>
     @page { size: ${largura} auto; margin: 0; }
     * { box-sizing: border-box; }
-    body { font-family: 'Courier New', monospace; font-size: 12px; color: #000; width: ${largura}; margin: 0 auto; padding: 8px; }
-    h1 { font-size: 14px; text-align: center; margin: 0 0 2px; }
-    .sub { text-align: center; font-size: 10px; margin-bottom: 8px; }
-    hr { border: none; border-top: 1px dashed #000; margin: 8px 0; }
-    table { width: 100%; border-collapse: collapse; }
-    td { padding: 1px 0; font-size: 11px; }
-    .total-row td { font-size: 13px; font-weight: bold; padding-top: 6px; }
-    .aviso { text-align: center; font-size: 9px; font-weight: bold; margin-top: 10px; border: 1px solid #000; padding: 4px; }
-    .rodape { text-align: center; font-size: 10px; margin-top: 10px; }
+    body { font-family: 'Courier New', monospace; color: #000; width: ${largura}; margin: 0 auto; padding: 10px; }
   </style></head><body>
-    <h1>${nomeLoja}</h1>
-    ${cnpj ? `<p class="sub">CNPJ: ${cnpj}</p>` : ''}
-    <p class="sub">${v.dataHora}</p>
-    <hr>
-    <table>${itensHtml}</table>
-    <hr>
-    <table>
-      ${v.desconto > 0 ? `<tr><td>Desconto</td><td style="text-align:right;">- ${R(v.desconto)}</td></tr>` : ''}
-      <tr class="total-row"><td>TOTAL</td><td style="text-align:right;">${R(v.total)}</td></tr>
-      <tr><td colspan="2">Pagamento: ${v.pagamento}${v.parcelas > 1 ? ' ' + v.parcelas + 'x' : ''}</td></tr>
-      ${v.cliente ? `<tr><td colspan="2">Cliente: ${v.cliente}</td></tr>` : ''}
-      ${v.vendedor ? `<tr><td colspan="2">Vendedor(a): ${v.vendedor}</td></tr>` : ''}
-    </table>
-    <div class="aviso">DOCUMENTO NÃO FISCAL<br>Comprovante interno de venda, sem valor fiscal</div>
-    <p class="rodape">Obrigado pela preferência! 💛</p>
-    ${imprimirAutomatico ? '<script>window.onload=()=>{ window.print(); }<\/script>' : ''}
+    ${corpo}
+    <script>window.onload=()=>{ window.print(); }<\/script>
   </body></html>`;
 
   const blob = new Blob([html], { type: 'text/html' });
