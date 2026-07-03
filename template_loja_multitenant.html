@@ -633,6 +633,7 @@
   <button onclick="showPage('clientes')">👥 Clientes/Fornecedores</button>
   <button onclick="showPage('vendedores')">🧑‍💼 Vendedores</button>
   <button onclick="showPage('financeiro')">💰 Financeiro</button>
+  <button onclick="showPage('trocas')">🔄 Trocas</button>
   <button id="nav-empresa" onclick="showPage('empresa'); carregarDadosEmpresa();" style="display:none;">⚙️ Config. Empresa</button>
 </nav>
 <div id="nav-overlay" onclick="toggleMenuMobile()"></div>
@@ -986,8 +987,9 @@
       <div class="form-row" style="position:relative;">
         <label>Cliente (opcional)</label>
         <input type="text" id="venda-cliente" placeholder="Nome da cliente..." autocomplete="off"
-               oninput="filtrarClientesVenda(this)" onfocus="filtrarClientesVenda(this)" onblur="setTimeout(()=>fecharSugestoesClienteVenda(),150)">
+               oninput="filtrarClientesVenda(this);checarCreditoCliente();" onfocus="filtrarClientesVenda(this)" onblur="setTimeout(()=>{fecharSugestoesClienteVenda();checarCreditoCliente();},150)">
         <div id="venda-cliente-sugestoes" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+        <div id="venda-cliente-credito" style="display:none;margin-top:6px;padding:8px 10px;background:var(--success-light);border:1px solid #B8D9C0;border-radius:6px;font-size:12px;"></div>
       </div>
 
       <div class="form-row">
@@ -1009,6 +1011,7 @@
         <button type="button" class="pdv-pag-btn" data-valor="Cartão débito" onclick="selecionarFormaPagamento(this)">💳 Débito</button>
         <button type="button" class="pdv-pag-btn" data-valor="Cartão crédito" onclick="selecionarFormaPagamento(this)">💳 Crédito</button>
         <button type="button" class="pdv-pag-btn" data-valor="A prazo" onclick="selecionarFormaPagamento(this)">📄 Fiado</button>
+        <button type="button" class="pdv-pag-btn" data-valor="Voucher" onclick="selecionarFormaPagamento(this)">🎫 Voucher</button>
       </div>
 
       <!-- Select real (mantido para a lógica existente, oculto visualmente) -->
@@ -1018,11 +1021,76 @@
         <option>Cartão débito</option>
         <option>Pix</option>
         <option value="A prazo">A prazo (fiado)</option>
+        <option value="Voucher">Voucher (crédito de troca)</option>
       </select>
 
       <div class="pdv-forma-selecionada">
         <span style="color:var(--muted);">Forma selecionada</span>
         <strong id="pdv-forma-texto">— selecione acima —</strong>
+      </div>
+
+      <div class="form-row" style="margin:10px 0 0;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400;">
+          <input type="checkbox" id="venda-pag-misto" onchange="togglePagamentoMisto()" style="width:auto;">
+          Dividir em até 2 formas de pagamento
+        </label>
+      </div>
+
+      <div id="pagamento-misto-wrap" style="display:none;margin-top:10px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);">
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Forma 1</label>
+            <select id="misto-forma-1" onchange="recalcularMisto()">
+              <option value="À vista">💵 Dinheiro</option>
+              <option value="Pix">📱 Pix</option>
+              <option value="Cartão débito">💳 Débito</option>
+              <option value="Cartão crédito">💳 Crédito</option>
+              <option value="A prazo">📄 Fiado</option>
+              <option value="Voucher">🎫 Voucher</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Valor 1 (R$)</label>
+            <input type="text" inputmode="numeric" id="misto-valor-1" placeholder="0,00" oninput="mascaraMoeda(this);recalcularMisto();">
+          </div>
+        </div>
+        <div class="form-row" id="misto-parcelas-1-wrap" style="display:none;">
+          <label>Parcelas (forma 1)</label>
+          <select id="misto-parcelas-1">
+            <option value="1">1x (à vista)</option><option value="2">2x</option><option value="3">3x</option>
+            <option value="4">4x</option><option value="5">5x</option><option value="6">6x</option>
+            <option value="7">7x</option><option value="8">8x</option><option value="9">9x</option>
+            <option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
+          </select>
+        </div>
+
+        <div class="form-grid" style="margin-top:10px;">
+          <div class="form-row">
+            <label>Forma 2</label>
+            <select id="misto-forma-2" onchange="recalcularMisto()">
+              <option value="À vista">💵 Dinheiro</option>
+              <option value="Pix">📱 Pix</option>
+              <option value="Cartão débito" selected>💳 Débito</option>
+              <option value="Cartão crédito">💳 Crédito</option>
+              <option value="A prazo">📄 Fiado</option>
+              <option value="Voucher">🎫 Voucher</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Valor 2 (R$) — restante automático</label>
+            <input type="text" id="misto-valor-2" placeholder="0,00" readonly style="background:var(--bg);color:var(--muted);">
+          </div>
+        </div>
+        <div class="form-row" id="misto-parcelas-2-wrap" style="display:none;">
+          <label>Parcelas (forma 2)</label>
+          <select id="misto-parcelas-2">
+            <option value="1">1x (à vista)</option><option value="2">2x</option><option value="3">3x</option>
+            <option value="4">4x</option><option value="5">5x</option><option value="6">6x</option>
+            <option value="7">7x</option><option value="8">8x</option><option value="9">9x</option>
+            <option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
+          </select>
+        </div>
+        <div id="misto-status" style="font-size:12px;margin-top:8px;color:var(--muted);"></div>
       </div>
 
       <div class="form-row" style="margin-bottom:0;display:none;" id="venda-parcelas-wrap">
@@ -2047,6 +2115,69 @@
 
 </div>
 
+<!-- ===== PÁGINA: TROCAS E DEVOLUÇÕES ===== -->
+<div id="page-trocas" class="page">
+  <div style="max-width:960px;">
+    <div class="section-title">🔄 Trocas e Devoluções</div>
+
+    <div class="toolbar" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <input type="text" id="trocas-busca" placeholder="Buscar por referência, produto ou cliente..." style="min-width:280px;" oninput="buscarParaTroca()">
+    </div>
+
+    <div id="trocas-resultado"></div>
+
+    <div style="margin-top:32px;">
+      <div class="section-title" style="font-size:14px;">📋 Histórico de trocas/devoluções</div>
+      <div id="trocas-historico"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DEVOLUÇÃO -->
+<div class="modal-bg" id="modal-devolucao">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h2>Registrar Devolução</h2>
+      <button class="modal-close" onclick="fecharModal('modal-devolucao')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="dev-venda-ref">
+      <div class="produto-info-box" style="margin-bottom:16px;">
+        <p><strong id="dev-produto-nome"></strong></p>
+        <p style="font-size:12px;color:var(--muted);">Vendido em <span id="dev-data-venda"></span> · <span id="dev-info-extra"></span></p>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Quantidade a devolver</label>
+          <input type="number" id="dev-qtd" min="1" value="1" oninput="atualizarValorDevolucao()">
+        </div>
+        <div class="form-row">
+          <label>Valor a devolver (R$)</label>
+          <input type="text" id="dev-valor" readonly style="background:var(--bg);color:var(--muted);">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>O que fazer com o valor?</label>
+        <select id="dev-destino" onchange="toggleDevCliente()">
+          <option value="credito">Gerar crédito para o cliente (usar em compra futura)</option>
+          <option value="estorno">Estornar (dinheiro/cartão devolvido na hora)</option>
+        </select>
+      </div>
+      <div class="form-row" id="dev-cliente-wrap">
+        <label>Cliente (pra quem vai o crédito)</label>
+        <input type="text" id="dev-cliente" placeholder="Nome da cliente...">
+      </div>
+      <div class="form-row">
+        <label>Motivo (opcional)</label>
+        <input type="text" id="dev-motivo" placeholder="Ex: não serviu, peça com defeito...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-devolucao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarDevolucao()">Confirmar Devolução</button>
+    </div>
+  </div>
+</div>
 
 
 <!-- MODAL TAXA DE CARTÃO -->
@@ -2744,6 +2875,7 @@ const MODULOS = [
   { id: 'clientes',    label: '👥 Clientes/Fornecedores', icon: '👥' },
   { id: 'vendedores',  label: '🧑‍💼 Vendedores',        icon: '🧑‍💼' },
   { id: 'financeiro',  label: '💰 Financeiro',         icon: '💰' },
+  { id: 'trocas',      label: '🔄 Trocas/Devoluções',   icon: '🔄' },
 ];
 
 function getUsuarios() {
@@ -3258,6 +3390,7 @@ function showPage(id) {
   if (id === 'clientes') { renderClientes(); }
   if (id === 'vendedores') { renderVendedores(); }
   if (id === 'financeiro') { renderFinanceiroUnificado(); }
+  if (id === 'trocas') { renderTrocas(); }
   if (id === 'usuarios') { renderUsuarios(); }
   if (id === 'vendas') { popularListaClientesVenda(); popularSelectVendedores(); if (!document.getElementById('venda-data').value) { const t = new Date(); document.getElementById('venda-data').value = t.toISOString().slice(0,10); } }
   closeMenuMobile();
@@ -5101,6 +5234,49 @@ function renderCarrinho() {
     <div class="linha lucro col-custo"><span>💰 Lucro previsto</span><span>${R(totalLucro)} (${pct(margemGeral)})</span></div>
     <div class="linha"><span>Total</span><span class="valor-total">${R(totalComDesconto)}</span></div>
   `;
+
+  if (document.getElementById('venda-pag-misto')?.checked) recalcularMisto();
+}
+
+// ===== PAGAMENTO MISTO (até 2 formas por venda) =====
+function togglePagamentoMisto() {
+  const ativo = document.getElementById('venda-pag-misto').checked;
+  document.querySelector('.pdv-pagamento-grid').style.display = ativo ? 'none' : 'grid';
+  document.querySelector('.pdv-forma-selecionada').style.display = ativo ? 'none' : 'flex';
+  document.getElementById('venda-parcelas-wrap').style.display = 'none';
+  document.getElementById('prazo-fields').style.display = 'none';
+  document.getElementById('pagamento-misto-wrap').style.display = ativo ? 'block' : 'none';
+  if (ativo) recalcularMisto();
+}
+
+function recalcularMisto() {
+  const totalBruto = carrinho.reduce((s,c) => s + c.valor_unit * c.qtd, 0);
+  const desconto = valorMoeda('venda-desconto');
+  const totalFat = Math.max(0, totalBruto - desconto);
+  const valor1 = valorMoeda('misto-valor-1');
+  const valor2 = Math.max(0, totalFat - valor1);
+  setValorMoeda('misto-valor-2', valor2);
+
+  const forma1 = document.getElementById('misto-forma-1').value;
+  const forma2 = document.getElementById('misto-forma-2').value;
+  document.getElementById('misto-parcelas-1-wrap').style.display = forma1 === 'Cartão crédito' ? 'block' : 'none';
+  document.getElementById('misto-parcelas-2-wrap').style.display = forma2 === 'Cartão crédito' ? 'block' : 'none';
+
+  const statusEl = document.getElementById('misto-status');
+  if (valor1 <= 0) {
+    statusEl.innerHTML = `Informe o valor da forma 1. Total da venda: <strong>${R(totalFat)}</strong>`;
+    statusEl.style.color = 'var(--muted)';
+  } else if (valor1 > totalFat) {
+    statusEl.innerHTML = `⚠ Valor da forma 1 é maior que o total da venda (${R(totalFat)})`;
+    statusEl.style.color = 'var(--danger)';
+  } else {
+    statusEl.innerHTML = `Total: ${R(totalFat)} · Forma 1: ${R(valor1)} · Forma 2: ${R(valor2)}`;
+    statusEl.style.color = 'var(--success)';
+  }
+
+  // Se alguma das formas for fiado, mostra os campos de vencimento/entrada/obs
+  const temPrazo = forma1 === 'A prazo' || forma2 === 'A prazo';
+  document.getElementById('prazo-fields').style.display = temPrazo ? 'block' : 'none';
 }
 
 function limparCarrinho() {
@@ -5109,6 +5285,10 @@ function limparCarrinho() {
   document.getElementById('venda-desconto').value = '';
   document.querySelectorAll('.pdv-pag-btn').forEach(b => b.classList.remove('ativo'));
   document.getElementById('pdv-forma-texto').textContent = '— selecione acima —';
+  document.getElementById('venda-pag-misto').checked = false;
+  document.getElementById('misto-valor-1').value = '';
+  document.getElementById('misto-valor-2').value = '';
+  togglePagamentoMisto();
   renderCarrinho();
 }
 
@@ -5125,15 +5305,54 @@ async function confirmarVenda() {
   if (carrinho.length === 0) { alert('Carrinho vazio. Adicione ao menos um produto.'); return; }
   const cliente = document.getElementById('venda-cliente').value.trim();
   const vendedor = document.getElementById('venda-vendedor').value || '';
-  const pag = document.getElementById('venda-pagamento').value;
-  const parcelas = pag === 'Cartão crédito' ? (parseInt(document.getElementById('venda-parcelas').value) || 1) : 1;
-  
-  if (pag === 'A prazo') {
+
+  const totalBruto = carrinho.reduce((s,c) => s + c.valor_unit * c.qtd, 0);
+  const desconto = valorMoeda('venda-desconto');
+  const totalFat = Math.max(0, totalBruto - desconto);
+
+  // Monta a lista de "pernas" de pagamento: 1 perna (comportamento normal)
+  // ou 2 pernas quando o pagamento misto está ativado.
+  const pagMisto = document.getElementById('venda-pag-misto')?.checked;
+  let pagamentos = [];
+  let pag;         // usado no cupom e nas mensagens — junta as formas quando é misto
+  let parcelas = 1; // só é relevante fora do modo misto (cartão de crédito parcelado)
+
+  if (pagMisto) {
+    const f1 = document.getElementById('misto-forma-1').value;
+    const v1 = valorMoeda('misto-valor-1');
+    const p1 = f1 === 'Cartão crédito' ? (parseInt(document.getElementById('misto-parcelas-1').value) || 1) : 1;
+    const f2 = document.getElementById('misto-forma-2').value;
+    const v2 = valorMoeda('misto-valor-2');
+    const p2 = f2 === 'Cartão crédito' ? (parseInt(document.getElementById('misto-parcelas-2').value) || 1) : 1;
+    if (v1 <= 0 || v2 <= 0) { alert('Informe os dois valores do pagamento misto.'); return; }
+    if (Math.abs((v1 + v2) - totalFat) > 0.02) { alert('A soma das duas formas precisa bater com o total da venda (' + R(totalFat) + ').'); return; }
+    pagamentos = [{ forma: f1, valor: v1, parcelas: p1 }, { forma: f2, valor: v2, parcelas: p2 }];
+    pag = f1 + ' + ' + f2;
+  } else {
+    pag = document.getElementById('venda-pagamento').value;
+    parcelas = pag === 'Cartão crédito' ? (parseInt(document.getElementById('venda-parcelas').value) || 1) : 1;
+    pagamentos = [{ forma: pag, valor: totalFat, parcelas }];
+  }
+
+  const temPrazo = pagamentos.some(p => p.forma === 'A prazo');
+  if (temPrazo) {
     if (!cliente) { alert('Para venda a prazo, informe o nome da cliente.'); document.getElementById('venda-cliente').focus(); return; }
     const clienteCadastrado = getClientes().find(c => (c.nome||'').trim().toLowerCase() === cliente.toLowerCase());
     if (!clienteCadastrado) {
       alert('Venda fiado só é permitida para clientes já cadastrados. Cadastre "' + cliente + '" em Clientes/Fornecedores antes de continuar, ou escolha o nome certinho na lista.');
       document.getElementById('venda-cliente').focus();
+      return;
+    }
+  }
+
+  // Voucher/crédito de troca: não é receita nova, é resgate de um crédito já
+  // concedido — por isso valida contra o saldo do cliente e não gera débito.
+  const totalVoucher = pagamentos.filter(p => p.forma === 'Voucher').reduce((s, p) => s + p.valor, 0);
+  if (totalVoucher > 0) {
+    if (!cliente) { alert('Pra pagar com voucher, informe o nome do cliente.'); document.getElementById('venda-cliente').focus(); return; }
+    const disponivel = creditoDisponivel(cliente);
+    if (totalVoucher > disponivel + 0.01) {
+      alert(`Esse cliente tem apenas ${R(disponivel)} de crédito disponível (o voucher informado é de ${R(totalVoucher)}).`);
       return;
     }
   }
@@ -5152,9 +5371,6 @@ async function confirmarVenda() {
   } else {
     agora = new Date().toLocaleString('pt-BR');
   }
-  const totalBruto = carrinho.reduce((s,c) => s + c.valor_unit * c.qtd, 0);
-  const desconto = valorMoeda('venda-desconto');
-  const totalFat = Math.max(0, totalBruto - desconto);
   // Desconto rateado proporcionalmente entre os itens, pra margem/lucro por
   // produto ficarem corretos (sem isso, o desconto nunca chegava a ser
   // subtraído do valor de fato salvo na venda).
@@ -5219,189 +5435,190 @@ async function confirmarVenda() {
   }
 
   // Se for a prazo, criar débito
-  if (pag === 'A prazo') {
-    const vencInput = document.getElementById('prazo-vencimento').value;
-    const entradaVal = valorMoeda('prazo-entrada');
-    const obs = document.getElementById('prazo-obs').value.trim();
-    let vencFmt = '';
-    if (vencInput) { const [y,m,d] = vencInput.split('-'); vencFmt = d+'/'+m+'/'+y; }
-    const debitos = getDebitos();
-    const debito = {
-      id: 'deb_' + vendaId,
-      venda_id: vendaId,
-      cliente,
-      data_venda: agora,
-      total: totalFat,
-      vencimento: vencFmt,
-      obs,
-      itens: carrinho.map(c=>({produto:c.produto, qtd:c.qtd, valor:c.valor_unit*c.qtd})),
-      pagamentos: []
-    };
-    if (entradaVal > 0) {
-      const [yd,md,dd] = (dataInput||new Date().toISOString().slice(0,10)).split('-');
-      debito.pagamentos.push({ valor: entradaVal, forma: 'Entrada', data: dd+'/'+md+'/'+yd });
+  // Processa uma "perna" de pagamento (forma + valor + parcelas). Com pagamento
+  // único, isso roda uma vez com o total inteiro — com pagamento misto, roda
+  // uma vez pra cada forma, com o valor de cada uma.
+  async function processarFormaPagamento(forma, valorLeg, parcelasLeg, sufixoId) {
+    // Voucher: resgate de crédito já concedido numa troca anterior. Não é
+    // dinheiro novo entrando, então NÃO gera lançamento em A Receber —
+    // só abate do saldo de crédito do cliente.
+    if (forma === 'Voucher') {
+      ajustarCredito(cliente, -valorLeg);
+      return;
     }
-    debitos.unshift(debito);
-    saveDebitos(debitos);
 
-    // Salvar no Supabase — mesmos nomes de coluna reais confirmados no banco
-    // (valor_total/valor_pago/produto), sem venda_id (coluna é uuid, incompatível
-    // com o id numérico usado internamente pra agrupar itens da venda).
-    try {
-      const criado = await sbPost('debitos', {
-        cliente: debito.cliente,
-        produto: debito.itens.map(i => i.produto).join(', '),
-        valor_total: debito.total,
-        valor_pago: entradaVal > 0 ? entradaVal : 0,
+    if (forma === 'A prazo') {
+      const vencInput = document.getElementById('prazo-vencimento').value;
+      const entradaVal = valorMoeda('prazo-entrada');
+      const obs = document.getElementById('prazo-obs').value.trim();
+      let vencFmt = '';
+      if (vencInput) { const [y,m,d] = vencInput.split('-'); vencFmt = d+'/'+m+'/'+y; }
+      const debitos = getDebitos();
+      const debito = {
+        id: 'deb_' + vendaId + sufixoId,
+        venda_id: vendaId,
+        cliente,
+        data_venda: agora,
+        total: valorLeg,
         vencimento: vencFmt,
-        obs: debito.obs,
-        pagamentos: debito.pagamentos
-      });
-      const registro = Array.isArray(criado) ? criado[0] : criado;
-      if (registro && registro.id) { debito.id = registro.id; saveDebitos(debitos); }
-      invalidarCache('debitos');
-    } catch (e) { console.warn('Venda a prazo salva localmente:', e.message); }
-  }
-
-  // Cartão (débito ou crédito) → acumula no débito do dia (um único lançamento por dia, somando débito + crédito)
-  if (pag === 'Cartão crédito' || pag === 'Cartão débito') {
-    const dataBase = dataInput || new Date().toISOString().slice(0,10);
-    const debitos = getDebitos();
-    // Agrupa pelo campo cartao_dia (não pelo id — o id de verdade só existe
-    // depois que o Supabase cria a linha; antes disso era usado um id local
-    // fixo tipo "cartao_2026-07-02", que nunca batia com nenhuma linha real
-    // no banco, então o lançamento nunca sincronizava).
-    const existente = debitos.find(d => d.cartao_dia === dataBase);
-
-    // Calcula a taxa desta venda com base na modalidade/parcelas, usando a tabela cadastrada
-    const taxaPct = buscarTaxaPercentual(pag, parcelas);
-    const taxaValor = totalFat * (taxaPct / 100);
-    const movimentoLabel = pag === 'Cartão crédito' ? `Crédito${parcelas>1?' '+parcelas+'x':' à vista'}` : 'Débito';
-
-    if (existente) {
-      // Acumula no lançamento já existente do dia
-      existente.total += totalFat;
-      existente.taxa_total = (existente.taxa_total || 0) + taxaValor;
-      existente.venda_ids = existente.venda_ids || [];
-      existente.venda_ids.push(vendaId);
-      existente.itens = existente.itens || [];
-      carrinho.forEach(c => existente.itens.push({produto: c.produto, qtd: c.qtd, valor: c.valor_unit * c.qtd}));
-      existente.movimentos = existente.movimentos || [];
-      existente.movimentos.push({ tipo: movimentoLabel, valor: totalFat, taxaPct, taxaValor });
-      existente.obs = `${existente.venda_ids.length} venda(s) no cartão em ${existente.data_venda.split(',')[0]} · taxa estimada ${R(existente.taxa_total)}`;
-      saveDebitos(debitos);
-
-      // Atualiza a linha já existente no Supabase (se o id atual for um id
-      // real do banco; senão, tenta criar agora mesmo — recupera lançamentos
-      // de dias anteriores a este ajuste que ainda não tinham sido salvos).
-      try {
-        const ehIdReal = existente.id && !String(existente.id).startsWith('cartao_');
-        if (ehIdReal) {
-          await sbPatch('debitos', existente.id, {
-            produto: existente.itens.map(i => i.produto).join(', '),
-            valor_total: existente.total,
-            obs: existente.obs
-          });
-        } else {
-          const criado = await sbPost('debitos', {
-            cliente: 'Cartão',
-            produto: existente.itens.map(i => i.produto).join(', '),
-            valor_total: existente.total,
-            valor_pago: 0,
-            vencimento: existente.vencimento,
-            obs: existente.obs,
-            pagamentos: [],
-            cartao_dia: dataBase
-          });
-          const registro = Array.isArray(criado) ? criado[0] : criado;
-          if (registro && registro.id) existente.id = registro.id;
-          saveDebitos(debitos);
-        }
-        invalidarCache('debitos');
-      } catch (e) { console.warn('Cartão salvo localmente:', e.message); }
-    } else {
-      // Calcula próximo dia útil
-      const proxUtil = proximoDiaUtil(dataBase);
-      const [pu_y, pu_m, pu_d] = proxUtil.split('-');
-      const vencFmt = pu_d + '/' + pu_m + '/' + pu_y;
-      const novoCartao = {
-        id: 'cartao_' + dataBase,  // provisório, até o Supabase devolver o id real
-        venda_id: vendaId,         // primeira venda do dia
-        venda_ids: [vendaId],
-        cliente: 'Cartão',
-        data_venda: agora.split(',')[0],  // só a data
-        total: totalFat,
-        taxa_total: taxaValor,
-        vencimento: vencFmt,
-        obs: `1 venda(s) no cartão em ${agora.split(',')[0]} · taxa estimada ${R(taxaValor)}`,
-        itens: carrinho.map(c => ({produto: c.produto, qtd: c.qtd, valor: c.valor_unit * c.qtd})),
-        movimentos: [{ tipo: movimentoLabel, valor: totalFat, taxaPct, taxaValor }],
-        pagamentos: [],
-        cartao_dia: dataBase   // marca para identificação
+        obs,
+        itens: carrinho.map(c=>({produto:c.produto, qtd:c.qtd, valor:c.valor_unit*c.qtd})),
+        pagamentos: []
       };
-      debitos.unshift(novoCartao);
+      if (entradaVal > 0) {
+        const [yd,md,dd] = (dataInput||new Date().toISOString().slice(0,10)).split('-');
+        debito.pagamentos.push({ valor: entradaVal, forma: 'Entrada', data: dd+'/'+md+'/'+yd });
+      }
+      debitos.unshift(debito);
       saveDebitos(debitos);
 
       try {
         const criado = await sbPost('debitos', {
-          cliente: 'Cartão',
-          produto: carrinho.map(c => c.produto).join(', '),
-          valor_total: totalFat,
-          valor_pago: 0,
+          cliente: debito.cliente,
+          produto: debito.itens.map(i => i.produto).join(', '),
+          valor_total: debito.total,
+          valor_pago: entradaVal > 0 ? entradaVal : 0,
           vencimento: vencFmt,
-          obs: novoCartao.obs,
-          pagamentos: [],
-          cartao_dia: dataBase
+          obs: debito.obs,
+          pagamentos: debito.pagamentos
         });
         const registro = Array.isArray(criado) ? criado[0] : criado;
-        if (registro && registro.id) { novoCartao.id = registro.id; saveDebitos(debitos); }
+        if (registro && registro.id) { debito.id = registro.id; saveDebitos(debitos); }
         invalidarCache('debitos');
-      } catch (e) { console.warn('Cartão salvo localmente:', e.message); }
+      } catch (e) { console.warn('Venda a prazo salva localmente:', e.message); }
+    }
+
+    // Cartão (débito ou crédito) → acumula no débito do dia (um único lançamento por dia, somando débito + crédito)
+    if (forma === 'Cartão crédito' || forma === 'Cartão débito') {
+      const dataBase = dataInput || new Date().toISOString().slice(0,10);
+      const debitos = getDebitos();
+      const existente = debitos.find(d => d.cartao_dia === dataBase);
+
+      const taxaPct = buscarTaxaPercentual(forma, parcelasLeg);
+      const taxaValor = valorLeg * (taxaPct / 100);
+      const movimentoLabel = forma === 'Cartão crédito' ? `Crédito${parcelasLeg>1?' '+parcelasLeg+'x':' à vista'}` : 'Débito';
+
+      if (existente) {
+        existente.total += valorLeg;
+        existente.taxa_total = (existente.taxa_total || 0) + taxaValor;
+        existente.venda_ids = existente.venda_ids || [];
+        existente.venda_ids.push(vendaId);
+        existente.itens = existente.itens || [];
+        carrinho.forEach(c => existente.itens.push({produto: c.produto, qtd: c.qtd, valor: c.valor_unit * c.qtd}));
+        existente.movimentos = existente.movimentos || [];
+        existente.movimentos.push({ tipo: movimentoLabel, valor: valorLeg, taxaPct, taxaValor });
+        existente.obs = `${existente.venda_ids.length} venda(s) no cartão em ${existente.data_venda.split(',')[0]} · taxa estimada ${R(existente.taxa_total)}`;
+        saveDebitos(debitos);
+
+        try {
+          const ehIdReal = existente.id && !String(existente.id).startsWith('cartao_');
+          if (ehIdReal) {
+            await sbPatch('debitos', existente.id, {
+              produto: existente.itens.map(i => i.produto).join(', '),
+              valor_total: existente.total,
+              obs: existente.obs
+            });
+          } else {
+            const criado = await sbPost('debitos', {
+              cliente: 'Cartão',
+              produto: existente.itens.map(i => i.produto).join(', '),
+              valor_total: existente.total,
+              valor_pago: 0,
+              vencimento: existente.vencimento,
+              obs: existente.obs,
+              pagamentos: [],
+              cartao_dia: dataBase
+            });
+            const registro = Array.isArray(criado) ? criado[0] : criado;
+            if (registro && registro.id) existente.id = registro.id;
+            saveDebitos(debitos);
+          }
+          invalidarCache('debitos');
+        } catch (e) { console.warn('Cartão salvo localmente:', e.message); }
+      } else {
+        const proxUtil = proximoDiaUtil(dataBase);
+        const [pu_y, pu_m, pu_d] = proxUtil.split('-');
+        const vencFmt = pu_d + '/' + pu_m + '/' + pu_y;
+        const novoCartao = {
+          id: 'cartao_' + dataBase,
+          venda_id: vendaId,
+          venda_ids: [vendaId],
+          cliente: 'Cartão',
+          data_venda: agora.split(',')[0],
+          total: valorLeg,
+          taxa_total: taxaValor,
+          vencimento: vencFmt,
+          obs: `1 venda(s) no cartão em ${agora.split(',')[0]} · taxa estimada ${R(taxaValor)}`,
+          itens: carrinho.map(c => ({produto: c.produto, qtd: c.qtd, valor: c.valor_unit * c.qtd})),
+          movimentos: [{ tipo: movimentoLabel, valor: valorLeg, taxaPct, taxaValor }],
+          pagamentos: [],
+          cartao_dia: dataBase
+        };
+        debitos.unshift(novoCartao);
+        saveDebitos(debitos);
+
+        try {
+          const criado = await sbPost('debitos', {
+            cliente: 'Cartão',
+            produto: carrinho.map(c => c.produto).join(', '),
+            valor_total: valorLeg,
+            valor_pago: 0,
+            vencimento: vencFmt,
+            obs: novoCartao.obs,
+            pagamentos: [],
+            cartao_dia: dataBase
+          });
+          const registro = Array.isArray(criado) ? criado[0] : criado;
+          if (registro && registro.id) { novoCartao.id = registro.id; saveDebitos(debitos); }
+          invalidarCache('debitos');
+        } catch (e) { console.warn('Cartão salvo localmente:', e.message); }
+      }
+    }
+
+    // Dinheiro, Pix ou À vista → débito gerado já quitado (para histórico financeiro completo)
+    if (forma === 'Dinheiro' || forma === 'Pix' || forma === 'À vista') {
+      const dataBase = dataInput || new Date().toISOString().slice(0,10);
+      const [dy, dm, dd2] = dataBase.split('-');
+      const dataFmt = dd2+'/'+dm+'/'+dy;
+      const debitos = getDebitos();
+      const pagLabel = forma === 'À vista' ? 'À vista' : forma;
+      const novoDebito = {
+        id: 'deb_' + vendaId + sufixoId,
+        venda_id: vendaId,
+        cliente: pagLabel + (cliente ? ' · ' + cliente : ''),
+        data_venda: agora,
+        total: valorLeg,
+        vencimento: dataFmt,
+        obs: 'Recebido ' + pagLabel + (cliente ? ' — ' + cliente : ''),
+        itens: carrinho.map(c=>({produto:c.produto, qtd:c.qtd, valor:c.valor_unit*c.qtd})),
+        pagamentos: [{ valor: valorLeg, forma: pagLabel, data: dataFmt }]
+      };
+      debitos.unshift(novoDebito);
+      saveDebitos(debitos);
+      try {
+        const criado = await sbPost('debitos', {
+          cliente: novoDebito.cliente,
+          produto: carrinho.map(c => c.produto).join(', '),
+          valor_total: valorLeg,
+          valor_pago: valorLeg,
+          vencimento: dataFmt,
+          obs: novoDebito.obs,
+          pagamentos: novoDebito.pagamentos
+        });
+        const registro = Array.isArray(criado) ? criado[0] : criado;
+        if (registro && registro.id) {
+          const idx = debitos.findIndex(d => d.id === novoDebito.id);
+          if (idx >= 0) debitos[idx] = { ...debitos[idx], ...registro };
+          saveDebitos(debitos);
+        }
+        invalidarCache('debitos');
+      } catch(e) { console.warn('Débito salvo localmente:', e.message); }
     }
   }
 
-  // Dinheiro, Pix ou À vista → débito gerado já quitado (para histórico financeiro completo)
-  if (pag === 'Dinheiro' || pag === 'Pix' || pag === 'À vista') {
-    const dataBase = dataInput || new Date().toISOString().slice(0,10);
-    const [dy, dm, dd2] = dataBase.split('-');
-    const dataFmt = dd2+'/'+dm+'/'+dy;
-    const debitos = getDebitos();
-    const pagLabel = pag === 'À vista' ? 'À vista' : pag;
-    const novoDebito = {
-      id: 'deb_' + vendaId,
-      venda_id: vendaId,
-      cliente: pagLabel + (cliente ? ' · ' + cliente : ''),
-      data_venda: agora,
-      total: totalFat,
-      vencimento: dataFmt,
-      obs: 'Recebido ' + pagLabel + (cliente ? ' — ' + cliente : ''),
-      itens: carrinho.map(c=>({produto:c.produto, qtd:c.qtd, valor:c.valor_unit*c.qtd})),
-      pagamentos: [{ valor: totalFat, forma: pagLabel, data: dataFmt }]
-    };
-    debitos.unshift(novoDebito);
-    saveDebitos(debitos);
-    // Salvar no Supabase — nomes de coluna REAIS da tabela debitos
-    // (valor_total/valor_pago/produto), confirmados direto no banco.
-    // getDebitos() é quem traduz isso de volta pros nomes que o resto do
-    // sistema usa (total/itens/data_venda) na hora da leitura.
-    try {
-      const criado = await sbPost('debitos', {
-        cliente: novoDebito.cliente,
-        produto: carrinho.map(c => c.produto).join(', '),
-        valor_total: totalFat,
-        valor_pago: totalFat,
-        vencimento: dataFmt,
-        obs: novoDebito.obs,
-        pagamentos: novoDebito.pagamentos
-      });
-      const registro = Array.isArray(criado) ? criado[0] : criado;
-      if (registro && registro.id) {
-        const idx = debitos.findIndex(d => d.id === novoDebito.id);
-        if (idx >= 0) debitos[idx] = { ...debitos[idx], ...registro };
-        saveDebitos(debitos);
-      }
-      invalidarCache('debitos');
-    } catch(e) { console.warn('Débito salvo localmente:', e.message); }
+  for (let i = 0; i < pagamentos.length; i++) {
+    const leg = pagamentos[i];
+    await processarFormaPagamento(leg.forma, leg.valor, leg.parcelas, pagamentos.length > 1 ? '_' + (i + 1) : '');
   }
   
   // Modal confirmação
@@ -5420,6 +5637,7 @@ async function confirmarVenda() {
       ${pag==='A prazo'?`<div style="margin-top:10px;padding:8px 12px;background:var(--warn-light);border:1px solid var(--warn);border-radius:5px;font-size:12px;color:var(--warn);">💳 Débito registrado no Financeiro. Acompanhe os pagamentos na aba <strong>A Receber</strong>.</div>`:''}
       ${(pag==='Cartão crédito'||pag==='Cartão débito')?`<div style="margin-top:10px;padding:8px 12px;background:var(--accent-light);border:1px solid #D4C0B5;border-radius:5px;font-size:12px;color:var(--accent);">💳 Valor acumulado no lançamento de cartão do dia${pag==='Cartão crédito'&&parcelas>1?` (crédito ${parcelas}x)`:''}. Taxa estimada: <strong>${R(totalFat*(buscarTaxaPercentual(pag,parcelas)/100))}</strong> (${buscarTaxaPercentual(pag,parcelas).toFixed(2)}%). Vence no próximo dia útil — visível em <strong>A Receber</strong>.</div>`:''}
       ${(pag==='Dinheiro'||pag==='Pix'||pag==='À vista')?`<div style="margin-top:10px;padding:8px 12px;background:var(--success-light);border:1px solid #B8D9C0;border-radius:5px;font-size:12px;color:var(--success);">✅ Recebimento registrado como <strong>quitado</strong> em A Receber.</div>`:''}
+      ${pagamentos.length > 1 ? `<div style="margin-top:10px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:5px;font-size:12px;">💰 Pagamento dividido: ${pagamentos.map(p => `${p.forma} (${R(p.valor)})`).join(' + ')}</div>` : ''}
     </div>
   `;
   // Guarda os dados desta venda pra poder gerar o cupom depois (ver e/ou imprimir)
@@ -5428,7 +5646,7 @@ async function confirmarVenda() {
     total: totalFat,
     desconto,
     pagamento: pag,
-    parcelas,
+    pagamentos, // array com 1 ou 2 pernas — o cupom detalha cada uma quando for misto
     cliente,
     vendedor,
     dataHora: agora
@@ -5442,6 +5660,7 @@ async function confirmarVenda() {
   // Limpar tudo
   carrinho = [];
   renderCarrinho();
+  document.getElementById('venda-cliente-credito').style.display = 'none';
   document.getElementById('venda-cliente').value = '';
   document.getElementById('venda-vendedor').value = '';
   document.getElementById('venda-data').value = '';
@@ -5826,9 +6045,12 @@ function montarCupomHTML(v, fontSize) {
     </div>
     ${linha}
     <div style="font-weight:700;margin-bottom:4px;">PAGAMENTO</div>
-    <div style="display:flex;justify-content:space-between;">
-      <span>${v.pagamento}${v.parcelas > 1 ? ' ' + v.parcelas + 'x' : ''}</span>
-    </div>
+    ${(v.pagamentos || []).map(p => `
+      <div style="display:flex;justify-content:space-between;">
+        <span>${p.forma}${p.parcelas > 1 ? ' ' + p.parcelas + 'x' : ''}</span>
+        <span>${R(p.valor)}</span>
+      </div>
+    `).join('')}
     ${v.cliente ? `<div style="margin-top:6px;">Cliente: ${v.cliente}</div>` : ''}
     <div style="text-align:center;font-size:${fs - 4}px;font-weight:700;border:1px solid #999;border-radius:6px;padding:8px;margin-top:14px;">
       DOCUMENTO NÃO FISCAL<br>Comprovante interno de venda, sem valor fiscal
@@ -6512,7 +6734,8 @@ const PDV_FORMA_LABELS = {
   'Pix': '📱 Pix',
   'Cartão débito': '💳 Débito',
   'Cartão crédito': '💳 Crédito',
-  'A prazo': '📄 Fiado'
+  'A prazo': '📄 Fiado',
+  'Voucher': '🎫 Voucher'
 };
 
 // Sincroniza o clique nos botões visuais de pagamento com o <select> real
@@ -7080,6 +7303,236 @@ async function salvarNovaReceber() {
   renderSubReceber();
 }
 
+// ===== TROCAS E DEVOLUÇÕES (armazenado localmente por enquanto) =====
+const TROCAS_KEY = 'oi2026_trocas';
+const CREDITOS_KEY = 'oi2026_creditos_clientes';
+function getTrocas() { return JSON.parse(localStorage.getItem(TROCAS_KEY) || '[]'); }
+function saveTrocas(lista) { localStorage.setItem(TROCAS_KEY, JSON.stringify(lista)); }
+function getCreditos() { return JSON.parse(localStorage.getItem(CREDITOS_KEY) || '{}'); }
+function saveCreditos(obj) { localStorage.setItem(CREDITOS_KEY, JSON.stringify(obj)); }
+function creditoDisponivel(clienteNome) {
+  const chave = (clienteNome || '').trim().toLowerCase();
+  if (!chave) return 0;
+  return getCreditos()[chave] || 0;
+}
+function ajustarCredito(clienteNome, delta) {
+  const chave = (clienteNome || '').trim().toLowerCase();
+  if (!chave) return;
+  const creditos = getCreditos();
+  creditos[chave] = Math.max(0, (creditos[chave] || 0) + delta);
+  saveCreditos(creditos);
+}
+
+function renderTrocas() {
+  document.getElementById('trocas-busca').value = '';
+  document.getElementById('trocas-resultado').innerHTML = '<p style="font-size:13px;color:var(--muted);">Digite a referência do produto, o nome ou o cliente pra encontrar a venda.</p>';
+  renderHistoricoTrocas();
+}
+
+function buscarParaTroca() {
+  const termo = document.getElementById('trocas-busca').value.trim().toLowerCase();
+  const box = document.getElementById('trocas-resultado');
+  if (termo.length < 2) {
+    box.innerHTML = '<p style="font-size:13px;color:var(--muted);">Digite pelo menos 2 letras pra buscar.</p>';
+    return;
+  }
+  const resultados = getVendas().filter(v =>
+    (v.ref || '').toLowerCase().includes(termo) ||
+    (v.produto || '').toLowerCase().includes(termo) ||
+    (v.cliente || '').toLowerCase().includes(termo)
+  ).slice(0, 30);
+
+  if (resultados.length === 0) {
+    box.innerHTML = '<p style="font-size:13px;color:var(--muted);">Nenhuma venda encontrada.</p>';
+    return;
+  }
+
+  box.innerHTML = `
+    <table>
+      <thead><tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Cliente</th><th>Pagamento</th><th>Ação</th></tr></thead>
+      <tbody>
+        ${resultados.map(v => `
+          <tr>
+            <td style="font-size:12px;">${v.data || '—'}</td>
+            <td><strong>${v.produto}</strong><br><code style="font-size:10px;color:var(--muted);">${v.ref}</code></td>
+            <td style="text-align:center;">${v.qtd}</td>
+            <td>${R(v.valor_total)}</td>
+            <td>${v.cliente || '—'}</td>
+            <td style="font-size:12px;">${v.pagamento || '—'}</td>
+            <td><button class="btn btn-secondary btn-sm" onclick="abrirDevolucao('${v.id}')">↩ Devolver</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function abrirDevolucao(vendaRowId) {
+  const venda = getVendas().find(v => String(v.id) === String(vendaRowId));
+  if (!venda) { alert('Venda não encontrada.'); return; }
+
+  document.getElementById('dev-venda-ref').value = venda.id;
+  document.getElementById('dev-produto-nome').textContent = `${venda.produto} (${venda.ref})`;
+  document.getElementById('dev-data-venda').textContent = venda.data || '—';
+  document.getElementById('dev-info-extra').textContent = `Pagamento: ${venda.pagamento || '—'}${venda.cliente ? ' · Cliente: ' + venda.cliente : ''}`;
+  document.getElementById('dev-qtd').value = 1;
+  document.getElementById('dev-qtd').max = venda.qtd;
+  document.getElementById('dev-cliente').value = venda.cliente || '';
+  document.getElementById('dev-destino').value = 'credito';
+  document.getElementById('dev-motivo').value = '';
+  toggleDevCliente();
+  atualizarValorDevolucao();
+  document.getElementById('modal-devolucao').classList.add('open');
+}
+
+function atualizarValorDevolucao() {
+  const venda = getVendas().find(v => String(v.id) === String(document.getElementById('dev-venda-ref').value));
+  if (!venda) return;
+  let qtd = parseInt(document.getElementById('dev-qtd').value) || 1;
+  qtd = Math.max(1, Math.min(qtd, venda.qtd));
+  document.getElementById('dev-qtd').value = qtd;
+  setValorMoeda('dev-valor', venda.valor_unit * qtd);
+}
+
+function toggleDevCliente() {
+  const destino = document.getElementById('dev-destino').value;
+  document.getElementById('dev-cliente-wrap').style.display = destino === 'credito' ? 'block' : 'none';
+}
+
+async function confirmarDevolucao() {
+  const venda = getVendas().find(v => String(v.id) === String(document.getElementById('dev-venda-ref').value));
+  if (!venda) { alert('Venda não encontrada.'); return; }
+
+  atualizarValorDevolucao(); // garante qtd válida antes de ler
+  const qtd = parseInt(document.getElementById('dev-qtd').value) || 1;
+  const valor = venda.valor_unit * qtd;
+  const destino = document.getElementById('dev-destino').value;
+  const cliente = document.getElementById('dev-cliente').value.trim();
+  const motivo = document.getElementById('dev-motivo').value.trim();
+
+  if (destino === 'credito' && !cliente) {
+    alert('Informe o nome do cliente pra gerar o crédito.');
+    return;
+  }
+
+  // Devolve a peça ao estoque
+  const produtos = getProdutos();
+  const pidx = produtos.findIndex(p => p.ref === venda.ref);
+  if (pidx >= 0) {
+    produtos[pidx].estoque += qtd;
+    saveProdutos(produtos);
+    try {
+      await sbPatchWhere('produtos', 'ref', venda.ref, { estoque: produtos[pidx].estoque });
+      invalidarCache('produtos');
+    } catch (e) { console.warn('Estoque da devolução salvo localmente:', e.message); }
+  }
+
+  // Gera crédito, se for o caso
+  if (destino === 'credito') ajustarCredito(cliente, valor);
+
+  // Registra a troca no histórico local
+  const trocaRegistro = {
+    id: 'troca_' + Date.now(),
+    numeroVoucher: destino === 'credito' ? proximoNumeroVoucher() : null,
+    data: new Date().toLocaleString('pt-BR'),
+    vendaId: venda.id,
+    ref: venda.ref,
+    produto: venda.produto,
+    qtd,
+    valor,
+    destino,
+    cliente: cliente || null,
+    motivo: motivo || null
+  };
+  const trocas = getTrocas();
+  trocas.unshift(trocaRegistro);
+  saveTrocas(trocas);
+
+  fecharModal('modal-devolucao');
+  mostrarNotificacao(destino === 'credito' ? '✅ Devolução registrada — crédito gerado para ' + cliente : '✅ Devolução registrada — estorno confirmado');
+  buscarParaTroca();
+  renderHistoricoTrocas();
+
+  if (destino === 'credito') imprimirVoucher(trocaRegistro);
+}
+
+// Numeração sequencial simples do voucher, só como referência (mesmo padrão do cupom de venda).
+function proximoNumeroVoucher() {
+  const chave = 'oi2026_voucher_seq';
+  const atual = parseInt(localStorage.getItem(chave) || '0') + 1;
+  localStorage.setItem(chave, atual);
+  return String(atual).padStart(6, '0');
+}
+
+function imprimirVoucher(troca) {
+  const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
+  const imp = (_dadosEmpresaCache && _dadosEmpresaCache.impressora) || {};
+  const largura = imp.largura || '80mm';
+
+  const corpo = `
+    <div style="text-align:center;font-size:18px;font-weight:700;margin-bottom:2px;">${nomeLoja}</div>
+    <div style="text-align:center;font-size:15px;font-weight:700;color:#b8860b;margin-top:8px;">VOUCHER DE CRÉDITO</div>
+    <div style="text-align:center;font-size:11px;color:#666;">Nº ${troca.numeroVoucher}</div>
+    <hr style="border:none;border-top:1px dashed #999;margin:10px 0;">
+    <div style="font-size:13px;">Data: ${troca.data}</div>
+    <div style="font-size:13px;">Cliente: <strong>${troca.cliente}</strong></div>
+    <hr style="border:none;border-top:1px dashed #999;margin:10px 0;">
+    <div style="font-size:13px;">Referente à devolução de:</div>
+    <div style="font-size:13px;font-weight:700;">${troca.qtd}x ${troca.produto}</div>
+    ${troca.motivo ? `<div style="font-size:12px;color:#555;">Motivo: ${troca.motivo}</div>` : ''}
+    <hr style="border:none;border-top:1px dashed #999;margin:10px 0;">
+    <div style="display:flex;justify-content:space-between;font-size:19px;font-weight:800;">
+      <span>CRÉDITO</span><span>${R(troca.valor)}</span>
+    </div>
+    <hr style="border:none;border-top:1px dashed #999;margin:10px 0;">
+    <div style="text-align:center;font-size:11px;font-weight:700;border:1px solid #999;border-radius:6px;padding:8px;margin-top:10px;">
+      Apresente este voucher (ou informe o nome cadastrado) na próxima compra para usar o crédito.
+    </div>
+  `;
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+  <title>Voucher de Crédito</title>
+  <style>
+    @page { size: ${largura} auto; margin: 0; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Courier New', monospace; color: #000; width: ${largura}; margin: 0 auto; padding: 10px; }
+  </style></head><body>
+    ${corpo}
+    <script>window.onload=()=>{ window.print(); }<\/script>
+  </body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+}
+
+function renderHistoricoTrocas() {
+  const trocas = getTrocas();
+  const box = document.getElementById('trocas-historico');
+  if (trocas.length === 0) {
+    box.innerHTML = '<p style="font-size:13px;color:var(--muted);">Nenhuma troca ou devolução registrada ainda.</p>';
+    return;
+  }
+  box.innerHTML = `
+    <table>
+      <thead><tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Destino</th><th>Cliente</th><th>Motivo</th></tr></thead>
+      <tbody>
+        ${trocas.map(t => `
+          <tr>
+            <td style="font-size:12px;">${t.data}</td>
+            <td><strong>${t.produto}</strong><br><code style="font-size:10px;color:var(--muted);">${t.ref}</code></td>
+            <td style="text-align:center;">${t.qtd}</td>
+            <td>${R(t.valor)}</td>
+            <td>${t.destino === 'credito' ? '💳 Crédito' : '↩ Estorno'}</td>
+            <td>${t.cliente || '—'}</td>
+            <td style="font-size:12px;color:var(--muted);">${t.motivo || '—'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
 function abrirBaixa(id) {
   const d = getDebitos().find(x=>x.id===id);
   if (!d) return;
@@ -7337,6 +7790,20 @@ function filtrarClientesVenda(input) {
 function selecionarClienteVenda(nome) {
   document.getElementById('venda-cliente').value = nome;
   fecharSugestoesClienteVenda();
+}
+
+// ===== Aplicar crédito de troca/devolução na venda =====
+function checarCreditoCliente() {
+  const cliente = document.getElementById('venda-cliente').value.trim();
+  const box = document.getElementById('venda-cliente-credito');
+  const credito = creditoDisponivel(cliente);
+  if (credito > 0) {
+    box.style.display = 'block';
+    box.innerHTML = `💳 Cliente tem <strong>${R(credito)}</strong> de crédito disponível — escolha <strong>🎫 Voucher</strong> como forma de pagamento pra usar.`;
+  } else {
+    box.style.display = 'none';
+    box.innerHTML = '';
+  }
 }
 
 function fecharSugestoesClienteVenda() {

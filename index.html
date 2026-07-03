@@ -1010,6 +1010,7 @@
         <button type="button" class="pdv-pag-btn" data-valor="Cartão débito" onclick="selecionarFormaPagamento(this)">💳 Débito</button>
         <button type="button" class="pdv-pag-btn" data-valor="Cartão crédito" onclick="selecionarFormaPagamento(this)">💳 Crédito</button>
         <button type="button" class="pdv-pag-btn" data-valor="A prazo" onclick="selecionarFormaPagamento(this)">📄 Fiado</button>
+        <button type="button" class="pdv-pag-btn" data-valor="Voucher" onclick="selecionarFormaPagamento(this)">🎫 Voucher</button>
       </div>
 
       <!-- Select real (mantido para a lógica existente, oculto visualmente) -->
@@ -1019,6 +1020,7 @@
         <option>Cartão débito</option>
         <option>Pix</option>
         <option value="A prazo">A prazo (fiado)</option>
+        <option value="Voucher">Voucher (crédito de troca)</option>
       </select>
 
       <div class="pdv-forma-selecionada">
@@ -1043,6 +1045,7 @@
               <option value="Cartão débito">💳 Débito</option>
               <option value="Cartão crédito">💳 Crédito</option>
               <option value="A prazo">📄 Fiado</option>
+              <option value="Voucher">🎫 Voucher</option>
             </select>
           </div>
           <div class="form-row">
@@ -1069,6 +1072,7 @@
               <option value="Cartão débito" selected>💳 Débito</option>
               <option value="Cartão crédito">💳 Crédito</option>
               <option value="A prazo">📄 Fiado</option>
+              <option value="Voucher">🎫 Voucher</option>
             </select>
           </div>
           <div class="form-row">
@@ -5274,7 +5278,6 @@ function recalcularMisto() {
 function limparCarrinho() {
   if (!confirm('Limpar o carrinho?')) return;
   carrinho = [];
-  _creditoClienteUsado = null;
   document.getElementById('venda-desconto').value = '';
   document.querySelectorAll('.pdv-pag-btn').forEach(b => b.classList.remove('ativo'));
   document.getElementById('pdv-forma-texto').textContent = '— selecione acima —';
@@ -5334,6 +5337,18 @@ async function confirmarVenda() {
     if (!clienteCadastrado) {
       alert('Venda fiado só é permitida para clientes já cadastrados. Cadastre "' + cliente + '" em Clientes/Fornecedores antes de continuar, ou escolha o nome certinho na lista.');
       document.getElementById('venda-cliente').focus();
+      return;
+    }
+  }
+
+  // Voucher/crédito de troca: não é receita nova, é resgate de um crédito já
+  // concedido — por isso valida contra o saldo do cliente e não gera débito.
+  const totalVoucher = pagamentos.filter(p => p.forma === 'Voucher').reduce((s, p) => s + p.valor, 0);
+  if (totalVoucher > 0) {
+    if (!cliente) { alert('Pra pagar com voucher, informe o nome do cliente.'); document.getElementById('venda-cliente').focus(); return; }
+    const disponivel = creditoDisponivel(cliente);
+    if (totalVoucher > disponivel + 0.01) {
+      alert(`Esse cliente tem apenas ${R(disponivel)} de crédito disponível (o voucher informado é de ${R(totalVoucher)}).`);
       return;
     }
   }
@@ -5420,6 +5435,14 @@ async function confirmarVenda() {
   // único, isso roda uma vez com o total inteiro — com pagamento misto, roda
   // uma vez pra cada forma, com o valor de cada uma.
   async function processarFormaPagamento(forma, valorLeg, parcelasLeg, sufixoId) {
+    // Voucher: resgate de crédito já concedido numa troca anterior. Não é
+    // dinheiro novo entrando, então NÃO gera lançamento em A Receber —
+    // só abate do saldo de crédito do cliente.
+    if (forma === 'Voucher') {
+      ajustarCredito(cliente, -valorLeg);
+      return;
+    }
+
     if (forma === 'A prazo') {
       const vencInput = document.getElementById('prazo-vencimento').value;
       const entradaVal = valorMoeda('prazo-entrada');
@@ -5624,12 +5647,6 @@ async function confirmarVenda() {
     vendedor,
     dataHora: agora
   };
-
-  // Se um crédito de troca/devolução foi usado nesta venda, desconta do saldo do cliente
-  if (_creditoClienteUsado && _creditoClienteUsado.cliente.toLowerCase() === cliente.toLowerCase()) {
-    ajustarCredito(_creditoClienteUsado.cliente, -_creditoClienteUsado.valor);
-    _creditoClienteUsado = null;
-  }
 
   document.getElementById('modal-confirm-venda').classList.add('open');
 
@@ -6713,7 +6730,8 @@ const PDV_FORMA_LABELS = {
   'Pix': '📱 Pix',
   'Cartão débito': '💳 Débito',
   'Cartão crédito': '💳 Crédito',
-  'A prazo': '📄 Fiado'
+  'A prazo': '📄 Fiado',
+  'Voucher': '🎫 Voucher'
 };
 
 // Sincroniza o clique nos botões visuais de pagamento com o <select> real
@@ -7284,8 +7302,6 @@ async function salvarNovaReceber() {
 // ===== TROCAS E DEVOLUÇÕES (armazenado localmente por enquanto) =====
 const TROCAS_KEY = 'oi2026_trocas';
 const CREDITOS_KEY = 'oi2026_creditos_clientes';
-let _creditoClienteUsado = null; // { cliente, valor } — aplicado na próxima venda confirmada
-
 function getTrocas() { return JSON.parse(localStorage.getItem(TROCAS_KEY) || '[]'); }
 function saveTrocas(lista) { localStorage.setItem(TROCAS_KEY, JSON.stringify(lista)); }
 function getCreditos() { return JSON.parse(localStorage.getItem(CREDITOS_KEY) || '{}'); }
@@ -7411,9 +7427,9 @@ async function confirmarDevolucao() {
   if (destino === 'credito') ajustarCredito(cliente, valor);
 
   // Registra a troca no histórico local
-  const trocas = getTrocas();
-  trocas.unshift({
+  const trocaRegistro = {
     id: 'troca_' + Date.now(),
+    numeroVoucher: destino === 'credito' ? proximoNumeroVoucher() : null,
     data: new Date().toLocaleString('pt-BR'),
     vendaId: venda.id,
     ref: venda.ref,
@@ -7423,13 +7439,67 @@ async function confirmarDevolucao() {
     destino,
     cliente: cliente || null,
     motivo: motivo || null
-  });
+  };
+  const trocas = getTrocas();
+  trocas.unshift(trocaRegistro);
   saveTrocas(trocas);
 
   fecharModal('modal-devolucao');
   mostrarNotificacao(destino === 'credito' ? '✅ Devolução registrada — crédito gerado para ' + cliente : '✅ Devolução registrada — estorno confirmado');
   buscarParaTroca();
   renderHistoricoTrocas();
+
+  if (destino === 'credito') imprimirVoucher(trocaRegistro);
+}
+
+// Numeração sequencial simples do voucher, só como referência (mesmo padrão do cupom de venda).
+function proximoNumeroVoucher() {
+  const chave = 'oi2026_voucher_seq';
+  const atual = parseInt(localStorage.getItem(chave) || '0') + 1;
+  localStorage.setItem(chave, atual);
+  return String(atual).padStart(6, '0');
+}
+
+function imprimirVoucher(troca) {
+  const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
+  const imp = (_dadosEmpresaCache && _dadosEmpresaCache.impressora) || {};
+  const largura = imp.largura || '80mm';
+
+  const corpo = `
+    <div style="text-align:center;font-size:18px;font-weight:700;margin-bottom:2px;">${nomeLoja}</div>
+    <div style="text-align:center;font-size:15px;font-weight:700;color:#b8860b;margin-top:8px;">VOUCHER DE CRÉDITO</div>
+    <div style="text-align:center;font-size:11px;color:#666;">Nº ${troca.numeroVoucher}</div>
+    <hr style="border:none;border-top:1px dashed #999;margin:10px 0;">
+    <div style="font-size:13px;">Data: ${troca.data}</div>
+    <div style="font-size:13px;">Cliente: <strong>${troca.cliente}</strong></div>
+    <hr style="border:none;border-top:1px dashed #999;margin:10px 0;">
+    <div style="font-size:13px;">Referente à devolução de:</div>
+    <div style="font-size:13px;font-weight:700;">${troca.qtd}x ${troca.produto}</div>
+    ${troca.motivo ? `<div style="font-size:12px;color:#555;">Motivo: ${troca.motivo}</div>` : ''}
+    <hr style="border:none;border-top:1px dashed #999;margin:10px 0;">
+    <div style="display:flex;justify-content:space-between;font-size:19px;font-weight:800;">
+      <span>CRÉDITO</span><span>${R(troca.valor)}</span>
+    </div>
+    <hr style="border:none;border-top:1px dashed #999;margin:10px 0;">
+    <div style="text-align:center;font-size:11px;font-weight:700;border:1px solid #999;border-radius:6px;padding:8px;margin-top:10px;">
+      Apresente este voucher (ou informe o nome cadastrado) na próxima compra para usar o crédito.
+    </div>
+  `;
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+  <title>Voucher de Crédito</title>
+  <style>
+    @page { size: ${largura} auto; margin: 0; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Courier New', monospace; color: #000; width: ${largura}; margin: 0 auto; padding: 10px; }
+  </style></head><body>
+    ${corpo}
+    <script>window.onload=()=>{ window.print(); }<\/script>
+  </body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
 }
 
 function renderHistoricoTrocas() {
@@ -7725,23 +7795,11 @@ function checarCreditoCliente() {
   const credito = creditoDisponivel(cliente);
   if (credito > 0) {
     box.style.display = 'block';
-    box.innerHTML = `💳 Cliente tem <strong>${R(credito)}</strong> de crédito disponível.
-      <button type="button" class="btn btn-sm btn-primary" style="margin-left:6px;" onclick="usarCreditoCliente()">Usar como desconto</button>`;
+    box.innerHTML = `💳 Cliente tem <strong>${R(credito)}</strong> de crédito disponível — escolha <strong>🎫 Voucher</strong> como forma de pagamento pra usar.`;
   } else {
     box.style.display = 'none';
     box.innerHTML = '';
   }
-}
-
-function usarCreditoCliente() {
-  const cliente = document.getElementById('venda-cliente').value.trim();
-  const credito = creditoDisponivel(cliente);
-  const totalBruto = carrinho.reduce((s,c) => s + c.valor_unit * c.qtd, 0);
-  const valorUsado = Math.min(credito, totalBruto);
-  setValorMoeda('venda-desconto', valorUsado);
-  _creditoClienteUsado = { cliente, valor: valorUsado };
-  renderCarrinho();
-  mostrarNotificacao(`✅ Crédito de ${R(valorUsado)} aplicado como desconto`);
 }
 
 function fecharSugestoesClienteVenda() {
