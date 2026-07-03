@@ -1053,6 +1053,10 @@
             <input type="text" inputmode="numeric" id="misto-valor-1" placeholder="0,00" oninput="mascaraMoeda(this);recalcularMisto();">
           </div>
         </div>
+        <div class="form-row" id="misto-voucher-1-wrap" style="display:none;">
+          <label>Número do Voucher (forma 1)</label>
+          <input type="text" id="misto-voucher-1" placeholder="Ex: 000012">
+        </div>
         <div class="form-row" id="misto-parcelas-1-wrap" style="display:none;">
           <label>Parcelas (forma 1)</label>
           <select id="misto-parcelas-1">
@@ -1079,6 +1083,10 @@
             <label>Valor 2 (R$) — restante automático</label>
             <input type="text" id="misto-valor-2" placeholder="0,00" readonly style="background:var(--bg);color:var(--muted);">
           </div>
+        </div>
+        <div class="form-row" id="misto-voucher-2-wrap" style="display:none;">
+          <label>Número do Voucher (forma 2)</label>
+          <input type="text" id="misto-voucher-2" placeholder="Ex: 000012">
         </div>
         <div class="form-row" id="misto-parcelas-2-wrap" style="display:none;">
           <label>Parcelas (forma 2)</label>
@@ -1108,6 +1116,14 @@
           <option value="11">11x</option>
           <option value="12">12x</option>
         </select>
+      </div>
+
+      <!-- Campo extra para pagamento com voucher -->
+      <div id="voucher-fields" style="display:none;margin-top:12px;padding:14px;background:var(--accent-light);border:1px solid #D4C0B5;border-radius:var(--radius);">
+        <div class="form-row" style="margin-bottom:0;">
+          <label>Número do Voucher</label>
+          <input type="text" id="venda-voucher-numero" placeholder="Ex: 000012">
+        </div>
       </div>
 
       <!-- Campos extras para venda a prazo -->
@@ -5257,6 +5273,8 @@ function recalcularMisto() {
   const forma2 = document.getElementById('misto-forma-2').value;
   document.getElementById('misto-parcelas-1-wrap').style.display = forma1 === 'Cartão crédito' ? 'block' : 'none';
   document.getElementById('misto-parcelas-2-wrap').style.display = forma2 === 'Cartão crédito' ? 'block' : 'none';
+  document.getElementById('misto-voucher-1-wrap').style.display = forma1 === 'Voucher' ? 'block' : 'none';
+  document.getElementById('misto-voucher-2-wrap').style.display = forma2 === 'Voucher' ? 'block' : 'none';
 
   const statusEl = document.getElementById('misto-status');
   if (valor1 <= 0) {
@@ -5281,9 +5299,12 @@ function limparCarrinho() {
   document.getElementById('venda-desconto').value = '';
   document.querySelectorAll('.pdv-pag-btn').forEach(b => b.classList.remove('ativo'));
   document.getElementById('pdv-forma-texto').textContent = '— selecione acima —';
+  document.getElementById('venda-voucher-numero').value = '';
   document.getElementById('venda-pag-misto').checked = false;
   document.getElementById('misto-valor-1').value = '';
   document.getElementById('misto-valor-2').value = '';
+  document.getElementById('misto-voucher-1').value = '';
+  document.getElementById('misto-voucher-2').value = '';
   togglePagamentoMisto();
   renderCarrinho();
 }
@@ -5317,17 +5338,20 @@ async function confirmarVenda() {
     const f1 = document.getElementById('misto-forma-1').value;
     const v1 = valorMoeda('misto-valor-1');
     const p1 = f1 === 'Cartão crédito' ? (parseInt(document.getElementById('misto-parcelas-1').value) || 1) : 1;
+    const vc1 = document.getElementById('misto-voucher-1').value.trim();
     const f2 = document.getElementById('misto-forma-2').value;
     const v2 = valorMoeda('misto-valor-2');
     const p2 = f2 === 'Cartão crédito' ? (parseInt(document.getElementById('misto-parcelas-2').value) || 1) : 1;
+    const vc2 = document.getElementById('misto-voucher-2').value.trim();
     if (v1 <= 0 || v2 <= 0) { alert('Informe os dois valores do pagamento misto.'); return; }
     if (Math.abs((v1 + v2) - totalFat) > 0.02) { alert('A soma das duas formas precisa bater com o total da venda (' + R(totalFat) + ').'); return; }
-    pagamentos = [{ forma: f1, valor: v1, parcelas: p1 }, { forma: f2, valor: v2, parcelas: p2 }];
+    pagamentos = [{ forma: f1, valor: v1, parcelas: p1, voucherNumero: vc1 }, { forma: f2, valor: v2, parcelas: p2, voucherNumero: vc2 }];
     pag = f1 + ' + ' + f2;
   } else {
     pag = document.getElementById('venda-pagamento').value;
     parcelas = pag === 'Cartão crédito' ? (parseInt(document.getElementById('venda-parcelas').value) || 1) : 1;
-    pagamentos = [{ forma: pag, valor: totalFat, parcelas }];
+    const voucherNumero = document.getElementById('venda-voucher-numero').value.trim();
+    pagamentos = [{ forma: pag, valor: totalFat, parcelas, voucherNumero }];
   }
 
   const temPrazo = pagamentos.some(p => p.forma === 'A prazo');
@@ -5341,14 +5365,21 @@ async function confirmarVenda() {
     }
   }
 
-  // Voucher/crédito de troca: não é receita nova, é resgate de um crédito já
-  // concedido — por isso valida contra o saldo do cliente e não gera débito.
-  const totalVoucher = pagamentos.filter(p => p.forma === 'Voucher').reduce((s, p) => s + p.valor, 0);
-  if (totalVoucher > 0) {
-    if (!cliente) { alert('Pra pagar com voucher, informe o nome do cliente.'); document.getElementById('venda-cliente').focus(); return; }
-    const disponivel = creditoDisponivel(cliente);
-    if (totalVoucher > disponivel + 0.01) {
-      alert(`Esse cliente tem apenas ${R(disponivel)} de crédito disponível (o voucher informado é de ${R(totalVoucher)}).`);
+  // Voucher: não dá pra fechar a venda sem informar o número — precisa estar
+  // vinculado a um voucher de verdade, com saldo suficiente. Não é receita
+  // nova (é resgate de crédito já concedido), por isso não gera débito.
+  for (const legVoucher of pagamentos.filter(p => p.forma === 'Voucher')) {
+    if (!legVoucher.voucherNumero) {
+      alert('Informe o número do voucher pra pagar com essa forma.');
+      return;
+    }
+    const voucher = buscarVoucher(legVoucher.voucherNumero);
+    if (!voucher) {
+      alert(`Voucher número "${legVoucher.voucherNumero}" não encontrado.`);
+      return;
+    }
+    if (legVoucher.valor > voucher.valorRestante + 0.01) {
+      alert(`O voucher ${voucher.numero} tem apenas ${R(voucher.valorRestante)} de saldo (o valor informado foi ${R(legVoucher.valor)}).`);
       return;
     }
   }
@@ -5434,12 +5465,18 @@ async function confirmarVenda() {
   // Processa uma "perna" de pagamento (forma + valor + parcelas). Com pagamento
   // único, isso roda uma vez com o total inteiro — com pagamento misto, roda
   // uma vez pra cada forma, com o valor de cada uma.
-  async function processarFormaPagamento(forma, valorLeg, parcelasLeg, sufixoId) {
-    // Voucher: resgate de crédito já concedido numa troca anterior. Não é
-    // dinheiro novo entrando, então NÃO gera lançamento em A Receber —
-    // só abate do saldo de crédito do cliente.
+  async function processarFormaPagamento(forma, valorLeg, parcelasLeg, sufixoId, voucherNumero) {
+    // Voucher: resgate de crédito já concedido numa troca anterior, vinculado
+    // a um número específico (validado antes de chegar aqui). Não é dinheiro
+    // novo entrando, então NÃO gera lançamento em A Receber — só abate o
+    // saldo daquele voucher exato.
     if (forma === 'Voucher') {
-      ajustarCredito(cliente, -valorLeg);
+      const vouchers = getVouchers();
+      const idx = vouchers.findIndex(v => v.numero.replace(/^0+/, '') === voucherNumero.trim().replace(/^0+/, ''));
+      if (idx >= 0) {
+        vouchers[idx].valorRestante = Math.max(0, vouchers[idx].valorRestante - valorLeg);
+        saveVouchers(vouchers);
+      }
       return;
     }
 
@@ -5614,7 +5651,7 @@ async function confirmarVenda() {
 
   for (let i = 0; i < pagamentos.length; i++) {
     const leg = pagamentos[i];
-    await processarFormaPagamento(leg.forma, leg.valor, leg.parcelas, pagamentos.length > 1 ? '_' + (i + 1) : '');
+    await processarFormaPagamento(leg.forma, leg.valor, leg.parcelas, pagamentos.length > 1 ? '_' + (i + 1) : '', leg.voucherNumero);
   }
   
   // Modal confirmação
@@ -5666,8 +5703,16 @@ async function confirmarVenda() {
   document.getElementById('prazo-entrada').value = '';
   document.getElementById('prazo-obs').value = '';
   document.getElementById('venda-desconto').value = '';
+  document.getElementById('venda-voucher-numero').value = '';
+  document.getElementById('voucher-fields').style.display = 'none';
   document.querySelectorAll('.pdv-pag-btn').forEach(b => b.classList.remove('ativo'));
   document.getElementById('pdv-forma-texto').textContent = '— selecione acima —';
+  document.getElementById('venda-pag-misto').checked = false;
+  document.getElementById('misto-valor-1').value = '';
+  document.getElementById('misto-valor-2').value = '';
+  document.getElementById('misto-voucher-1').value = '';
+  document.getElementById('misto-voucher-2').value = '';
+  togglePagamentoMisto();
 }
 
 // ===== HISTÓRICO =====
@@ -6717,6 +6762,9 @@ function togglePrazoFields() {
   const wrap = document.getElementById('prazo-fields');
   wrap.style.display = pag === 'A prazo' ? 'block' : 'none';
 
+  const voucherWrap = document.getElementById('voucher-fields');
+  if (voucherWrap) voucherWrap.style.display = pag === 'Voucher' ? 'block' : 'none';
+
   const parcelasWrap = document.getElementById('venda-parcelas-wrap');
   if (parcelasWrap) {
     parcelasWrap.style.display = pag === 'Cartão crédito' ? 'block' : 'none';
@@ -7301,22 +7349,23 @@ async function salvarNovaReceber() {
 
 // ===== TROCAS E DEVOLUÇÕES (armazenado localmente por enquanto) =====
 const TROCAS_KEY = 'oi2026_trocas';
-const CREDITOS_KEY = 'oi2026_creditos_clientes';
+const VOUCHERS_KEY = 'oi2026_vouchers';
 function getTrocas() { return JSON.parse(localStorage.getItem(TROCAS_KEY) || '[]'); }
 function saveTrocas(lista) { localStorage.setItem(TROCAS_KEY, JSON.stringify(lista)); }
-function getCreditos() { return JSON.parse(localStorage.getItem(CREDITOS_KEY) || '{}'); }
-function saveCreditos(obj) { localStorage.setItem(CREDITOS_KEY, JSON.stringify(obj)); }
+function getVouchers() { return JSON.parse(localStorage.getItem(VOUCHERS_KEY) || '[]'); }
+function saveVouchers(lista) { localStorage.setItem(VOUCHERS_KEY, JSON.stringify(lista)); }
+function buscarVoucher(numero) {
+  const alvo = (numero || '').trim().replace(/^0+/, ''); // compara ignorando zeros à esquerda
+  return getVouchers().find(v => v.numero.replace(/^0+/, '') === alvo);
+}
+// Soma informativa (pro aviso na tela de venda) — a validação de verdade na
+// hora de pagar é sempre por número de voucher específico, não por esse total.
 function creditoDisponivel(clienteNome) {
   const chave = (clienteNome || '').trim().toLowerCase();
   if (!chave) return 0;
-  return getCreditos()[chave] || 0;
-}
-function ajustarCredito(clienteNome, delta) {
-  const chave = (clienteNome || '').trim().toLowerCase();
-  if (!chave) return;
-  const creditos = getCreditos();
-  creditos[chave] = Math.max(0, (creditos[chave] || 0) + delta);
-  saveCreditos(creditos);
+  return getVouchers()
+    .filter(v => (v.cliente || '').trim().toLowerCase() === chave)
+    .reduce((s, v) => s + v.valorRestante, 0);
 }
 
 function renderTrocas() {
@@ -7343,11 +7392,22 @@ function buscarParaTroca() {
     return;
   }
 
+  const trocas = getTrocas();
+  function qtdJaDevolvida(vendaId) {
+    return trocas.filter(t => String(t.vendaId) === String(vendaId)).reduce((s, t) => s + t.qtd, 0);
+  }
+
   box.innerHTML = `
     <table>
       <thead><tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Cliente</th><th>Pagamento</th><th>Ação</th></tr></thead>
       <tbody>
-        ${resultados.map(v => `
+        ${resultados.map(v => {
+          const jaDevolvida = qtdJaDevolvida(v.id);
+          const restante = v.qtd - jaDevolvida;
+          const acao = restante > 0
+            ? `<button class="btn btn-secondary btn-sm" onclick="abrirDevolucao('${v.id}')">↩ Devolver${jaDevolvida > 0 ? ` (${restante} de ${v.qtd})` : ''}</button>`
+            : `<span style="font-size:11px;color:var(--success);">✓ Já devolvido</span>`;
+          return `
           <tr>
             <td style="font-size:12px;">${v.data || '—'}</td>
             <td><strong>${v.produto}</strong><br><code style="font-size:10px;color:var(--muted);">${v.ref}</code></td>
@@ -7355,24 +7415,32 @@ function buscarParaTroca() {
             <td>${R(v.valor_total)}</td>
             <td>${v.cliente || '—'}</td>
             <td style="font-size:12px;">${v.pagamento || '—'}</td>
-            <td><button class="btn btn-secondary btn-sm" onclick="abrirDevolucao('${v.id}')">↩ Devolver</button></td>
+            <td>${acao}</td>
           </tr>
-        `).join('')}
+        `;
+        }).join('')}
       </tbody>
     </table>
   `;
+}
+
+function qtdJaDevolvidaDaVenda(vendaId) {
+  return getTrocas().filter(t => String(t.vendaId) === String(vendaId)).reduce((s, t) => s + t.qtd, 0);
 }
 
 function abrirDevolucao(vendaRowId) {
   const venda = getVendas().find(v => String(v.id) === String(vendaRowId));
   if (!venda) { alert('Venda não encontrada.'); return; }
 
+  const restante = venda.qtd - qtdJaDevolvidaDaVenda(venda.id);
+  if (restante <= 0) { alert('Essa venda já foi devolvida por completo.'); return; }
+
   document.getElementById('dev-venda-ref').value = venda.id;
   document.getElementById('dev-produto-nome').textContent = `${venda.produto} (${venda.ref})`;
   document.getElementById('dev-data-venda').textContent = venda.data || '—';
-  document.getElementById('dev-info-extra').textContent = `Pagamento: ${venda.pagamento || '—'}${venda.cliente ? ' · Cliente: ' + venda.cliente : ''}`;
+  document.getElementById('dev-info-extra').textContent = `Pagamento: ${venda.pagamento || '—'}${venda.cliente ? ' · Cliente: ' + venda.cliente : ''} · Disponível pra devolver: ${restante} de ${venda.qtd}`;
   document.getElementById('dev-qtd').value = 1;
-  document.getElementById('dev-qtd').max = venda.qtd;
+  document.getElementById('dev-qtd').max = restante;
   document.getElementById('dev-cliente').value = venda.cliente || '';
   document.getElementById('dev-destino').value = 'credito';
   document.getElementById('dev-motivo').value = '';
@@ -7384,8 +7452,9 @@ function abrirDevolucao(vendaRowId) {
 function atualizarValorDevolucao() {
   const venda = getVendas().find(v => String(v.id) === String(document.getElementById('dev-venda-ref').value));
   if (!venda) return;
+  const restante = venda.qtd - qtdJaDevolvidaDaVenda(venda.id);
   let qtd = parseInt(document.getElementById('dev-qtd').value) || 1;
-  qtd = Math.max(1, Math.min(qtd, venda.qtd));
+  qtd = Math.max(1, Math.min(qtd, restante));
   document.getElementById('dev-qtd').value = qtd;
   setValorMoeda('dev-valor', venda.valor_unit * qtd);
 }
@@ -7423,13 +7492,11 @@ async function confirmarDevolucao() {
     } catch (e) { console.warn('Estoque da devolução salvo localmente:', e.message); }
   }
 
-  // Gera crédito, se for o caso
-  if (destino === 'credito') ajustarCredito(cliente, valor);
-
   // Registra a troca no histórico local
+  const numeroVoucher = destino === 'credito' ? proximoNumeroVoucher() : null;
   const trocaRegistro = {
     id: 'troca_' + Date.now(),
-    numeroVoucher: destino === 'credito' ? proximoNumeroVoucher() : null,
+    numeroVoucher,
     data: new Date().toLocaleString('pt-BR'),
     vendaId: venda.id,
     ref: venda.ref,
@@ -7443,6 +7510,21 @@ async function confirmarDevolucao() {
   const trocas = getTrocas();
   trocas.unshift(trocaRegistro);
   saveTrocas(trocas);
+
+  // Gera o voucher de verdade (número específico, com saldo próprio) — a
+  // venda futura só aceita esse crédito informando esse número exato.
+  if (destino === 'credito') {
+    const vouchers = getVouchers();
+    vouchers.unshift({
+      numero: numeroVoucher,
+      cliente,
+      valorOriginal: valor,
+      valorRestante: valor,
+      criadoEm: new Date().toISOString(),
+      trocaId: trocaRegistro.id
+    });
+    saveVouchers(vouchers);
+  }
 
   fecharModal('modal-devolucao');
   mostrarNotificacao(destino === 'credito' ? '✅ Devolução registrada — crédito gerado para ' + cliente : '✅ Devolução registrada — estorno confirmado');
