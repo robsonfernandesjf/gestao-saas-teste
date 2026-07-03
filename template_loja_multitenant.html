@@ -5152,14 +5152,23 @@ async function confirmarVenda() {
   } else {
     agora = new Date().toLocaleString('pt-BR');
   }
-  const totalFat = carrinho.reduce((s,c) => s + c.valor_unit * c.qtd, 0);
-  const totalLucro = carrinho.reduce((s,c) => s + (c.valor_unit - c.custo_unit) * c.qtd, 0);
-  
+  const totalBruto = carrinho.reduce((s,c) => s + c.valor_unit * c.qtd, 0);
+  const desconto = valorMoeda('venda-desconto');
+  const totalFat = Math.max(0, totalBruto - desconto);
+  // Desconto rateado proporcionalmente entre os itens, pra margem/lucro por
+  // produto ficarem corretos (sem isso, o desconto nunca chegava a ser
+  // subtraído do valor de fato salvo na venda).
+  const fatorDesconto = totalBruto > 0 ? totalFat / totalBruto : 1;
+  let totalLucro = 0;
+
   carrinho.forEach((item, idx) => {
     const pidx = produtos.findIndex(p=>p.ref===item.ref);
     if (pidx >= 0) produtos[pidx].estoque -= item.qtd;
-    const lucroItem = (item.valor_unit - item.custo_unit) * item.qtd;
-    const margemItem = item.valor_unit > 0 ? (lucroItem/(item.valor_unit*item.qtd)*100) : 0;
+    const valorUnitLiquido = item.valor_unit * fatorDesconto;
+    const valorTotalItem = valorUnitLiquido * item.qtd;
+    const lucroItem = (valorUnitLiquido - item.custo_unit) * item.qtd;
+    const margemItem = valorTotalItem > 0 ? (lucroItem/valorTotalItem*100) : 0;
+    totalLucro += lucroItem;
     vendas.unshift({
       id: vendaId + idx,
       venda_id: vendaId,
@@ -5169,8 +5178,8 @@ async function confirmarVenda() {
       categoria: item.categoria,
       custo_unit: item.custo_unit,
       qtd: item.qtd,
-      valor_unit: item.valor_unit,
-      valor_total: item.valor_unit * item.qtd,
+      valor_unit: valorUnitLiquido,
+      valor_total: valorTotalItem,
       lucro: lucroItem,
       margem: margemItem,
       cliente,
@@ -5180,20 +5189,22 @@ async function confirmarVenda() {
   });
   // Salvar no Supabase
   try {
-    // Salvar cada item da venda
+    // Salvar cada item da venda (o estoque já foi decrementado no loop acima —
+    // aqui só sincroniza o valor final, sem descontar de novo. Antes essa
+    // segunda subtração duplicava o desconto de estoque em toda venda.)
     for (const item of carrinho) {
       const pidx = produtos.findIndex(p => p.ref === item.ref);
-      if (pidx >= 0) produtos[pidx].estoque -= item.qtd;
-      const lucroItem = (item.valor_unit - item.custo_unit) * item.qtd;
-      const margemItem = item.valor_unit > 0 ? (lucroItem / (item.valor_unit * item.qtd) * 100) : 0;
+      const valorUnitLiquido = item.valor_unit * fatorDesconto;
+      const lucroItem = (valorUnitLiquido - item.custo_unit) * item.qtd;
+      const margemItem = valorUnitLiquido > 0 ? (lucroItem / (valorUnitLiquido * item.qtd) * 100) : 0;
       const vendaObj = {
         ref: item.ref, produto: item.produto, categoria: item.categoria,
-        custo: item.custo_unit, qtd: item.qtd, valor: item.valor_unit,
+        custo: item.custo_unit, qtd: item.qtd, valor: valorUnitLiquido,
         lucro: lucroItem, margem: margemItem, cliente, vendedor, pagamento: pag, data: agora
       };
       await sbPost('vendas', vendaObj);
-      // Atualizar estoque no Supabase
-      await sbPatchWhere('produtos', 'ref', item.ref, { estoque: produtos[pidx >= 0 ? pidx : 0].estoque });
+      // Atualizar estoque no Supabase (valor já correto, sem decrementar de novo)
+      if (pidx >= 0) await sbPatchWhere('produtos', 'ref', item.ref, { estoque: produtos[pidx].estoque });
     }
     invalidarCache('vendas');
     invalidarCache('produtos');
@@ -5415,7 +5426,7 @@ async function confirmarVenda() {
   _ultimoCupom = {
     itens: carrinho.map(c => ({ produto: c.produto, qtd: c.qtd, valor_unit: c.valor_unit })),
     total: totalFat,
-    desconto: valorMoeda('venda-desconto'),
+    desconto,
     pagamento: pag,
     parcelas,
     cliente,
