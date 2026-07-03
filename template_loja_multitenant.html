@@ -1508,6 +1508,23 @@
         <option value="baixo">Estoque baixo (≤1)</option>
       </select>
       <input type="text" id="rel-est-busca" placeholder="Buscar produto..." oninput="renderRelEstoque()" style="min-width:200px;">
+      <select id="relest-modo" onchange="alternarModoFiltroPeriodo('relest', renderRelEstoque)" style="min-width:150px;">
+        <option value="periodo">Vendidos: por período</option>
+        <option value="data">Vendidos: por intervalo</option>
+      </select>
+      <div id="relest-periodo-wrap" style="display:flex;">
+        <select id="relest-periodo" onchange="renderRelEstoque()">
+          <option value="7">Últimos 7 dias</option>
+          <option value="30">Últimos 30 dias</option>
+          <option value="90">Últimos 90 dias</option>
+          <option value="0" selected>Todos</option>
+        </select>
+      </div>
+      <div id="relest-data-wrap" style="display:none;gap:8px;align-items:center;">
+        <input type="date" id="relest-data-ini" onchange="renderRelEstoque()" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
+        <span style="color:var(--muted);font-size:12px;">até</span>
+        <input type="date" id="relest-data-fim" onchange="renderRelEstoque()" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
+      </div>
       <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:600;padding:7px 13px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);user-select:none;" id="flag-positivo-label">
         <input type="checkbox" id="rel-est-positivo" onchange="toggleFlagPositivo(this)" style="accent-color:var(--accent2);width:15px;height:15px;cursor:pointer;">
         <span>✅ Só com estoque</span>
@@ -1742,14 +1759,26 @@
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
         <button class="btn btn-outline btn-sm" onclick="voltarMenuGer()">← Voltar</button>
         <h2 id="ger-detalhe-titulo" style="font-size:16px;font-weight:700;"></h2>
-        <div style="margin-left:auto;display:flex;gap:10px;align-items:center;">
-          <select id="ger-periodo" onchange="renderRelatorioAtual()" style="min-width:160px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
-            <option value="7">Últimos 7 dias</option>
-            <option value="15">Últimos 15 dias</option>
-            <option value="30" selected>Últimos 30 dias</option>
-            <option value="90">Últimos 90 dias</option>
-            <option value="0">Todos</option>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <select id="ger-modo" onchange="alternarModoFiltroPeriodo('ger', renderRelatorioAtual)" style="min-width:160px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+            <option value="periodo">Por período</option>
+            <option value="data">Por intervalo de datas</option>
           </select>
+          <div id="ger-periodo-wrap" style="display:flex;">
+            <select id="ger-periodo" onchange="renderRelatorioAtual()" style="min-width:160px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+              <option value="7">Últimos 7 dias</option>
+              <option value="15">Últimos 15 dias</option>
+              <option value="30" selected>Últimos 30 dias</option>
+              <option value="90">Últimos 90 dias</option>
+              <option value="0">Todos</option>
+            </select>
+          </div>
+          <div id="ger-data-wrap" style="display:none;gap:10px;align-items:center;">
+            <label style="font-size:12px;color:var(--muted);white-space:nowrap;">De</label>
+            <input type="date" id="ger-data-ini" onchange="renderRelatorioAtual()" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+            <label style="font-size:12px;color:var(--muted);white-space:nowrap;">até</label>
+            <input type="date" id="ger-data-fim" onchange="renderRelatorioAtual()" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+          </div>
           <select id="ger-parado-dias" onchange="renderRelatorioAtual()" style="display:none;min-width:200px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
             <option value="30">Sem venda há 30+ dias</option>
             <option value="60">Sem venda há 60+ dias</option>
@@ -6025,8 +6054,14 @@ function renderRelEstoque() {
     CATS_ATUAIS().forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
   }
 
-  const vendas = getVendas();
-  // mapa de vendidos por ref
+  const vendas = getVendas().filter(v => {
+    if (!v.data) return false;
+    const partes = v.data.split('/');
+    if (partes.length < 3) return true;
+    const iso = `${partes[2].substring(0,4)}-${partes[1]}-${partes[0]}`;
+    return dentroDoPeriodo('relest', iso);
+  });
+  // mapa de vendidos por ref (respeita o período selecionado acima)
   const vendidosMap = {};
   vendas.forEach(v => { vendidosMap[v.ref] = (vendidosMap[v.ref]||0) + (v.qtd||1); });
 
@@ -8733,19 +8768,16 @@ function gerGetDias() {
   return parseInt(document.getElementById('ger-periodo')?.value || '30');
 }
 
+// Filtra por período pré-definido (7/15/30/90/todos) OU por intervalo de
+// datas customizado — reaproveita o mesmo mecanismo já usado em Financeiro,
+// Dashboard e A Receber/A Pagar, só que aplicado às vendas.
 function gerFiltrarVendas(vendas) {
-  const dias = gerGetDias();
-  if (dias === 0) return vendas;
-  const corte = new Date();
-  corte.setDate(corte.getDate() - dias);
   return vendas.filter(v => {
     if (!v.data) return false;
     const partes = v.data.split('/');
-    if (partes.length >= 3) {
-      const d = new Date(`${partes[2].substring(0,4)}-${partes[1]}-${partes[0]}`);
-      return d >= corte;
-    }
-    return true;
+    if (partes.length < 3) return true;
+    const iso = `${partes[2].substring(0,4)}-${partes[1]}-${partes[0]}`;
+    return dentroDoPeriodo('ger', iso);
   });
 }
 
