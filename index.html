@@ -5795,6 +5795,7 @@ function montarCupomHTML(v, fontSize) {
     ${linha}
     <div style="font-size:${fs - 1}px;">Data: ${v.dataHora}</div>
     <div style="font-size:${fs - 1}px;">Operador: ${operador}</div>
+    ${v.vendedor ? `<div style="font-size:${fs - 1}px;font-weight:700;">Vendedor(a): ${v.vendedor}</div>` : ''}
     ${linha}
     <div style="font-weight:700;margin-bottom:8px;">ITENS</div>
     ${itensHtml}
@@ -5813,7 +5814,6 @@ function montarCupomHTML(v, fontSize) {
       <span>${v.pagamento}${v.parcelas > 1 ? ' ' + v.parcelas + 'x' : ''}</span>
     </div>
     ${v.cliente ? `<div style="margin-top:6px;">Cliente: ${v.cliente}</div>` : ''}
-    ${v.vendedor ? `<div>Vendedor(a): ${v.vendedor}</div>` : ''}
     <div style="text-align:center;font-size:${fs - 4}px;font-weight:700;border:1px solid #999;border-radius:6px;padding:8px;margin-top:14px;">
       DOCUMENTO NÃO FISCAL<br>Comprovante interno de venda, sem valor fiscal
     </div>
@@ -7309,7 +7309,7 @@ function filtrarClientesVenda(input) {
   if (clientes.length === 0) { box.style.display = 'none'; box.innerHTML = ''; return; }
 
   box.innerHTML = clientes.map(c => `
-    <div onclick="selecionarClienteVenda('${c.nome.replace(/'/g, "\\'")}')"
+    <div onmousedown="event.preventDefault();selecionarClienteVenda('${c.nome.replace(/'/g, "\\'")}')"
          style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
          onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
       ${c.nome}${c.tel ? `<span style="color:var(--muted);font-size:11px;"> · ${c.tel}</span>` : ''}
