@@ -1056,7 +1056,8 @@
         </div>
         <div class="form-row" id="misto-voucher-1-wrap" style="display:none;">
           <label>Número do Voucher (forma 1)</label>
-          <input type="text" id="misto-voucher-1" placeholder="Ex: 000012">
+          <input type="text" id="misto-voucher-1" placeholder="Ex: 000012" oninput="checarSaldoVoucherMisto(1)">
+          <div id="misto-voucher-1-saldo" style="font-size:12px;margin-top:4px;"></div>
         </div>
         <div class="form-row" id="misto-parcelas-1-wrap" style="display:none;">
           <label>Parcelas (forma 1)</label>
@@ -1087,7 +1088,8 @@
         </div>
         <div class="form-row" id="misto-voucher-2-wrap" style="display:none;">
           <label>Número do Voucher (forma 2)</label>
-          <input type="text" id="misto-voucher-2" placeholder="Ex: 000012">
+          <input type="text" id="misto-voucher-2" placeholder="Ex: 000012" oninput="checarSaldoVoucherMisto(2)">
+          <div id="misto-voucher-2-saldo" style="font-size:12px;margin-top:4px;"></div>
         </div>
         <div class="form-row" id="misto-parcelas-2-wrap" style="display:none;">
           <label>Parcelas (forma 2)</label>
@@ -1123,8 +1125,9 @@
       <div id="voucher-fields" style="display:none;margin-top:12px;padding:14px;background:var(--accent-light);border:1px solid #D4C0B5;border-radius:var(--radius);">
         <div class="form-row" style="margin-bottom:0;">
           <label>Número do Voucher</label>
-          <input type="text" id="venda-voucher-numero" placeholder="Ex: 000012">
+          <input type="text" id="venda-voucher-numero" placeholder="Ex: 000012" oninput="checarSaldoVoucher('venda-voucher-numero', 'venda-voucher-saldo')">
         </div>
+        <div id="venda-voucher-saldo" style="font-size:12px;margin-top:6px;"></div>
       </div>
 
       <!-- Campos extras para venda a prazo -->
@@ -5265,6 +5268,41 @@ function togglePagamentoMisto() {
   if (ativo) recalcularMisto();
 }
 
+// Mostra o saldo do voucher assim que o número é digitado (pagamento único)
+function checarSaldoVoucher(inputId, saldoBoxId) {
+  const numero = document.getElementById(inputId).value.trim();
+  const box = document.getElementById(saldoBoxId);
+  if (!numero) { box.textContent = ''; return; }
+  const voucher = buscarVoucher(numero);
+  if (!voucher) {
+    box.innerHTML = '<span style="color:var(--danger);">⚠ Voucher não encontrado</span>';
+  } else {
+    box.innerHTML = `Cliente: <strong>${voucher.cliente}</strong> · Saldo disponível: <strong style="color:var(--success);">${R(voucher.valorRestante)}</strong>`;
+  }
+}
+
+// No pagamento misto: mostra o saldo e, se for a forma 1, já preenche o valor
+// sozinho (a forma 2 é sempre o restante calculado automaticamente).
+function checarSaldoVoucherMisto(perna) {
+  const numero = document.getElementById('misto-voucher-' + perna).value.trim();
+  const box = document.getElementById('misto-voucher-' + perna + '-saldo');
+  if (!numero) { box.textContent = ''; return; }
+  const voucher = buscarVoucher(numero);
+  if (!voucher) {
+    box.innerHTML = '<span style="color:var(--danger);">⚠ Voucher não encontrado</span>';
+    return;
+  }
+  box.innerHTML = `Cliente: <strong>${voucher.cliente}</strong> · Saldo disponível: <strong style="color:var(--success);">${R(voucher.valorRestante)}</strong>`;
+
+  if (perna === 1) {
+    const totalBruto = carrinho.reduce((s,c) => s + c.valor_unit * c.qtd, 0);
+    const desconto = valorMoeda('venda-desconto');
+    const totalFat = Math.max(0, totalBruto - desconto);
+    setValorMoeda('misto-valor-1', Math.min(voucher.valorRestante, totalFat));
+    recalcularMisto();
+  }
+}
+
 function recalcularMisto() {
   const totalBruto = carrinho.reduce((s,c) => s + c.valor_unit * c.qtd, 0);
   const desconto = valorMoeda('venda-desconto');
@@ -5304,11 +5342,14 @@ function limparCarrinho() {
   document.querySelectorAll('.pdv-pag-btn').forEach(b => b.classList.remove('ativo'));
   document.getElementById('pdv-forma-texto').textContent = '— selecione acima —';
   document.getElementById('venda-voucher-numero').value = '';
+  document.getElementById('venda-voucher-saldo').textContent = '';
   document.getElementById('venda-pag-misto').checked = false;
   document.getElementById('misto-valor-1').value = '';
   document.getElementById('misto-valor-2').value = '';
   document.getElementById('misto-voucher-1').value = '';
   document.getElementById('misto-voucher-2').value = '';
+  document.getElementById('misto-voucher-1-saldo').textContent = '';
+  document.getElementById('misto-voucher-2-saldo').textContent = '';
   togglePagamentoMisto();
   renderCarrinho();
 }
@@ -5708,6 +5749,7 @@ async function confirmarVenda() {
   document.getElementById('prazo-obs').value = '';
   document.getElementById('venda-desconto').value = '';
   document.getElementById('venda-voucher-numero').value = '';
+  document.getElementById('venda-voucher-saldo').textContent = '';
   document.getElementById('voucher-fields').style.display = 'none';
   document.querySelectorAll('.pdv-pag-btn').forEach(b => b.classList.remove('ativo'));
   document.getElementById('pdv-forma-texto').textContent = '— selecione acima —';
@@ -5716,6 +5758,8 @@ async function confirmarVenda() {
   document.getElementById('misto-valor-2').value = '';
   document.getElementById('misto-voucher-1').value = '';
   document.getElementById('misto-voucher-2').value = '';
+  document.getElementById('misto-voucher-1-saldo').textContent = '';
+  document.getElementById('misto-voucher-2-saldo').textContent = '';
   togglePagamentoMisto();
 }
 
