@@ -243,13 +243,12 @@
   .etq-campo-chip:active { cursor: grabbing; }
   .etq-elemento { user-select: none; }
   .etq-elemento .etq-controles {
-    position: absolute; top: -20px; left: 0; display: none; gap: 2px; white-space: nowrap;
+    position: absolute; top: -20px; left: 0; display: flex; gap: 2px; white-space: nowrap; z-index: 10;
   }
-  .etq-elemento:hover .etq-controles { display: flex; }
   .etq-elemento:hover { outline: 1px dashed var(--accent); }
   .etq-ctrl, .etq-remover {
-    background: #444; color: #fff; border-radius: 3px; width: 15px; height: 15px;
-    font-size: 11px; line-height: 15px; text-align: center; cursor: pointer;
+    background: #444; color: #fff; border-radius: 3px; width: 16px; height: 16px;
+    font-size: 12px; line-height: 16px; text-align: center; cursor: pointer;
   }
   .etq-remover { background: var(--danger); }
 
@@ -8105,7 +8104,7 @@ function montarEtiquetaHTML(p, cfg, nomeLoja, escalaPx, ehPreview) {
     const valores = {
       loja: nomeLoja, nome: p.produto, ref: `Ref: ${p.ref}`, preco: R(p.preco_venda), categoria: p.categoria || '',
       texto: el.texto || '',
-      parcelamento: (p.parcela && p.nparcelas) ? `${p.nparcelas}x ${R(p.parcela)}` : ''
+      parcelamento: (p.parcela && p.nparcelas) ? `${p.nparcelas}x ${R(p.parcela)}` : R(p.preco_venda)
     };
     const fontes = { loja: 6, nome: 7, ref: 6, preco: 13, categoria: 6, parcelamento: 8, texto: 7 };
     const fonte = (el.fontSize || fontes[el.tipo] || 7) * (escalaPx ? (escalaPx / 8) : 1);
