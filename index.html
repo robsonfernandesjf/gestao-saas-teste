@@ -2822,7 +2822,20 @@ async function getVendasAsync() {
   _cache.vendas = await sbGet('vendas', 'order=created_at.desc');
   return _cache.vendas;
 }
-function getVendas() { return _cache.vendas || JSON.parse(localStorage.getItem(VD_KEY) || '[]'); }
+function getVendas() {
+  const lista = _cache.vendas || JSON.parse(localStorage.getItem(VD_KEY) || '[]');
+  // Normaliza nomes de campo: a tabela no Supabase guarda em "valor"/"custo"
+  // (preenchidos na gravação), mas "valor_unit"/"custo_unit"/"valor_total"
+  // ficavam sempre zerados por padrão — nunca eram preenchidos no insert.
+  // Aqui a leitura prioriza o valor que já existir e não for zero.
+  return lista.map(v => {
+    const qtd = v.qtd || 1;
+    const valorUnit = (v.valor_unit > 0) ? v.valor_unit : (v.valor || 0);
+    const custoUnit = (v.custo_unit > 0) ? v.custo_unit : (v.custo || 0);
+    const valorTotal = (v.valor_total > 0) ? v.valor_total : (valorUnit * qtd);
+    return { ...v, valor_unit: valorUnit, custo_unit: custoUnit, valor_total: valorTotal };
+  });
+}
 
 async function saveVenda(v) {
   const res = await sbPost('vendas', v);
@@ -5631,6 +5644,10 @@ async function confirmarVenda() {
       const vendaObj = {
         ref: item.ref, produto: item.produto, categoria: item.categoria,
         custo: item.custo_unit, qtd: item.qtd, valor: valorUnitLiquido,
+        // Preenche também as colunas "_unit"/"_total" — ficavam sempre
+        // zeradas porque nunca eram enviadas no insert, e é justamente
+        // isso que fazia relatórios e o fechamento de caixa lerem R$ 0,00.
+        custo_unit: item.custo_unit, valor_unit: valorUnitLiquido, valor_total: valorUnitLiquido * item.qtd,
         lucro: lucroItem, margem: margemItem, cliente, vendedor, pagamento: pag, data: agora
       };
       await sbPost('vendas', vendaObj);
