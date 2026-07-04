@@ -6731,10 +6731,12 @@ async function imprimirDocumento(html) {
     // não precisa do <html>/<head> nem do window.print() embutido no template.
     const corpoMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
     const corpo = corpoMatch ? corpoMatch[1].replace(/<script[\s\S]*?<\/script>/gi, '') : html;
-    const config = qz.configs.create(null); // impressora padrão do Windows
+    // O QZ precisa do NOME da impressora — "null" não funciona como "padrão".
+    const nomeImpressora = await qz.printers.getDefault();
+    const config = qz.configs.create(nomeImpressora);
     await qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: `<html><body>${corpo}</body></html>` }]);
   } catch (e) {
-    console.warn('Falha ao imprimir via QZ, abrindo do jeito de sempre:', e.message);
+    console.warn('Falha ao imprimir via QZ, abrindo do jeito de sempre:', e);
     abrirJanelaImpressaoFallback(html);
   }
 }
