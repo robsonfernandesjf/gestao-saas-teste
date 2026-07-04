@@ -1983,6 +1983,7 @@
     <div class="cat-tab active" onclick="mostrarSubFin('receber')">📥 A Receber</div>
     <div class="cat-tab" onclick="mostrarSubFin('pagar')">💸 A Pagar</div>
     <div class="cat-tab" onclick="mostrarSubFin('extrato')">📋 Extrato Geral</div>
+    <div class="cat-tab" onclick="mostrarSubFin('caixa')">🧾 Fechamento de Caixa</div>
   </div>
   <p style="font-size:12px;color:var(--muted);margin:-12px 0 16px;">💳 Taxas de Cartão agora fica em Config. Empresa.</p>
 
@@ -2159,6 +2160,45 @@
     <div id="financeiro-lista"></div>
   </div>
 
+  <!-- ===== FECHAMENTO DE CAIXA ===== -->
+  <div id="subfin-caixa" style="display:none;">
+    <div class="toolbar" style="margin-bottom:16px;gap:10px;align-items:center;">
+      <label style="font-size:12px;color:var(--muted);white-space:nowrap;">Data</label>
+      <input type="date" id="caixa-data" onchange="renderFechamentoCaixa()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+      <button class="btn btn-outline" onclick="renderFechamentoCaixa()">↺ Atualizar</button>
+    </div>
+
+    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">💰 Dinheiro recebido no dia (novo + recebimentos de contas em aberto)</p>
+    <div class="cards" id="caixa-cards-recebido" style="margin-bottom:20px;"></div>
+
+    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">ℹ️ Gerado no dia, ainda não é dinheiro em caixa</p>
+    <div class="cards" id="caixa-cards-info" style="margin-bottom:24px;"></div>
+
+    <div class="table-wrap" style="padding:20px;max-width:520px;">
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:14px;">🧮 Conferência do dinheiro físico</p>
+      <div class="form-row">
+        <label>Dinheiro esperado na gaveta</label>
+        <input type="text" id="caixa-esperado" readonly style="background:var(--bg);color:var(--muted);font-weight:700;">
+      </div>
+      <div class="form-row">
+        <label>Dinheiro contado (fisicamente na gaveta)</label>
+        <input type="text" inputmode="numeric" id="caixa-contado" placeholder="0,00" oninput="mascaraMoeda(this);calcularDiferencaCaixa();">
+      </div>
+      <div id="caixa-diferenca" style="font-size:14px;font-weight:700;margin:10px 0;"></div>
+      <div class="form-row">
+        <label>Observação (opcional)</label>
+        <input type="text" id="caixa-obs" placeholder="Ex: troco emprestado, saída pra compra...">
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="fecharCaixaDoDia()">🔒 Fechar Caixa do Dia</button>
+      <span id="caixa-msg" style="font-size:12px;display:block;margin-top:8px;"></span>
+    </div>
+
+    <div style="margin-top:32px;">
+      <div class="section-title" style="font-size:14px;">📋 Histórico de fechamentos</div>
+      <div id="caixa-historico"></div>
+    </div>
+  </div>
+
   <!-- ===== TAXAS DE CARTÃO ===== -->
 
 </div>
@@ -2182,6 +2222,29 @@
 </div>
 
 <!-- MODAL DEVOLUÇÃO -->
+<!-- MODAL IMPRESSÃO DE ETIQUETA -->
+<div class="modal-bg" id="modal-etiqueta">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h2>🏷️ Imprimir Etiqueta</h2>
+      <button class="modal-close" onclick="fecharModal('modal-etiqueta')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="etq-ref-atual">
+      <p style="margin-bottom:14px;"><strong id="etq-produto-nome"></strong></p>
+      <div class="form-row">
+        <label>Quantidade de etiquetas</label>
+        <input type="number" id="etq-qtd" min="1" value="1">
+      </div>
+      <p id="etq-sem-barras-aviso" style="display:none;font-size:12px;color:var(--warn);margin-top:8px;">⚠ Esse produto não tem código de barras cadastrado — a etiqueta sai sem o código.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-etiqueta')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarImpressaoEtiqueta()">🖨️ Imprimir</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-devolucao">
   <div class="modal" style="max-width:480px;">
     <div class="modal-header">
@@ -4082,6 +4145,7 @@ function renderEstoque() {
       <td style="white-space:nowrap;">
         <button class="btn btn-outline btn-sm" onclick="abrirEdicao('${p.ref}')">Editar</button>
         <button class="btn btn-secondary btn-sm" onclick="registrarVendaRapida('${p.ref}')">Vender</button>
+        <button class="btn btn-outline btn-sm" onclick="abrirImpressaoEtiqueta('${p.ref}')" title="Imprimir etiqueta">🏷️</button>
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="8" class="empty">Nenhum produto encontrado.</td></tr>';
@@ -6878,15 +6942,16 @@ function selecionarFormaPagamento(btn) {
 
 // ===== FINANCEIRO UNIFICADO =====
 function mostrarSubFin(sub) {
-  ['receber','pagar','extrato'].forEach(s => {
+  ['receber','pagar','extrato','caixa'].forEach(s => {
     document.getElementById('subfin-' + s).style.display = s === sub ? 'block' : 'none';
   });
   document.querySelectorAll('#fin-subtabs .cat-tab').forEach((t, i) => {
-    t.classList.toggle('active', ['receber','pagar','extrato'][i] === sub);
+    t.classList.toggle('active', ['receber','pagar','extrato','caixa'][i] === sub);
   });
   if (sub === 'receber')  renderSubReceber();
   if (sub === 'pagar')    renderContasPagar();
   if (sub === 'extrato')  renderFinanceiro();
+  if (sub === 'caixa')    renderFechamentoCaixa();
 }
 
 // ===== TAXAS DE CARTÃO =====
@@ -7195,6 +7260,155 @@ function alternarModoFiltroFin()     { alternarModoFiltroPeriodo('fin', renderFi
 function alternarModoFiltroReceber() { alternarModoFiltroPeriodo('receber', renderSubReceber); }
 function alternarModoFiltroPagar()   { alternarModoFiltroPeriodo('pagar', renderContasPagar); }
 function dentroDoPeriodoFin(dataISO) { return dentroDoPeriodo('fin', dataISO); }
+
+// ===== FECHAMENTO DE CAIXA (armazenado localmente por enquanto) =====
+const FECHAMENTOS_KEY = 'oi2026_fechamentos_caixa';
+function getFechamentos() { return JSON.parse(localStorage.getItem(FECHAMENTOS_KEY) || '[]'); }
+function saveFechamentos(lista) { localStorage.setItem(FECHAMENTOS_KEY, JSON.stringify(lista)); }
+
+function dataParaISO(dataBr) {
+  const soData = (dataBr || '').split(',')[0].trim();
+  const p = soData.split('/');
+  return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : '';
+}
+
+// Olha, dia a dia, quanto de fato entrou (não quanto foi vendido — a
+// diferença importa: uma venda no cartão feita hoje só vira dinheiro de
+// verdade quando cai no próximo dia útil, e um fiado só quando for pago).
+function calcularMovimentoCaixa(dataISO) {
+  const debitos = getDebitos();
+  const porForma = {};
+  debitos.forEach(d => {
+    (d.pagamentos || []).forEach(p => {
+      if (!p.data) return;
+      const [dia, mes, ano] = p.data.split('/');
+      if (`${ano}-${mes}-${dia}` !== dataISO) return;
+      const forma = p.forma === 'Entrada' ? 'À vista (entrada fiado)' : p.forma;
+      porForma[forma] = (porForma[forma] || 0) + p.valor;
+    });
+  });
+
+  let fiadoGerado = 0, cartaoGerado = 0;
+  debitos.forEach(d => {
+    if (dataParaISO(d.data_venda) !== dataISO) return;
+    const jaPago = (d.pagamentos || []).reduce((s, p) => s + p.valor, 0);
+    const restante = (d.total || 0) - jaPago;
+    if (restante <= 0.005) return;
+    if (d.cartao_dia) cartaoGerado += restante; else fiadoGerado += restante;
+  });
+
+  return { porForma, fiadoGerado, cartaoGerado };
+}
+
+function renderFechamentoCaixa() {
+  const dataInput = document.getElementById('caixa-data');
+  if (!dataInput.value) dataInput.value = new Date().toISOString().slice(0, 10);
+  const dataISO = dataInput.value;
+
+  const { porForma, fiadoGerado, cartaoGerado } = calcularMovimentoCaixa(dataISO);
+  const iconePorForma = { 'À vista': '💵', 'Dinheiro': '💵', 'À vista (entrada fiado)': '💵', 'Pix': '📱', 'Cartão débito': '💳', 'Cartão crédito': '💳' };
+
+  const formas = Object.keys(porForma);
+  document.getElementById('caixa-cards-recebido').innerHTML = formas.length
+    ? formas.map(fm => `
+        <div class="card">
+          <div class="card-label">${iconePorForma[fm] || '💰'} ${fm}</div>
+          <div class="card-value">${R(porForma[fm])}</div>
+        </div>
+      `).join('')
+    : '<p style="font-size:13px;color:var(--muted);">Nenhum recebimento registrado nesse dia.</p>';
+
+  document.getElementById('caixa-cards-info').innerHTML = `
+    <div class="card">
+      <div class="card-label">📄 Fiado gerado (ainda a receber)</div>
+      <div class="card-value" style="color:var(--warn);">${R(fiadoGerado)}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">💳 Cartão vendido (cai no próximo dia útil)</div>
+      <div class="card-value" style="color:var(--warn);">${R(cartaoGerado)}</div>
+    </div>
+  `;
+
+  const dinheiroEsperado = Object.keys(porForma)
+    .filter(fm => fm.toLowerCase().includes('vista') || fm.toLowerCase().includes('dinheiro'))
+    .reduce((s, fm) => s + porForma[fm], 0);
+  setValorMoeda('caixa-esperado', dinheiroEsperado);
+
+  document.getElementById('caixa-contado').value = '';
+  document.getElementById('caixa-obs').value = '';
+  document.getElementById('caixa-diferenca').textContent = '';
+  document.getElementById('caixa-msg').textContent = '';
+
+  renderHistoricoFechamentos();
+}
+
+function calcularDiferencaCaixa() {
+  const esperado = valorMoeda('caixa-esperado');
+  const contado = valorMoeda('caixa-contado');
+  const diff = contado - esperado;
+  const el = document.getElementById('caixa-diferenca');
+  if (Math.abs(diff) < 0.01) { el.innerHTML = '✅ Caixa bate certinho'; el.style.color = 'var(--success)'; }
+  else if (diff > 0) { el.innerHTML = `⚠ Sobra de ${R(diff)}`; el.style.color = 'var(--warn)'; }
+  else { el.innerHTML = `⚠ Falta de ${R(Math.abs(diff))}`; el.style.color = 'var(--danger)'; }
+}
+
+function fecharCaixaDoDia() {
+  const dataISO = document.getElementById('caixa-data').value;
+  const esperado = valorMoeda('caixa-esperado');
+  const contadoInput = document.getElementById('caixa-contado').value.trim();
+  if (!contadoInput) { alert('Informe o dinheiro contado na gaveta.'); return; }
+  const contado = valorMoeda('caixa-contado');
+  const obs = document.getElementById('caixa-obs').value.trim();
+
+  const fechamentos = getFechamentos();
+  if (fechamentos.find(fc => fc.data === dataISO) && !confirm('Esse dia já tem um fechamento registrado. Substituir?')) return;
+
+  const registro = {
+    data: dataISO,
+    esperado,
+    contado,
+    diferenca: contado - esperado,
+    obs: obs || null,
+    fechadoEm: new Date().toLocaleString('pt-BR'),
+    operador: (usuarioAtual() && usuarioAtual().nome) || '—'
+  };
+
+  const lista = fechamentos.filter(fc => fc.data !== dataISO);
+  lista.unshift(registro);
+  saveFechamentos(lista);
+
+  const msg = document.getElementById('caixa-msg');
+  msg.style.color = 'var(--success)';
+  msg.textContent = '✅ Caixa fechado com sucesso!';
+  renderHistoricoFechamentos();
+}
+
+function renderHistoricoFechamentos() {
+  const lista = getFechamentos();
+  const box = document.getElementById('caixa-historico');
+  if (lista.length === 0) { box.innerHTML = '<p style="font-size:13px;color:var(--muted);">Nenhum fechamento registrado ainda.</p>'; return; }
+  box.innerHTML = `
+    <table>
+      <thead><tr><th>Data</th><th>Esperado</th><th>Contado</th><th>Diferença</th><th>Operador</th><th>Obs.</th></tr></thead>
+      <tbody>
+        ${lista.map(fc => {
+          const [ano, mes, dia] = fc.data.split('-');
+          const cor = Math.abs(fc.diferenca) < 0.01 ? 'var(--success)' : (fc.diferenca > 0 ? 'var(--warn)' : 'var(--danger)');
+          return `
+          <tr>
+            <td>${dia}/${mes}/${ano}</td>
+            <td>${R(fc.esperado)}</td>
+            <td>${R(fc.contado)}</td>
+            <td style="color:${cor};font-weight:700;">${fc.diferenca >= 0 ? '+' : ''}${R(fc.diferenca)}</td>
+            <td style="font-size:12px;">${fc.operador}</td>
+            <td style="font-size:12px;color:var(--muted);">${fc.obs || '—'}</td>
+          </tr>
+        `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
 
 function renderFinanceiro() {
   const busca     = (document.getElementById('busca-financeiro')?.value || '').toLowerCase();
@@ -7692,6 +7906,77 @@ function renderHistoricoTrocas() {
       </tbody>
     </table>
   `;
+}
+
+// ===== IMPRESSÃO DE ETIQUETA (código de barras via JsBarcode, janela isolada) =====
+function abrirImpressaoEtiqueta(ref) {
+  const p = getProdutos().find(x => x.ref === ref);
+  if (!p) return;
+  document.getElementById('etq-ref-atual').value = ref;
+  document.getElementById('etq-produto-nome').textContent = `${p.produto} (${p.ref})`;
+  document.getElementById('etq-qtd').value = 1;
+  document.getElementById('etq-sem-barras-aviso').style.display = p.ean13 ? 'none' : 'block';
+  document.getElementById('modal-etiqueta').classList.add('open');
+}
+
+function confirmarImpressaoEtiqueta() {
+  const ref = document.getElementById('etq-ref-atual').value;
+  const qtd = Math.max(1, parseInt(document.getElementById('etq-qtd').value) || 1);
+  const p = getProdutos().find(x => x.ref === ref);
+  if (!p) return;
+
+  const cfg = getConfigEtiqueta();
+  const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
+
+  function montarUmaEtiqueta() {
+    let html = '<div class="etiqueta">';
+    if (cfg.campos.includes('loja')) html += `<div class="etq-loja">${nomeLoja}</div>`;
+    if (cfg.campos.includes('nome')) html += `<div class="etq-nome">${p.produto}</div>`;
+    if (cfg.campos.includes('categoria')) html += `<div class="etq-cat">${p.categoria || ''}</div>`;
+    if (cfg.campos.includes('ref')) html += `<div class="etq-ref">Ref: ${p.ref}</div>`;
+    if (cfg.campos.includes('preco')) html += `<div class="etq-preco">${R(p.preco_venda)}</div>`;
+    if (cfg.campos.includes('barras') && p.ean13) html += `<svg class="etq-barcode" data-code="${p.ean13}"></svg>`;
+    html += '</div>';
+    return html;
+  }
+
+  const labelsHtml = Array.from({ length: qtd }, montarUmaEtiqueta).join('');
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+  <title>Etiquetas</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"><\/script>
+  <style>
+    @page { size: ${cfg.largura}mm ${cfg.altura}mm; margin: 0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; }
+    .etiqueta {
+      width: ${cfg.largura}mm; height: ${cfg.altura}mm; padding: 1.5mm;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 0.5mm; overflow: hidden; page-break-after: always;
+    }
+    .etiqueta:last-child { page-break-after: auto; }
+    .etq-loja { font-size: 6px; font-weight: 700; text-align: center; }
+    .etq-nome { font-size: 7px; font-weight: 700; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    .etq-cat { font-size: 6px; color: #555; }
+    .etq-ref { font-size: 6px; color: #333; }
+    .etq-preco { font-size: 13px; font-weight: 800; }
+    .etq-barcode { max-width: 95%; }
+  </style></head><body>
+    ${labelsHtml}
+    <script>
+      window.onload = () => {
+        document.querySelectorAll('.etq-barcode').forEach(svg => {
+          try { JsBarcode(svg, svg.dataset.code, { format: 'EAN13', width: 1.1, height: 26, fontSize: 9, margin: 0 }); } catch (e) {}
+        });
+        setTimeout(() => window.print(), 350);
+      };
+    <\/script>
+  </body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  fecharModal('modal-etiqueta');
 }
 
 function abrirBaixa(id) {
@@ -9636,7 +9921,61 @@ function toggleConfigSecao(nome) {
     if (nome === 'categorias') renderListaCategorias();
     if (nome === 'usuarios') renderUsuarios();
     if (nome === 'impressora') carregarImpressora();
+    if (nome === 'etiqueta') carregarConfigEtiqueta();
   }
+}
+
+function toggleEtiquetaPersonalizada() {
+  document.getElementById('etq-personalizado-wrap').style.display =
+    document.getElementById('etq-tamanho').value === 'personalizado' ? 'grid' : 'none';
+}
+
+function carregarConfigEtiqueta() {
+  const cfg = (_dadosEmpresaCache && _dadosEmpresaCache.etiqueta) || {};
+  document.getElementById('etq-tamanho').value = cfg.tamanho || '40x30';
+  document.getElementById('etq-largura-custom').value = cfg.largura || 40;
+  document.getElementById('etq-altura-custom').value = cfg.altura || 30;
+  const campos = cfg.campos || ['loja', 'nome', 'ref', 'preco', 'barras'];
+  document.getElementById('etq-campo-loja').checked = campos.includes('loja');
+  document.getElementById('etq-campo-nome').checked = campos.includes('nome');
+  document.getElementById('etq-campo-ref').checked = campos.includes('ref');
+  document.getElementById('etq-campo-preco').checked = campos.includes('preco');
+  document.getElementById('etq-campo-barras').checked = campos.includes('barras');
+  document.getElementById('etq-campo-categoria').checked = campos.includes('categoria');
+  toggleEtiquetaPersonalizada();
+}
+
+function getConfigEtiqueta() {
+  const cfg = (_dadosEmpresaCache && _dadosEmpresaCache.etiqueta) || {};
+  const presets = { '40x30': [40, 30], '50x30': [50, 30], '40x60': [40, 60] };
+  let largura = 40, altura = 30;
+  if (cfg.tamanho === 'personalizado') { largura = cfg.largura || 40; altura = cfg.altura || 30; }
+  else if (presets[cfg.tamanho]) { [largura, altura] = presets[cfg.tamanho]; }
+  return { largura, altura, campos: cfg.campos || ['loja', 'nome', 'ref', 'preco', 'barras'] };
+}
+
+async function salvarConfigEtiqueta() {
+  const campos = [];
+  if (document.getElementById('etq-campo-loja').checked) campos.push('loja');
+  if (document.getElementById('etq-campo-nome').checked) campos.push('nome');
+  if (document.getElementById('etq-campo-ref').checked) campos.push('ref');
+  if (document.getElementById('etq-campo-preco').checked) campos.push('preco');
+  if (document.getElementById('etq-campo-barras').checked) campos.push('barras');
+  if (document.getElementById('etq-campo-categoria').checked) campos.push('categoria');
+
+  _dadosEmpresaCache.etiqueta = {
+    tamanho: document.getElementById('etq-tamanho').value,
+    largura: parseInt(document.getElementById('etq-largura-custom').value) || 40,
+    altura: parseInt(document.getElementById('etq-altura-custom').value) || 30,
+    campos
+  };
+
+  const msg = document.getElementById('etq-msg');
+  try {
+    await sbPatch('lojas', LOJA_ID, { dados_empresa: JSON.stringify(_dadosEmpresaCache) });
+    msg.style.color = 'var(--success)'; msg.textContent = '✅ Configuração salva!';
+  } catch (e) { msg.style.color = 'var(--danger)'; msg.textContent = '❌ Erro: ' + e.message; }
+  setTimeout(() => { msg.textContent = ''; }, 4000);
 }
 
 function carregarImpressora() {
@@ -9881,6 +10220,54 @@ atualizarHora();
         <div style="margin-top:16px;display:flex;gap:10px;">
           <button class="btn btn-primary" onclick="salvarImpressora()">💾 Salvar impressora</button>
           <span id="impr-msg" style="font-size:12px;align-self:center;"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-secao" style="margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <button onclick="toggleConfigSecao('etiqueta')" style="width:100%;text-align:left;padding:16px 18px;background:var(--surface);border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;color:var(--text);">
+        <span>🏷️ Etiquetas</span>
+        <span id="seta-config-etiqueta" class="config-secao-seta" style="font-size:12px;color:var(--muted);">▸</span>
+      </button>
+      <div id="config-body-etiqueta" class="config-secao-body" style="display:none;padding:18px;border-top:1px solid var(--border);">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
+          Configura o tamanho da etiqueta e quais informações aparecem nela. Funciona com as impressoras de
+          etiqueta térmica compactas (tipo as vendidas como "impressora de etiquetas Bluetooth" — comuns em
+          lojas de roupa pra colar preço/código de barras na peça).
+        </p>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Tamanho da etiqueta</label>
+            <select id="etq-tamanho" onchange="toggleEtiquetaPersonalizada()">
+              <option value="40x30">40 x 30 mm</option>
+              <option value="50x30">50 x 30 mm</option>
+              <option value="40x60">40 x 60 mm</option>
+              <option value="personalizado">Personalizado</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-grid" id="etq-personalizado-wrap" style="display:none;">
+          <div class="form-row">
+            <label>Largura (mm)</label>
+            <input type="number" id="etq-largura-custom" min="20" max="120" value="40">
+          </div>
+          <div class="form-row">
+            <label>Altura (mm)</label>
+            <input type="number" id="etq-altura-custom" min="15" max="120" value="30">
+          </div>
+        </div>
+        <p style="font-size:12px;font-weight:600;margin:14px 0 8px;">Informações que aparecem na etiqueta:</p>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="etq-campo-loja" checked style="width:auto;"> Nome da loja</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="etq-campo-nome" checked style="width:auto;"> Nome do produto</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="etq-campo-ref" checked style="width:auto;"> Referência</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="etq-campo-preco" checked style="width:auto;"> Preço</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="etq-campo-barras" checked style="width:auto;"> Código de barras</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="etq-campo-categoria" style="width:auto;"> Categoria</label>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:10px;">
+          <button class="btn btn-primary" onclick="salvarConfigEtiqueta()">💾 Salvar configuração</button>
+          <span id="etq-msg" style="font-size:12px;align-self:center;"></span>
         </div>
       </div>
     </div>
