@@ -242,13 +242,16 @@
   .etq-campo-chip:hover { border-color: var(--accent); background: var(--accent-light); }
   .etq-campo-chip:active { cursor: grabbing; }
   .etq-elemento { user-select: none; }
-  .etq-elemento .etq-remover {
-    position: absolute; top: -8px; right: -8px; background: var(--danger); color: #fff;
-    border-radius: 50%; width: 14px; height: 14px; font-size: 10px; line-height: 14px;
-    text-align: center; cursor: pointer; display: none;
+  .etq-elemento .etq-controles {
+    position: absolute; top: -20px; left: 0; display: none; gap: 2px; white-space: nowrap;
   }
-  .etq-elemento:hover .etq-remover { display: block; }
+  .etq-elemento:hover .etq-controles { display: flex; }
   .etq-elemento:hover { outline: 1px dashed var(--accent); }
+  .etq-ctrl, .etq-remover {
+    background: #444; color: #fff; border-radius: 3px; width: 15px; height: 15px;
+    font-size: 11px; line-height: 15px; text-align: center; cursor: pointer;
+  }
+  .etq-remover { background: var(--danger); }
 
   .pdv-pag-btn {
     padding: 14px 10px; border: 1px solid var(--border); border-radius: 10px;
@@ -8099,9 +8102,13 @@ function montarEtiquetaHTML(p, cfg, nomeLoja, escalaPx, ehPreview) {
       const h = el.h || 10;
       return `<svg class="${ehPreview ? 'etq-barcode-svg' : 'etq-barcode'}" data-code="${p.ean13}" style="${style}width:${conv(w)}${unidade};height:${conv(h)}${unidade};"></svg>`;
     }
-    const valores = { loja: nomeLoja, nome: p.produto, ref: `Ref: ${p.ref}`, preco: R(p.preco_venda), categoria: p.categoria || '' };
-    const fontes = { loja: 6, nome: 7, ref: 6, preco: 13, categoria: 6 };
-    const fonte = (fontes[el.tipo] || 7) * (escalaPx ? (escalaPx / 8) : 1);
+    const valores = {
+      loja: nomeLoja, nome: p.produto, ref: `Ref: ${p.ref}`, preco: R(p.preco_venda), categoria: p.categoria || '',
+      texto: el.texto || '',
+      parcelamento: (p.parcela && p.nparcelas) ? `${p.nparcelas}x ${R(p.parcela)}` : ''
+    };
+    const fontes = { loja: 6, nome: 7, ref: 6, preco: 13, categoria: 6, parcelamento: 8, texto: 7 };
+    const fonte = (el.fontSize || fontes[el.tipo] || 7) * (escalaPx ? (escalaPx / 8) : 1);
     return `<div style="${style}font-size:${fonte}px;font-weight:${el.tipo === 'preco' ? 800 : 700};white-space:nowrap;">${valores[el.tipo] || ''}</div>`;
   }).join('');
   const wrapStyle = escalaPx
@@ -10098,7 +10105,7 @@ let _etqLargura = 40, _etqAltura = 30;
 let _etqElementos = []; // [{id, tipo, x, y, w?, h?}] — x/y/w/h em mm
 
 const ETQ_TIPO_AMOSTRA = { loja: 'Fátima Cigani', nome: 'Vestido Midi Floral', ref: 'Ref: VL03', preco: 'R$ 99,90', categoria: 'Vestidos' };
-const ETQ_TIPO_FONTE = { loja: 6, nome: 7, ref: 6, preco: 13, categoria: 6 };
+const ETQ_TIPO_FONTE = { loja: 6, nome: 7, ref: 6, preco: 13, categoria: 6, parcelamento: 8, texto: 7 };
 
 function mudarTamanhoEtiqueta() {
   const tam = document.getElementById('etq-tamanho').value;
@@ -10124,19 +10131,26 @@ function renderCanvasEtiqueta() {
 
 function montarElementoCanvas(el) {
   const isBarras = el.tipo === 'barras';
-  const fonte = (ETQ_TIPO_FONTE[el.tipo] || 7) * (ETQ_ESCALA / 8);
+  const fonteBase = el.fontSize || ETQ_TIPO_FONTE[el.tipo] || 7;
+  const fonte = fonteBase * (ETQ_ESCALA / 8);
   const largura = isBarras ? (el.w || Math.max(10, _etqLargura - 8)) : null;
   const altura = isBarras ? (el.h || 10) : null;
+  const amostras = { ...ETQ_TIPO_AMOSTRA, parcelamento: '3x R$ 33,30', texto: el.texto || '(clique 2x pra editar)' };
   const conteudo = isBarras
     ? '<div style="width:100%;height:100%;background:repeating-linear-gradient(90deg,#000 0 2px,#fff 2px 4px);"></div>'
-    : (ETQ_TIPO_AMOSTRA[el.tipo] || el.tipo);
+    : (amostras[el.tipo] || el.tipo);
+  const dblclick = el.tipo === 'texto' ? `ondblclick="editarTextoElemento('${el.id}')"` : '';
   return `
-    <div class="etq-elemento" data-id="${el.id}" data-tipo="${el.tipo}"
+    <div class="etq-elemento" data-id="${el.id}" data-tipo="${el.tipo}" ${dblclick}
          style="position:absolute;left:${el.x * ETQ_ESCALA}px;top:${el.y * ETQ_ESCALA}px;
                 ${isBarras ? `width:${largura * ETQ_ESCALA}px;height:${altura * ETQ_ESCALA}px;` : ''}
                 font-size:${fonte}px;font-family:Arial;white-space:nowrap;cursor:move;padding:1px 2px;">
       ${conteudo}
-      <span class="etq-remover" onmousedown="event.stopPropagation()" onclick="removerElementoEtiqueta('${el.id}')">×</span>
+      <div class="etq-controles">
+        <span class="etq-ctrl" onmousedown="event.stopPropagation()" onclick="redimensionarElemento('${el.id}',-1)">−</span>
+        <span class="etq-ctrl" onmousedown="event.stopPropagation()" onclick="redimensionarElemento('${el.id}',1)">+</span>
+        <span class="etq-remover" onmousedown="event.stopPropagation()" onclick="removerElementoEtiqueta('${el.id}')">×</span>
+      </div>
     </div>
   `;
 }
@@ -10149,16 +10163,46 @@ function dropCampoNoCanvas(event) {
   event.preventDefault();
   const tipo = event.dataTransfer.getData('tipo');
   if (!tipo) return;
+
+  let texto;
+  if (tipo === 'texto') {
+    texto = prompt('Digite o texto que vai aparecer na etiqueta:', 'Data: __/__/____');
+    if (texto === null) return; // cancelou, não adiciona nada
+  }
+
   const canvas = document.getElementById('etq-canvas');
   const rect = canvas.getBoundingClientRect();
   const xMm = Math.max(0, Math.round((event.clientX - rect.left) / ETQ_ESCALA));
   const yMm = Math.max(0, Math.round((event.clientY - rect.top) / ETQ_ESCALA));
   _etqElementos.push({
     id: 'el_' + Date.now() + Math.random().toString(36).slice(2, 6),
-    tipo, x: xMm, y: yMm,
+    tipo, x: xMm, y: yMm, texto,
     w: tipo === 'barras' ? Math.max(10, _etqLargura - 8) : undefined,
     h: tipo === 'barras' ? 10 : undefined
   });
+  renderCanvasEtiqueta();
+}
+
+function editarTextoElemento(id) {
+  const el = _etqElementos.find(e => e.id === id);
+  if (!el || el.tipo !== 'texto') return;
+  const novo = prompt('Editar texto:', el.texto || '');
+  if (novo === null) return;
+  el.texto = novo;
+  renderCanvasEtiqueta();
+}
+
+// Pra texto/campos normais, ajusta o tamanho da fonte. Pra código de barras,
+// ajusta a largura/altura da área do código.
+function redimensionarElemento(id, delta) {
+  const el = _etqElementos.find(e => e.id === id);
+  if (!el) return;
+  if (el.tipo === 'barras') {
+    el.w = Math.max(10, (el.w || Math.max(10, _etqLargura - 8)) + delta * 2);
+    el.h = Math.max(5, (el.h || 10) + delta);
+  } else {
+    el.fontSize = Math.max(4, (el.fontSize || ETQ_TIPO_FONTE[el.tipo] || 7) + delta);
+  }
   renderCanvasEtiqueta();
 }
 
@@ -10529,6 +10573,8 @@ atualizarHora();
               <div class="etq-campo-chip" draggable="true" data-tipo="preco" ondragstart="dragCampoStart(event)">💰 Preço</div>
               <div class="etq-campo-chip" draggable="true" data-tipo="barras" ondragstart="dragCampoStart(event)">▮▮▮ Código de Barras</div>
               <div class="etq-campo-chip" draggable="true" data-tipo="categoria" ondragstart="dragCampoStart(event)">🏷️ Categoria</div>
+              <div class="etq-campo-chip" draggable="true" data-tipo="parcelamento" ondragstart="dragCampoStart(event)">🔢 Parcelamento (3x R$ 99,90)</div>
+              <div class="etq-campo-chip" draggable="true" data-tipo="texto" ondragstart="dragCampoStart(event)">✏️ Texto Livre</div>
             </div>
             <p style="font-size:11px;color:var(--muted);margin-top:10px;max-width:170px;">Arraste pra dentro da etiqueta. Clique no × de um campo já colocado pra excluir.</p>
           </div>
