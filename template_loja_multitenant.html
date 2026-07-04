@@ -2498,6 +2498,15 @@
         <strong id="finalizar-forma-texto" style="font-size:15px;"></strong>
       </div>
 
+      <!-- Calculadora de troco (só aparece pra Dinheiro) -->
+      <div id="dinheiro-fields" style="display:none;margin-bottom:16px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);">
+        <div class="form-row" style="margin-bottom:0;">
+          <label>Valor recebido do cliente (R$)</label>
+          <input type="text" inputmode="numeric" id="dinheiro-recebido" placeholder="0,00" oninput="mascaraMoeda(this);calcularTroco();">
+        </div>
+        <div id="dinheiro-troco-resultado" style="font-size:16px;font-weight:700;margin-top:8px;"></div>
+      </div>
+
       <div id="pagamento-misto-wrap" style="display:none;margin-top:10px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);">
         <div class="form-grid">
           <div class="form-row">
@@ -5618,6 +5627,8 @@ function limparCarrinho() {
   document.getElementById('pdv-forma-texto').textContent = '— selecione acima —';
   document.getElementById('venda-voucher-numero').value = '';
   document.getElementById('venda-voucher-saldo').textContent = '';
+  document.getElementById('dinheiro-recebido').value = '';
+  document.getElementById('dinheiro-troco-resultado').textContent = '';
   document.getElementById('venda-pag-misto').checked = false;
   document.getElementById('misto-valor-1').value = '';
   document.getElementById('misto-valor-2').value = '';
@@ -6033,6 +6044,9 @@ async function confirmarVenda() {
   document.getElementById('venda-voucher-numero').value = '';
   document.getElementById('venda-voucher-saldo').textContent = '';
   document.getElementById('voucher-fields').style.display = 'none';
+  document.getElementById('dinheiro-recebido').value = '';
+  document.getElementById('dinheiro-troco-resultado').textContent = '';
+  document.getElementById('dinheiro-fields').style.display = 'none';
   document.querySelectorAll('.pdv-pag-btn').forEach(b => b.classList.remove('ativo'));
   document.getElementById('pdv-forma-texto').textContent = '— selecione acima —';
   document.getElementById('venda-pag-misto').checked = false;
@@ -7105,6 +7119,29 @@ function togglePrazoFields() {
   if (parcelasWrap) {
     parcelasWrap.style.display = pag === 'Cartão crédito' ? 'block' : 'none';
     if (pag !== 'Cartão crédito') document.getElementById('venda-parcelas').value = '1';
+  }
+
+  const dinheiroWrap = document.getElementById('dinheiro-fields');
+  if (dinheiroWrap) {
+    dinheiroWrap.style.display = pag === 'À vista' ? 'block' : 'none';
+    if (pag === 'À vista') calcularTroco();
+  }
+}
+
+// Calculadora de troco — é só uma conveniência pro caixa, não muda nada no
+// valor da venda: o cliente pagou X, a venda vale Y, o troco é X-Y.
+function calcularTroco() {
+  const totalBruto = carrinho.reduce((s, c) => s + c.valor_unit * c.qtd, 0);
+  const desconto = valorMoeda('venda-desconto');
+  const total = Math.max(0, totalBruto - desconto);
+  const recebido = valorMoeda('dinheiro-recebido');
+  const resultado = document.getElementById('dinheiro-troco-resultado');
+  if (!document.getElementById('dinheiro-recebido').value.trim()) { resultado.textContent = ''; return; }
+  const diferenca = recebido - total;
+  if (diferenca < -0.001) {
+    resultado.innerHTML = `<span style="color:var(--danger);">Falta ${R(Math.abs(diferenca))}</span>`;
+  } else {
+    resultado.innerHTML = `Troco: <span style="color:var(--success);">${R(diferenca)}</span>`;
   }
 }
 
