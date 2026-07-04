@@ -2211,18 +2211,15 @@
     <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">ℹ️ Gerado no dia, ainda não é dinheiro em caixa</p>
     <div class="cards" id="caixa-cards-info" style="margin-bottom:24px;"></div>
 
-    <div class="table-wrap" style="padding:20px;max-width:520px;">
-      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:14px;">🧮 Conferência do dinheiro físico</p>
-      <div class="form-row">
-        <label>Dinheiro esperado na gaveta</label>
-        <input type="text" id="caixa-esperado" readonly style="background:var(--bg);color:var(--muted);font-weight:700;">
-      </div>
-      <div class="form-row">
-        <label>Dinheiro contado (fisicamente na gaveta)</label>
-        <input type="text" inputmode="numeric" id="caixa-contado" placeholder="0,00" oninput="mascaraMoeda(this);calcularDiferencaCaixa();">
-      </div>
-      <div id="caixa-diferenca" style="font-size:14px;font-weight:700;margin:10px 0;"></div>
-      <div class="form-row">
+    <div class="table-wrap" style="padding:20px;max-width:640px;">
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px;">🧮 Conferência por forma de pagamento</p>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:14px;">Confirma o que de fato recebeu em cada forma — dinheiro na gaveta, Pix e cartão no extrato/maquininha.</p>
+      <table>
+        <thead><tr><th>Forma</th><th>Esperado</th><th>Contado / Confirmado</th><th>Diferença</th></tr></thead>
+        <tbody id="caixa-conferencia-body"></tbody>
+        <tfoot id="caixa-conferencia-foot"></tfoot>
+      </table>
+      <div class="form-row" style="margin-top:16px;">
         <label>Observação (opcional)</label>
         <input type="text" id="caixa-obs" placeholder="Ex: troco emprestado, saída pra compra...">
       </div>
@@ -7449,45 +7446,87 @@ function renderFechamentoCaixa() {
     </div>
   `;
 
-  const dinheiroEsperado = Object.keys(porForma)
-    .filter(fm => fm.toLowerCase().includes('vista') || fm.toLowerCase().includes('dinheiro'))
-    .reduce((s, fm) => s + porForma[fm], 0);
-  setValorMoeda('caixa-esperado', dinheiroEsperado);
+  // Uma linha de conferência PRA CADA forma que recebeu algo no dia — não só
+  // "dinheiro": Pix confere com o extrato, cartão com a maquininha, etc.
+  const tbody = document.getElementById('caixa-conferencia-body');
+  tbody.innerHTML = formas.length ? formas.map(fm => `
+    <tr data-forma="${fm}">
+      <td>${iconePorForma[fm] || '💰'} ${fm}</td>
+      <td><input type="text" class="caixa-conf-esperado" readonly value="${R(porForma[fm])}" style="background:var(--bg);color:var(--muted);font-weight:700;border:none;width:100px;"></td>
+      <td><input type="text" inputmode="numeric" class="caixa-conf-contado" data-esperado="${porForma[fm]}" placeholder="0,00" oninput="mascaraMoeda(this);calcularDiferencaCaixa();" style="width:100px;"></td>
+      <td class="caixa-conf-diferenca" style="font-weight:700;">—</td>
+    </tr>
+  `).join('') : '<tr><td colspan="4" class="empty">Nenhum recebimento registrado nesse dia.</td></tr>';
+  document.getElementById('caixa-conferencia-foot').innerHTML = formas.length
+    ? `<tr><td><strong>Total</strong></td><td><strong>${R(formas.reduce((s,fm)=>s+porForma[fm],0))}</strong></td><td></td><td id="caixa-diferenca-total" style="font-weight:700;">—</td></tr>`
+    : '';
 
-  document.getElementById('caixa-contado').value = '';
   document.getElementById('caixa-obs').value = '';
-  document.getElementById('caixa-diferenca').textContent = '';
   document.getElementById('caixa-msg').textContent = '';
 
   renderHistoricoFechamentos();
 }
 
 function calcularDiferencaCaixa() {
-  const esperado = valorMoeda('caixa-esperado');
-  const contado = valorMoeda('caixa-contado');
-  const diff = contado - esperado;
-  const el = document.getElementById('caixa-diferenca');
-  if (Math.abs(diff) < 0.01) { el.innerHTML = '✅ Caixa bate certinho'; el.style.color = 'var(--success)'; }
-  else if (diff > 0) { el.innerHTML = `⚠ Sobra de ${R(diff)}`; el.style.color = 'var(--warn)'; }
-  else { el.innerHTML = `⚠ Falta de ${R(Math.abs(diff))}`; el.style.color = 'var(--danger)'; }
+  let somaEsperado = 0, somaContado = 0, algumPreenchido = false;
+  document.querySelectorAll('#caixa-conferencia-body tr[data-forma]').forEach(tr => {
+    const esperado = parseFloat(tr.querySelector('.caixa-conf-contado').dataset.esperado) || 0;
+    const inputContado = tr.querySelector('.caixa-conf-contado');
+    const preenchido = inputContado.value.trim() !== '';
+    const contado = valorMoeda(inputContado);
+    somaEsperado += esperado;
+    if (preenchido) { somaContado += contado; algumPreenchido = true; }
+    else { somaContado += esperado; } // ainda não conferiu essa forma — assume que bate, só pra não distorcer o total
+    const diff = contado - esperado;
+    const cel = tr.querySelector('.caixa-conf-diferenca');
+    if (!preenchido) { cel.textContent = '—'; cel.style.color = 'var(--muted)'; }
+    else if (Math.abs(diff) < 0.01) { cel.textContent = '✅ Bate'; cel.style.color = 'var(--success)'; }
+    else { cel.textContent = (diff > 0 ? '+' : '') + R(diff); cel.style.color = diff > 0 ? 'var(--warn)' : 'var(--danger)'; }
+  });
+  const totalCel = document.getElementById('caixa-diferenca-total');
+  if (totalCel) {
+    if (!algumPreenchido) { totalCel.textContent = '—'; totalCel.style.color = 'var(--muted)'; }
+    else {
+      const diffTotal = somaContado - somaEsperado;
+      if (Math.abs(diffTotal) < 0.01) { totalCel.textContent = '✅ Bate'; totalCel.style.color = 'var(--success)'; }
+      else { totalCel.textContent = (diffTotal > 0 ? '+' : '') + R(diffTotal); totalCel.style.color = diffTotal > 0 ? 'var(--warn)' : 'var(--danger)'; }
+    }
+  }
 }
 
 function fecharCaixaDoDia() {
   const dataISO = document.getElementById('caixa-data').value;
-  const esperado = valorMoeda('caixa-esperado');
-  const contadoInput = document.getElementById('caixa-contado').value.trim();
-  if (!contadoInput) { alert('Informe o dinheiro contado na gaveta.'); return; }
-  const contado = valorMoeda('caixa-contado');
-  const obs = document.getElementById('caixa-obs').value.trim();
+  const linhas = Array.from(document.querySelectorAll('#caixa-conferencia-body tr[data-forma]'));
+  if (linhas.length === 0) { alert('Não há nada pra conferir nesse dia.'); return; }
 
+  const naoPreenchidas = linhas.filter(tr => tr.querySelector('.caixa-conf-contado').value.trim() === '');
+  if (naoPreenchidas.length > 0) {
+    const nomes = naoPreenchidas.map(tr => tr.dataset.forma).join(', ');
+    if (!confirm(`Você não confirmou: ${nomes}. Fechar mesmo assim?`)) return;
+  }
+
+  const porFormaFechamento = {};
+  let esperadoTotal = 0, contadoTotal = 0;
+  linhas.forEach(tr => {
+    const forma = tr.dataset.forma;
+    const esperado = parseFloat(tr.querySelector('.caixa-conf-contado').dataset.esperado) || 0;
+    const inputContado = tr.querySelector('.caixa-conf-contado');
+    const contado = inputContado.value.trim() !== '' ? valorMoeda(inputContado) : esperado;
+    porFormaFechamento[forma] = { esperado, contado, diferenca: contado - esperado };
+    esperadoTotal += esperado;
+    contadoTotal += contado;
+  });
+
+  const obs = document.getElementById('caixa-obs').value.trim();
   const fechamentos = getFechamentos();
   if (fechamentos.find(fc => fc.data === dataISO) && !confirm('Esse dia já tem um fechamento registrado. Substituir?')) return;
 
   const registro = {
     data: dataISO,
-    esperado,
-    contado,
-    diferenca: contado - esperado,
+    esperado: esperadoTotal,
+    contado: contadoTotal,
+    diferenca: contadoTotal - esperadoTotal,
+    porForma: porFormaFechamento,
     obs: obs || null,
     fechadoEm: new Date().toLocaleString('pt-BR'),
     operador: (usuarioAtual() && usuarioAtual().nome) || '—'
