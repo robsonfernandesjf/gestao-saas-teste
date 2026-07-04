@@ -579,6 +579,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js" defer></script>
 </head>
 <body>
 
@@ -6694,6 +6695,60 @@ function mostrarModalCupom() {
 
 // Impressão de verdade acontece numa janela isolada, pra não brigar com o CSS
 // de impressão dos relatórios (que assume que só a página de Relatórios existe).
+// ===== IMPRESSÃO SILENCIOSA (QZ Tray) — com fallback pro método de sempre =====
+// Se o QZ Tray estiver instalado e rodando no computador, imprime direto na
+// impressora padrão do Windows, sem caixa de diálogo nenhuma. Se não estiver
+// (ou falhar por qualquer motivo), cai automaticamente no método de sempre —
+// janela isolada + Ctrl+P — sem quebrar nada pra quem não instalou o QZ.
+function qzInstalado() { return typeof qz !== 'undefined'; }
+
+async function conectarQZ() {
+  if (!qzInstalado()) return false;
+  try {
+    if (qz.websocket.isActive()) return true;
+    await qz.websocket.connect();
+    return true;
+  } catch (e) {
+    console.warn('QZ Tray não conectado:', e.message);
+    return false;
+  }
+}
+
+function abrirJanelaImpressaoFallback(html) {
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+}
+
+// Recebe o HTML completo (a mesma página que hoje abre numa aba nova) e
+// decide como imprimir. As funções de cupom/voucher/etiqueta/relatório de
+// caixa chamam essa função em vez de abrir a janela direto.
+async function imprimirDocumento(html) {
+  const conectado = await conectarQZ();
+  if (!conectado) { abrirJanelaImpressaoFallback(html); return; }
+  try {
+    // Extrai só o miolo do <body> — o QZ imprime o HTML em si (modo "pixel"),
+    // não precisa do <html>/<head> nem do window.print() embutido no template.
+    const corpoMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    const corpo = corpoMatch ? corpoMatch[1].replace(/<script[\s\S]*?<\/script>/gi, '') : html;
+    const config = qz.configs.create(null); // impressora padrão do Windows
+    await qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: `<html><body>${corpo}</body></html>` }]);
+  } catch (e) {
+    console.warn('Falha ao imprimir via QZ, abrindo do jeito de sempre:', e.message);
+    abrirJanelaImpressaoFallback(html);
+  }
+}
+
+async function checarStatusQZ() {
+  const el = document.getElementById('qz-status');
+  if (!el) return;
+  if (!qzInstalado()) { el.innerHTML = '<span style="color:var(--danger);">● Não detectado</span>'; return; }
+  const conectado = await conectarQZ();
+  el.innerHTML = conectado
+    ? '<span style="color:var(--success);">● Conectado e pronto</span>'
+    : '<span style="color:var(--warn);">● Instalado, mas não conectado — abra o QZ Tray</span>';
+}
+
 function imprimirCupomAgora() {
   if (!_ultimoCupom) return;
   const imp = (_dadosEmpresaCache && _dadosEmpresaCache.impressora) || {};
@@ -6711,9 +6766,7 @@ function imprimirCupomAgora() {
     <script>window.onload=()=>{ window.print(); }<\/script>
   </body></html>`;
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  imprimirDocumento(html);
 }
 
 function imprimirRelEstoque() {
@@ -8234,9 +8287,7 @@ function imprimirRelatorioCaixa() {
     ${corpo}
     <script>window.onload=()=>{ window.print(); }<\\/script>
   </body></html>`;
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  imprimirDocumento(html);
 }
 
 // ===== Aba "Fechamento de Caixa" em Financeiro: status atual + histórico arquivado =====
@@ -8822,9 +8873,7 @@ function imprimirVoucherAgora() {
     <script>window.onload=()=>{ window.print(); }<\/script>
   </body></html>`;
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  imprimirDocumento(html);
 }
 
 function renderHistoricoTrocas() {
@@ -9005,9 +9054,7 @@ function imprimirEtiquetasAgora() {
     <\/script>
   </body></html>`;
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  imprimirDocumento(html);
   fecharModal('modal-etiqueta-preview');
 }
 
@@ -9652,9 +9699,7 @@ function gerarPDFClienteReceber() {
   <script>window.onload=()=>{ window.print(); }<\/script>
   </body></html>`;
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  imprimirDocumento(html);
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
@@ -9991,9 +10036,7 @@ function gerarPDFContasPagar() {
   <script>window.onload=()=>{ window.print(); }<\/script>
   </body></html>`;
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  imprimirDocumento(html);
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
@@ -11045,7 +11088,7 @@ function toggleConfigSecao(nome) {
     if (nome === 'taxas') renderTaxasCartao();
     if (nome === 'categorias') renderListaCategorias();
     if (nome === 'usuarios') renderUsuarios();
-    if (nome === 'impressora') carregarImpressora();
+    if (nome === 'impressora') { carregarImpressora(); checarStatusQZ(); }
     if (nome === 'etiqueta') carregarConfigEtiqueta();
   }
 }
@@ -11476,6 +11519,38 @@ atualizarHora();
         <div style="margin-top:16px;display:flex;gap:10px;">
           <button class="btn btn-primary" onclick="salvarImpressora()">💾 Salvar impressora</button>
           <span id="impr-msg" style="font-size:12px;align-self:center;"></span>
+        </div>
+
+        <div style="border-top:1px solid var(--border);margin-top:20px;padding-top:16px;">
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--accent);margin-bottom:10px;">⚡ Impressão silenciosa (sem caixa de diálogo)</p>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">
+            Por padrão, toda impressão (cupom, voucher, etiqueta, relatório de caixa) abre a caixa de diálogo
+            de impressão do navegador. Instalando um programinha gratuito chamado <strong>QZ Tray</strong> no
+            computador do caixa, o sistema passa a imprimir direto na impressora padrão, sem abrir diálogo nenhum.
+          </p>
+
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 14px;background:var(--bg);border-radius:var(--radius);">
+            <span style="font-size:13px;font-weight:600;">Status:</span>
+            <span id="qz-status" style="font-size:13px;">Verificando...</span>
+            <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="checarStatusQZ()">↺ Verificar de novo</button>
+          </div>
+
+          <div style="background:var(--bg);border-radius:var(--radius);padding:16px;">
+            <p style="font-size:12px;font-weight:700;margin-bottom:10px;">Como instalar (uma vez por computador):</p>
+            <ol style="font-size:12px;color:var(--muted);line-height:1.9;padding-left:20px;margin:0 0 14px;">
+              <li>Clica no botão abaixo pra baixar o instalador do QZ Tray.</li>
+              <li>Abre o arquivo baixado e segue a instalação (é next → next → finalizar, como qualquer programa).</li>
+              <li>Depois de instalado, o QZ Tray fica rodando sozinho (ícone perto do relógio, na bandeja do Windows).</li>
+              <li>Volta nessa tela e clica em "Verificar de novo" — deve aparecer <strong>Conectado e pronto</strong>.</li>
+              <li>Na próxima impressão, o navegador vai perguntar uma vez se pode usar a impressora — marca <strong>"Remember this decision"</strong> (ou "Sempre permitir") e confirma. Depois disso, não pergunta mais.</li>
+            </ol>
+            <a href="https://qz.io/download/" target="_blank" rel="noopener" class="btn btn-primary" style="display:inline-block;text-decoration:none;">⬇️ Baixar QZ Tray</a>
+          </div>
+
+          <p style="font-size:11px;color:var(--muted);margin-top:10px;">
+            Se o QZ Tray não estiver instalado ou não estiver rodando, o sistema continua funcionando normal —
+            só volta a abrir a caixa de diálogo de impressão de sempre.
+          </p>
         </div>
       </div>
     </div>
