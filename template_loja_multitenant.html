@@ -7660,13 +7660,22 @@ function abrirModalFecharCaixa() {
       }</tbody></table>`
     : '<p style="font-size:13px;color:var(--muted);">Nenhuma sangria ou suprimento registrado neste caixa.</p>';
 
-  // Conferência: dinheiro sempre aparece (mesmo sem venda, pra poder contar fundo/sangria/suprimento);
-  // as demais formas só aparecem se tiveram recebimento no período.
+  // Conferência: dinheiro sempre aparece (mesmo sem venda, pra poder contar
+  // fundo/sangria/suprimento). Pix e outras formas já recebidas aparecem com
+  // o valor que de fato entrou. Cartão e fiado ENTRAM TAMBÉM, mesmo sem ter
+  // "recebido" ainda — aqui a conferência é outra: confirma se a venda que o
+  // sistema registrou bateu com a maquininha (pode ter passado errado, ou
+  // nem ter passado o cartão de verdade).
   const dinheiroRecebido = Object.keys(recebidoPorForma).filter(ehFormaDinheiro).reduce((s, f) => s + recebidoPorForma[f], 0);
   const esperadoDinheiro = sessao.abertura.fundoTroco + dinheiroRecebido + suprimentos - sangrias - estornos;
   const linhas = [{ forma: 'Dinheiro', esperado: esperadoDinheiro }];
   Object.keys(recebidoPorForma).filter(f => !ehFormaDinheiro(f)).forEach(f => {
     linhas.push({ forma: f, esperado: recebidoPorForma[f] });
+  });
+  ['Cartão débito', 'Cartão crédito', 'A prazo'].forEach(f => {
+    if (vendasPorForma[f] && !linhas.some(l => l.forma === f)) {
+      linhas.push({ forma: f, esperado: vendasPorForma[f].valor });
+    }
   });
 
   document.getElementById('fechar-caixa-conferencia-body').innerHTML = linhas.map(l => `
