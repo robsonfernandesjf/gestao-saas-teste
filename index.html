@@ -1455,6 +1455,7 @@
 
       <button class="btn btn-primary" style="width:100%;padding:12px;" onclick="salvarCadastro()">+ Adicionar ao Estoque</button>
       <p id="cad-msg" style="margin-top:10px;font-size:13px;"></p>
+      <button id="btn-cad-etiqueta" style="display:none;margin-top:8px;" class="btn btn-outline btn-sm" onclick="abrirImpressaoEtiquetaDireta([_ultimoProdutoCadastradoRef])">🏷️ Imprimir Etiqueta deste Produto</button>
     </div>
   </div>
 </div>
@@ -5212,6 +5213,8 @@ async function salvarCadastro() {
     saveProdutos(produtos);
     document.getElementById('cad-msg').style.color = 'var(--success)';
     document.getElementById('cad-msg').textContent = '✓ Produto ' + ref + ' cadastrado!';
+    _ultimoProdutoCadastradoRef = registro.ref;
+    document.getElementById('btn-cad-etiqueta').style.display = 'inline-block';
     ['cad-ref','cad-ean13','cad-nome','cad-custo','cad-preco','cad-cp','cad-est','cad-parcela','cad-nparcelas','cad-est-min','cad-ncm','cad-aliquota-icms','cad-cod-beneficio','cad-cest'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('cad-ncm-check').textContent = '';
     document.getElementById('cad-cest-check').textContent = '';
@@ -7390,7 +7393,7 @@ function renderFechamentoCaixa() {
   const dataISO = dataInput.value;
 
   // ===== Resumo geral + vendas do dia por forma (todas, incl. fiado/cartão) =====
-  const iconeVendaForma = { 'À vista': '💵', 'Dinheiro': '💵', 'Pix': '📱', 'Cartão débito': '💳', 'Cartão crédito': '💳', 'A prazo': '📄', 'Voucher': '🎫' };
+  function labelFormaCaixa(fm) { return PDV_FORMA_LABELS[fm] || fm; }
   const resumoVendas = calcularVendasDoDia(dataISO);
   const formasVenda = Object.keys(resumoVendas.porForma).sort((a, b) => resumoVendas.porForma[b].valor - resumoVendas.porForma[a].valor);
 
@@ -7408,7 +7411,7 @@ function renderFechamentoCaixa() {
   document.getElementById('caixa-vendas-por-forma-body').innerHTML = formasVenda.length
     ? formasVenda.map(fm => `
         <tr>
-          <td>${iconeVendaForma[fm] || '💰'} ${fm}</td>
+          <td>${labelFormaCaixa(fm)}</td>
           <td style="text-align:center;">${resumoVendas.porForma[fm].qtd}</td>
           <td><strong>${R(resumoVendas.porForma[fm].valor)}</strong></td>
         </tr>
@@ -7419,13 +7422,18 @@ function renderFechamentoCaixa() {
     : '';
 
   const { porForma, fiadoGerado, cartaoGerado } = calcularMovimentoCaixa(dataISO);
-  const iconePorForma = { 'À vista': '💵', 'Dinheiro': '💵', 'À vista (entrada fiado)': '💵', 'Pix': '📱', 'Cartão débito': '💳', 'Cartão crédito': '💳' };
+  // Nome/emoji amigável — os mesmos usados nos botões de pagamento da venda,
+  // pra não ficar "À vista" cru aqui e "💵 Dinheiro" lá.
+  function labelFormaCaixa2(fm) {
+    if (fm === 'À vista (entrada fiado)') return '💵 Dinheiro (entrada fiado)';
+    return PDV_FORMA_LABELS[fm] || fm;
+  }
 
   const formas = Object.keys(porForma);
   document.getElementById('caixa-cards-recebido').innerHTML = formas.length
     ? formas.map(fm => `
         <div class="card">
-          <div class="card-label">${iconePorForma[fm] || '💰'} ${fm}</div>
+          <div class="card-label">${labelFormaCaixa2(fm)}</div>
           <div class="card-value">${R(porForma[fm])}</div>
         </div>
       `).join('')
@@ -7447,7 +7455,7 @@ function renderFechamentoCaixa() {
   const tbody = document.getElementById('caixa-conferencia-body');
   tbody.innerHTML = formas.length ? formas.map(fm => `
     <tr data-forma="${fm}">
-      <td>${iconePorForma[fm] || '💰'} ${fm}</td>
+      <td>${labelFormaCaixa2(fm)}</td>
       <td><input type="text" class="caixa-conf-esperado" readonly value="${R(porForma[fm])}" style="background:var(--bg);color:var(--muted);font-weight:700;border:none;width:100px;"></td>
       <td><input type="text" inputmode="numeric" class="caixa-conf-contado" data-esperado="${porForma[fm]}" placeholder="0,00" oninput="mascaraMoeda(this);calcularDiferencaCaixa();" style="width:100px;"></td>
       <td class="caixa-conf-diferenca" style="font-weight:700;">—</td>
@@ -8092,9 +8100,27 @@ function abrirImpressaoEtiqueta(ref) {
   abrirImpressaoEtiquetaLote();
 }
 
+// _etqRefsDiretos permite abrir o fluxo de impressão sem depender dos
+// checkboxes da tela de Estoque (ex: chamado direto do Cadastro de Produto,
+// onde essa tabela nem existe na tela).
+let _etqRefsDiretos = null;
+let _etqRefsParaImprimir = [];
+let _ultimoProdutoCadastradoRef = null;
+
 function abrirImpressaoEtiquetaLote() {
+  _etqRefsDiretos = null;
   const refs = Array.from(document.querySelectorAll('.etq-select-produto:checked')).map(c => c.value);
   if (refs.length === 0) { alert('Selecione ao menos um produto.'); return; }
+  abrirModalQtdEtiqueta(refs);
+}
+
+function abrirImpressaoEtiquetaDireta(refs) {
+  _etqRefsDiretos = refs;
+  if (!refs || refs.length === 0) return;
+  abrirModalQtdEtiqueta(refs);
+}
+
+function abrirModalQtdEtiqueta(refs) {
   const produtos = getProdutos().filter(p => refs.includes(p.ref));
   document.getElementById('etq-lote-resumo').innerHTML = produtos.length === 1
     ? `<strong>${produtos[0].produto}</strong> (${produtos[0].ref})`
@@ -8104,10 +8130,8 @@ function abrirImpressaoEtiquetaLote() {
   document.getElementById('modal-etiqueta').classList.add('open');
 }
 
-let _etqRefsParaImprimir = [];
-
 function gerarPreviewEtiquetas() {
-  const refs = Array.from(document.querySelectorAll('.etq-select-produto:checked')).map(c => c.value);
+  const refs = _etqRefsDiretos || Array.from(document.querySelectorAll('.etq-select-produto:checked')).map(c => c.value);
   const qtd = Math.max(1, parseInt(document.getElementById('etq-qtd').value) || 1);
   _etqRefsParaImprimir = refs.flatMap(ref => Array.from({ length: qtd }, () => ref));
 
