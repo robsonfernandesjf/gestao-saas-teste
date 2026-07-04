@@ -869,18 +869,30 @@
       <div class="section-title" style="margin-bottom:8px;">✍️ Lançar Nota Manualmente</div>
       <div class="table-wrap" style="padding:20px;margin-bottom:24px;">
         <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
-          Não tem o XML em mãos? Lance a entrada de mercadoria manualmente, item por item, vinculando ao fornecedor.
+          Não tem o XML em mãos? Lance a entrada de mercadoria manualmente, item por item. Fornecedor é opcional —
+          sem ele, fica registrado como lançamento genérico. Toda nota lançada aqui já gera automaticamente
+          a conta a pagar correspondente, pra alimentar o financeiro sem precisar cadastrar de novo em outra tela.
         </p>
         <div class="form-grid">
           <div class="form-row">
-            <label>Fornecedor</label>
+            <label>Fornecedor (opcional)</label>
             <select id="man-fornecedor">
-              <option value="">— Selecione —</option>
+              <option value="">— Lançamento genérico, sem fornecedor —</option>
             </select>
           </div>
           <div class="form-row">
             <label>Nº da nota (opcional)</label>
             <input type="text" id="man-numero-nota" placeholder="Ex: 1234">
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Vencimento da conta a pagar</label>
+            <input type="date" id="man-vencimento">
+          </div>
+          <div class="form-row">
+            <label>Forma de pagamento combinada (opcional)</label>
+            <input type="text" id="man-obs-pagamento" placeholder="Ex: 30/60/90 dias, à vista...">
           </div>
         </div>
 
@@ -889,13 +901,14 @@
           <div class="form-grid">
             <div class="form-row">
               <label>Referência</label>
-              <input type="text" id="man-item-ref" placeholder="Ex: EB97">
+              <input type="text" id="man-item-ref" placeholder="Ex: EB97" oninput="autopreencherItemNotaManual()">
             </div>
             <div class="form-row">
               <label>Produto</label>
               <input type="text" id="man-item-nome" placeholder="Ex: Blusa modal básica">
             </div>
           </div>
+          <p id="man-item-ref-info" style="font-size:11px;color:var(--success);margin:-6px 0 8px;"></p>
           <div class="form-grid">
             <div class="form-row">
               <label>Quantidade</label>
@@ -1206,8 +1219,8 @@
           <input type="number" id="cad-cp" placeholder="0" oninput="autoPreencherEstoque()">
         </div>
         <div class="form-row">
-          <label>Estoque inicial</label>
-          <input type="number" id="cad-est" placeholder="0" oninput="_estoqueEditadoManualmente=true">
+          <label>Estoque inicial (opcional)</label>
+          <input type="number" id="cad-est" placeholder="0 — deixe em branco e lance a entrada depois em Estoque > Lançamento de Nota" oninput="_estoqueEditadoManualmente=true">
         </div>
       </div>
 
@@ -4797,6 +4810,22 @@ async function popularSelectFornecedoresManual() {
   }
 }
 
+// Ao digitar uma referência que já existe, puxa nome e último custo do
+// produto sozinho — evita digitar tudo de novo e erro de digitação no nome.
+function autopreencherItemNotaManual() {
+  const ref = document.getElementById('man-item-ref').value.trim().toUpperCase();
+  const info = document.getElementById('man-item-ref-info');
+  if (!ref) { info.textContent = ''; return; }
+  const produto = getProdutos().find(p => p.ref === ref);
+  if (produto) {
+    document.getElementById('man-item-nome').value = produto.produto;
+    if (!valorMoeda('man-item-custo')) setValorMoeda('man-item-custo', produto.custo || 0);
+    info.textContent = `✓ Produto já cadastrado — estoque atual: ${produto.estoque || 0}`;
+  } else {
+    info.textContent = 'Referência nova — vai criar um produto novo com esses dados.';
+  }
+}
+
 function adicionarItemNotaManual() {
   const ref = document.getElementById('man-item-ref').value.trim().toUpperCase();
   const nome = document.getElementById('man-item-nome').value.trim();
@@ -4808,6 +4837,7 @@ function adicionarItemNotaManual() {
   document.getElementById('man-item-nome').value = '';
   document.getElementById('man-item-qtd').value = '';
   document.getElementById('man-item-custo').value = '';
+  document.getElementById('man-item-ref-info').textContent = '';
   renderItensNotaManual();
 }
 
@@ -4838,6 +4868,12 @@ async function confirmarLancamentoManual() {
   if (!_itensNotaManual.length) { msgEl.style.color = 'var(--danger)'; msgEl.textContent = '⚠ Adicione ao menos um item à nota.'; return; }
 
   const fornecedorId = document.getElementById('man-fornecedor').value || null;
+  const fornecedorSelect = document.getElementById('man-fornecedor');
+  const fornecedorNome = fornecedorId ? (fornecedorSelect.options[fornecedorSelect.selectedIndex]?.textContent || '') : 'Fornecedor não informado';
+  const numeroNota = document.getElementById('man-numero-nota').value.trim();
+  const vencimento = document.getElementById('man-vencimento').value;
+  const obsPagamento = document.getElementById('man-obs-pagamento').value.trim();
+
   msgEl.style.color = 'var(--muted)';
   msgEl.textContent = 'Lançando nota, aguarde...';
 
@@ -4873,11 +4909,31 @@ async function confirmarLancamentoManual() {
     invalidarCache('produtos');
     saveProdutos(produtos);
 
+    // É a nota lançada aqui que alimenta o financeiro — sem isso, o custo da
+    // mercadoria comprada nunca aparecia em Contas a Pagar nem em relatório
+    // nenhum, mesmo em lojas que não emitem/recebem NF-e formalmente.
+    const totalNota = _itensNotaManual.reduce((s, i) => s + i.qtd * i.custo, 0);
+    const descricaoConta = `Compra de mercadoria${numeroNota ? ' - Nota ' + numeroNota : ''} (${_itensNotaManual.length} item${_itensNotaManual.length > 1 ? 's' : ''})`;
+    try {
+      await sbPost('contas_pagar', {
+        descricao: descricaoConta,
+        fornecedor: fornecedorNome,
+        cat: 'Mercadoria',
+        valor: totalNota,
+        vencimento: vencimento || new Date().toISOString().slice(0, 10),
+        obs: obsPagamento || null,
+        pago: false
+      });
+      invalidarCache('contasPagar');
+    } catch (e) { console.warn('Conta a pagar da nota não pôde ser criada:', e.message); }
+
     msgEl.style.color = 'var(--success)';
-    msgEl.textContent = `✓ Nota lançada! ${criados} produto(s) novo(s), ${atualizados} atualizado(s).`;
+    msgEl.textContent = `✓ Nota lançada! ${criados} produto(s) novo(s), ${atualizados} atualizado(s), conta de ${R(totalNota)} gerada em A Pagar.`;
     _itensNotaManual = [];
     renderItensNotaManual();
     document.getElementById('man-numero-nota').value = '';
+    document.getElementById('man-vencimento').value = '';
+    document.getElementById('man-obs-pagamento').value = '';
     populateCatFilter();
   } catch (e) {
     console.error('Erro ao lançar nota manual:', e);
