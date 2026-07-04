@@ -3408,9 +3408,8 @@ async function fazerLogin() {
     // Verificar licença
     const lic = await getLicencaSB().catch(() => ({ validade: null }));
     if (lic.validade) {
-      const agora = new Date();
-      const mes = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0');
-      if (mes > lic.validade) {
+      const hojeISO = new Date().toISOString().slice(0, 10);
+      if (hojeISO > lic.validade) {
         blkEl.style.display = 'block';
         return;
       }
@@ -3584,9 +3583,8 @@ async function renderUsuarios() {
 // null = sem validade cadastrada (sem controle de vencimento).
 function diasParaVencerLicenca(validade) {
   if (!validade) return null;
-  const [ano, mes] = validade.split('-').map(Number);
-  const fimDoMes = new Date(ano, mes, 0, 23, 59, 59, 999); // último dia do mês "mes"
-  const diffMs = fimDoMes - new Date();
+  const vencimento = new Date(validade + 'T23:59:59');
+  const diffMs = vencimento - new Date();
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
@@ -3605,12 +3603,10 @@ function atualizarStatusLicenca(lic) {
   const el = document.getElementById('lic-status');
   if (!el) return;
   if (!lic || !lic.validade) { el.innerHTML = '<span style="color:var(--success);">✅ Sem restrição</span>'; return; }
-  const agora = new Date();
-  const mes = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0');
-  const valido = mes <= lic.validade;
-  const [ano, m] = lic.validade.split('-');
-  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const label = `${meses[parseInt(m)-1]}/${ano}`;
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  const valido = hojeISO <= lic.validade;
+  const [ano, m, d] = lic.validade.split('-');
+  const label = `${d}/${m}/${ano}`;
   el.innerHTML = valido ? `<span style="color:var(--success);">✅ Válida até ${label}</span>` : `<span style="color:var(--danger);">❌ Expirada em ${label}</span>`;
 }
 
@@ -10903,13 +10899,13 @@ if (_sessaoAtual) {
 
       const lic = await getLicencaSB().catch(() => ({ validade: null }));
       if (lic && lic.validade) {
-        const agora = new Date();
-        const mes = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0');
-        if (mes > lic.validade) {
+        const hojeISO = new Date().toISOString().slice(0, 10);
+        if (hojeISO > lic.validade) {
           document.getElementById('blocked-screen').classList.add('show');
           return;
         }
       }
+      checarAvisoVencimentoLicenca(lic);
 
       document.getElementById('login-screen').classList.add('hidden');
       await carregarDadosNuvem();
