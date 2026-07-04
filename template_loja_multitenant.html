@@ -885,16 +885,6 @@
             <input type="text" id="man-numero-nota" placeholder="Ex: 1234">
           </div>
         </div>
-        <div class="form-grid">
-          <div class="form-row">
-            <label>Vencimento da conta a pagar</label>
-            <input type="date" id="man-vencimento">
-          </div>
-          <div class="form-row">
-            <label>Forma de pagamento combinada (opcional)</label>
-            <input type="text" id="man-obs-pagamento" placeholder="Ex: 30/60/90 dias, à vista...">
-          </div>
-        </div>
 
         <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:14px;">
           <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--accent);margin-bottom:10px;">Adicionar item</p>
@@ -912,19 +902,20 @@
           <div class="form-grid">
             <div class="form-row">
               <label>Quantidade</label>
-              <input type="number" id="man-item-qtd" placeholder="0" min="1">
+              <input type="number" id="man-item-qtd" placeholder="0" min="1" oninput="atualizarSubtotalItemNota()">
             </div>
             <div class="form-row">
               <label>Custo unitário (R$)</label>
-              <input type="text" inputmode="numeric" id="man-item-custo" placeholder="0,00" oninput="mascaraMoeda(this)">
+              <input type="text" inputmode="numeric" id="man-item-custo" placeholder="0,00" oninput="mascaraMoeda(this);atualizarSubtotalItemNota();">
             </div>
           </div>
+          <p id="man-item-subtotal" style="font-size:12px;color:var(--muted);margin:-6px 0 10px;"></p>
           <button type="button" class="btn" style="width:100%;" onclick="adicionarItemNotaManual()">+ Adicionar item à nota</button>
         </div>
 
         <div id="man-itens-lista" style="margin-top:14px;"></div>
 
-        <button class="btn btn-primary" style="width:100%;padding:12px;margin-top:14px;" onclick="confirmarLancamentoManual()">✅ Lançar Nota</button>
+        <button class="btn btn-primary" style="width:100%;padding:12px;margin-top:14px;" onclick="abrirModalFinalizarNota()">✅ Lançar Nota</button>
         <p id="man-nota-msg" style="margin-top:10px;font-size:13px;"></p>
       </div>
     </div>
@@ -2499,6 +2490,57 @@
 
 <!-- MODAL CONFIRMAÇÃO VENDA -->
 <!-- MODAL FINALIZAR VENDA (abre ao escolher a forma de pagamento) -->
+<!-- MODAL FINALIZAR NOTA (lançamento de mercadoria) -->
+<div class="modal-bg" id="modal-finalizar-nota">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h2>Finalizar Lançamento de Nota</h2>
+      <button class="modal-close" onclick="fecharModal('modal-finalizar-nota')">×</button>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;background:var(--bg);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;">
+        <span style="font-size:13px;color:var(--muted);">Total da compra</span>
+        <strong id="nota-total-texto" style="font-size:20px;color:var(--accent);"></strong>
+      </div>
+
+      <div class="pdv-pagamento-label">Como foi pago?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+        <button type="button" class="pdv-pag-btn" id="nota-pag-dinheiro" onclick="selecionarPagamentoNota('dinheiro')">💵 Dinheiro</button>
+        <button type="button" class="pdv-pag-btn" id="nota-pag-prazo" onclick="selecionarPagamentoNota('prazo')">📄 A prazo</button>
+      </div>
+
+      <p id="nota-dinheiro-info" style="display:none;font-size:13px;color:var(--success);background:var(--success-light);border-radius:var(--radius);padding:10px 12px;">
+        ✓ A conta já entra em Contas a Pagar quitada, com data de hoje.
+      </p>
+
+      <div id="nota-prazo-fields" style="display:none;">
+        <div class="form-row">
+          <label>Quantidade de parcelas</label>
+          <select id="nota-parcelas-qtd" onchange="renderParcelasNota()">
+            <option value="1">1x (à vista, a prazo)</option>
+            <option value="2">2x</option>
+            <option value="3">3x</option>
+            <option value="4">4x</option>
+            <option value="5">5x</option>
+            <option value="6">6x</option>
+            <option value="7">7x</option>
+            <option value="8">8x</option>
+            <option value="9">9x</option>
+            <option value="10">10x</option>
+            <option value="11">11x</option>
+            <option value="12">12x</option>
+          </select>
+        </div>
+        <div id="nota-parcelas-lista" style="margin-top:10px;"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-finalizar-nota')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarLancamentoManual()">✅ Confirmar Lançamento</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-finalizar-venda">
   <div class="modal" style="max-width:440px;">
     <div class="modal-header">
@@ -4812,6 +4854,15 @@ async function popularSelectFornecedoresManual() {
 
 // Ao digitar uma referência que já existe, puxa nome e último custo do
 // produto sozinho — evita digitar tudo de novo e erro de digitação no nome.
+// Mostra na hora quanto vale o item que está sendo digitado, antes mesmo
+// de clicar em "Adicionar item" — sem precisar esperar pra ver o valor.
+function atualizarSubtotalItemNota() {
+  const qtd = parseInt(document.getElementById('man-item-qtd').value) || 0;
+  const custo = valorMoeda('man-item-custo');
+  const el = document.getElementById('man-item-subtotal');
+  el.textContent = (qtd && custo) ? `Subtotal deste item: ${R(qtd * custo)}` : '';
+}
+
 function autopreencherItemNotaManual() {
   const ref = document.getElementById('man-item-ref').value.trim().toUpperCase();
   const info = document.getElementById('man-item-ref-info');
@@ -4863,16 +4914,73 @@ function renderItensNotaManual() {
   `;
 }
 
+// ===== MODAL DE FINALIZAÇÃO DA NOTA (dinheiro x prazo/parcelado) =====
+function abrirModalFinalizarNota() {
+  const msgEl = document.getElementById('man-nota-msg');
+  if (!_itensNotaManual.length) { msgEl.style.color = 'var(--danger)'; msgEl.textContent = '⚠ Adicione ao menos um item à nota.'; return; }
+  msgEl.textContent = '';
+
+  const total = _itensNotaManual.reduce((s, i) => s + i.qtd * i.custo, 0);
+  document.getElementById('nota-total-texto').textContent = R(total);
+  document.querySelectorAll('#modal-finalizar-nota .pdv-pag-btn').forEach(b => b.classList.remove('ativo'));
+  document.getElementById('nota-dinheiro-info').style.display = 'none';
+  document.getElementById('nota-prazo-fields').style.display = 'none';
+  document.getElementById('nota-parcelas-qtd').value = '1';
+  _pagamentoNotaSelecionado = null;
+  document.getElementById('modal-finalizar-nota').classList.add('open');
+}
+
+let _pagamentoNotaSelecionado = null;
+
+function selecionarPagamentoNota(tipo) {
+  _pagamentoNotaSelecionado = tipo;
+  document.getElementById('nota-pag-dinheiro').classList.toggle('ativo', tipo === 'dinheiro');
+  document.getElementById('nota-pag-prazo').classList.toggle('ativo', tipo === 'prazo');
+  document.getElementById('nota-dinheiro-info').style.display = tipo === 'dinheiro' ? 'block' : 'none';
+  document.getElementById('nota-prazo-fields').style.display = tipo === 'prazo' ? 'block' : 'none';
+  if (tipo === 'prazo') renderParcelasNota();
+}
+
+// Gera uma linha de vencimento+valor por parcela — vencimentos pré-preenchidos
+// de 30 em 30 dias e valor dividido igualmente, mas tudo editável, pra quem
+// combinou datas ou valores diferentes com o fornecedor.
+function renderParcelasNota() {
+  const qtdParcelas = parseInt(document.getElementById('nota-parcelas-qtd').value) || 1;
+  const total = _itensNotaManual.reduce((s, i) => s + i.qtd * i.custo, 0);
+  const valorParcela = total / qtdParcelas;
+  const hoje = new Date();
+
+  const linhas = Array.from({ length: qtdParcelas }, (_, i) => {
+    const venc = new Date(hoje);
+    venc.setDate(venc.getDate() + 30 * (i + 1));
+    const vencISO = venc.toISOString().slice(0, 10);
+    return `
+      <div class="form-grid" style="margin-bottom:6px;">
+        <div class="form-row" style="margin-bottom:0;">
+          <label style="font-size:11px;">Vencimento parcela ${i + 1}</label>
+          <input type="date" class="nota-parcela-venc" value="${vencISO}">
+        </div>
+        <div class="form-row" style="margin-bottom:0;">
+          <label style="font-size:11px;">Valor parcela ${i + 1}</label>
+          <input type="text" inputmode="numeric" class="nota-parcela-valor" value="${valorParcela.toFixed(2).replace('.', ',')}" oninput="mascaraMoeda(this)">
+        </div>
+      </div>
+    `;
+  }).join('');
+  document.getElementById('nota-parcelas-lista').innerHTML = linhas;
+  // Aplica a máscara nos valores recém-inseridos (pra dataset.valor ficar coerente)
+  document.querySelectorAll('.nota-parcela-valor').forEach(el => mascaraMoeda(el));
+}
+
 async function confirmarLancamentoManual() {
   const msgEl = document.getElementById('man-nota-msg');
   if (!_itensNotaManual.length) { msgEl.style.color = 'var(--danger)'; msgEl.textContent = '⚠ Adicione ao menos um item à nota.'; return; }
+  if (!_pagamentoNotaSelecionado) { alert('Escolha como foi pago: Dinheiro ou A prazo.'); return; }
 
   const fornecedorId = document.getElementById('man-fornecedor').value || null;
   const fornecedorSelect = document.getElementById('man-fornecedor');
   const fornecedorNome = fornecedorId ? (fornecedorSelect.options[fornecedorSelect.selectedIndex]?.textContent || '') : 'Fornecedor não informado';
   const numeroNota = document.getElementById('man-numero-nota').value.trim();
-  const vencimento = document.getElementById('man-vencimento').value;
-  const obsPagamento = document.getElementById('man-obs-pagamento').value.trim();
 
   msgEl.style.color = 'var(--muted)';
   msgEl.textContent = 'Lançando nota, aguarde...';
@@ -4913,27 +5021,43 @@ async function confirmarLancamentoManual() {
     // mercadoria comprada nunca aparecia em Contas a Pagar nem em relatório
     // nenhum, mesmo em lojas que não emitem/recebem NF-e formalmente.
     const totalNota = _itensNotaManual.reduce((s, i) => s + i.qtd * i.custo, 0);
-    const descricaoConta = `Compra de mercadoria${numeroNota ? ' - Nota ' + numeroNota : ''} (${_itensNotaManual.length} item${_itensNotaManual.length > 1 ? 's' : ''})`;
-    try {
-      await sbPost('contas_pagar', {
-        descricao: descricaoConta,
-        fornecedor: fornecedorNome,
-        cat: 'Mercadoria',
-        valor: totalNota,
-        vencimento: vencimento || new Date().toISOString().slice(0, 10),
-        obs: obsPagamento || null,
-        pago: false
-      });
+    const baseDescricao = `Compra de mercadoria${numeroNota ? ' - Nota ' + numeroNota : ''}`;
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    const [hy, hm, hd] = hojeISO.split('-');
+
+    if (_pagamentoNotaSelecionado === 'dinheiro') {
+      // Pago na hora — já entra quitada, sem ficar pendurada em A Pagar.
+      try {
+        await sbPost('contas_pagar', {
+          descricao: `${baseDescricao} (${_itensNotaManual.length} item${_itensNotaManual.length > 1 ? 's' : ''})`,
+          fornecedor: fornecedorNome, cat: 'Mercadoria', valor: totalNota,
+          vencimento: hojeISO, pago: true, data_pagamento: hd + '/' + hm + '/' + hy,
+          forma_pagamento: 'Dinheiro'
+        });
+        invalidarCache('contasPagar');
+      } catch (e) { console.warn('Conta a pagar da nota não pôde ser criada:', e.message); }
+    } else {
+      // A prazo — uma conta a pagar por parcela, cada uma com seu vencimento.
+      const vencs = Array.from(document.querySelectorAll('.nota-parcela-venc')).map(el => el.value);
+      const valores = Array.from(document.querySelectorAll('.nota-parcela-valor')).map(el => valorMoeda(el));
+      for (let i = 0; i < vencs.length; i++) {
+        try {
+          await sbPost('contas_pagar', {
+            descricao: `${baseDescricao} — parcela ${i + 1}/${vencs.length}`,
+            fornecedor: fornecedorNome, cat: 'Mercadoria', valor: valores[i] || 0,
+            vencimento: vencs[i] || hojeISO, pago: false
+          });
+        } catch (e) { console.warn(`Conta a pagar da parcela ${i + 1} não pôde ser criada:`, e.message); }
+      }
       invalidarCache('contasPagar');
-    } catch (e) { console.warn('Conta a pagar da nota não pôde ser criada:', e.message); }
+    }
 
     msgEl.style.color = 'var(--success)';
-    msgEl.textContent = `✓ Nota lançada! ${criados} produto(s) novo(s), ${atualizados} atualizado(s), conta de ${R(totalNota)} gerada em A Pagar.`;
+    msgEl.textContent = `✓ Nota lançada! ${criados} produto(s) novo(s), ${atualizados} atualizado(s), ${R(totalNota)} lançado em A Pagar.`;
     _itensNotaManual = [];
     renderItensNotaManual();
     document.getElementById('man-numero-nota').value = '';
-    document.getElementById('man-vencimento').value = '';
-    document.getElementById('man-obs-pagamento').value = '';
+    fecharModal('modal-finalizar-nota');
     populateCatFilter();
   } catch (e) {
     console.error('Erro ao lançar nota manual:', e);
