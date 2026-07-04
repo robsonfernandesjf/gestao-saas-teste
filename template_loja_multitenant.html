@@ -658,6 +658,11 @@
 </nav>
 <div id="nav-overlay" onclick="toggleMenuMobile()"></div>
 
+<div id="banner-licenca-vencendo" style="display:none;background:var(--warn);color:#fff;padding:10px 20px;text-align:center;font-size:13px;font-weight:600;position:relative;">
+  <span id="banner-licenca-texto"></span>
+  <button onclick="document.getElementById('banner-licenca-vencendo').style.display='none'" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:none;border:none;color:#fff;font-size:16px;cursor:pointer;line-height:1;">×</button>
+</div>
+
 <main id="app-main">
 
 <!-- DASHBOARD -->
@@ -2898,7 +2903,7 @@ const LOJA_ID = CONFIG_LOJA.lojaId;
 
 // Tabelas que possuem a coluna loja_id (todas as tabelas de dados da loja).
 // A tabela de licença/configuração global, se houver, pode ser excluída aqui.
-const TABELAS_MULTITENANT = ['produtos', 'vendas', 'clientes', 'debitos', 'contas_pagar', 'usuarios', 'licenca', 'taxas_cartao'];
+const TABELAS_MULTITENANT = ['produtos', 'vendas', 'clientes', 'debitos', 'contas_pagar', 'usuarios', 'licenca', 'taxas_cartao', 'trocas', 'vouchers', 'caixa_sessoes'];
 
 function ehMultiTenant(tabela) {
   return TABELAS_MULTITENANT.includes(tabela);
@@ -3283,7 +3288,7 @@ function initUsuarios() {
 async function carregarDadosNuvem() {
   mostrarLoading(true);
   try {
-    const [produtos, vendas, clientes, debitos, contas, vendedores, taxasCartao, lojaRow] = await Promise.all([
+    const [produtos, vendas, clientes, debitos, contas, vendedores, taxasCartao, lojaRow, trocasSB, vouchersSB, caixaSessoesSB] = await Promise.all([
       sbGet('produtos', 'order=ref.asc'),
       sbGet('vendas', 'order=created_at.desc'),
       sbGet('clientes', 'order=nome.asc'),
@@ -3292,6 +3297,9 @@ async function carregarDadosNuvem() {
       sbGet('vendedores', 'order=nome.asc').catch(() => []),
       sbGet('taxas_cartao', 'order=tipo.asc').catch(() => []),
       sbGet('lojas', 'id=eq.' + LOJA_ID + '&select=dados_empresa&limit=1').catch(() => []),
+      sbGet('trocas', 'order=data.desc').catch(() => []),
+      sbGet('vouchers', 'order=criado_em.desc').catch(() => []),
+      sbGet('caixa_sessoes', 'order=created_at.desc').catch(() => []),
     ]);
     _cache.produtos = produtos;
     _cache.vendas = vendas;
@@ -3300,6 +3308,9 @@ async function carregarDadosNuvem() {
     _cache.contasPagar = contas;
     _cache.vendedores = vendedores;
     _cache.taxasCartao = taxasCartao;
+    _cache.trocas = trocasSB;
+    _cache.vouchers = vouchersSB;
+    _cache.caixaSessoes = caixaSessoesSB;
     if (lojaRow && lojaRow[0] && lojaRow[0].dados_empresa) {
       try {
         _dadosEmpresaCache = typeof lojaRow[0].dados_empresa === 'string'
@@ -3404,6 +3415,7 @@ async function fazerLogin() {
         return;
       }
     }
+    checarAvisoVencimentoLicenca(lic);
 
     // A partir daqui, todas as chamadas ao Supabase usam o token da sessão
     // em vez da anon key pura.
@@ -3566,6 +3578,27 @@ async function renderUsuarios() {
   }
 
   container.innerHTML = html;
+}
+
+// Quantos dias faltam até o fim do mês de validade (validade é "YYYY-MM").
+// null = sem validade cadastrada (sem controle de vencimento).
+function diasParaVencerLicenca(validade) {
+  if (!validade) return null;
+  const [ano, mes] = validade.split('-').map(Number);
+  const fimDoMes = new Date(ano, mes, 0, 23, 59, 59, 999); // último dia do mês "mes"
+  const diffMs = fimDoMes - new Date();
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+}
+
+function checarAvisoVencimentoLicenca(lic) {
+  const banner = document.getElementById('banner-licenca-vencendo');
+  if (!banner || !lic || !lic.validade) return;
+  const dias = diasParaVencerLicenca(lic.validade);
+  if (dias === null || dias < 0 || dias > 5) return; // já bloqueado (vencido) ou longe do vencimento
+  document.getElementById('banner-licenca-texto').textContent = dias === 0
+    ? '⚠️ Sua assinatura vence hoje. Entre em contato para renovar e continuar usando o sistema sem interrupção.'
+    : `⚠️ Sua assinatura vence em ${dias} dia${dias === 1 ? '' : 's'}. Entre em contato para renovar e continuar usando o sistema sem interrupção.`;
+  banner.style.display = 'block';
 }
 
 function atualizarStatusLicenca(lic) {
@@ -5993,6 +6026,12 @@ async function confirmarVenda() {
       if (idx >= 0) {
         vouchers[idx].valorRestante = Math.max(0, vouchers[idx].valorRestante - valorLeg);
         saveVouchers(vouchers);
+        try {
+          if (vouchers[idx].id) {
+            await sbPatch('vouchers', vouchers[idx].id, { valor_restante: vouchers[idx].valorRestante });
+            invalidarCache('vouchers');
+          }
+        } catch (e) { console.warn('Saldo do voucher atualizado localmente:', e.message); }
       }
       return;
     }
@@ -7693,12 +7732,41 @@ function dentroDoPeriodoFin(dataISO) { return dentroDoPeriodo('fin', dataISO); }
 const CAIXA_ATUAL_KEY = 'oi2026_caixa_atual';
 const CAIXA_HISTORICO_KEY = 'oi2026_caixa_historico';
 
-function getCaixaAtual() { return JSON.parse(localStorage.getItem(CAIXA_ATUAL_KEY) || 'null'); }
+// Converte uma linha da tabela caixa_sessoes (Supabase) pro mesmo formato
+// que o resto do sistema já usa localmente.
+function normalizarSessaoCaixaSB(s) {
+  return {
+    id: s.id,
+    numero: s.numero,
+    abertura: {
+      dataHoraISO: s.abertura_hora,
+      dataHoraBR: new Date(s.abertura_hora).toLocaleString('pt-BR'),
+      operador: s.abertura_operador,
+      fundoTroco: s.fundo_troco
+    },
+    movimentos: s.movimentos || [],
+    fechamento: s.fechamento || null
+  };
+}
+function ehIdRealCaixa(id) { return !!id && !String(id).startsWith('caixa_'); }
+
+function getCaixaAtual() {
+  const local = JSON.parse(localStorage.getItem(CAIXA_ATUAL_KEY) || 'null');
+  if (local) return local;
+  const remotoAberto = (_cache.caixaSessoes || []).find(s => s.status === 'aberto');
+  return remotoAberto ? normalizarSessaoCaixaSB(remotoAberto) : null;
+}
 function saveCaixaAtual(obj) {
   if (obj) localStorage.setItem(CAIXA_ATUAL_KEY, JSON.stringify(obj));
   else localStorage.removeItem(CAIXA_ATUAL_KEY);
 }
-function getHistoricoCaixas() { return JSON.parse(localStorage.getItem(CAIXA_HISTORICO_KEY) || '[]'); }
+function getHistoricoCaixas() {
+  const local = JSON.parse(localStorage.getItem(CAIXA_HISTORICO_KEY) || '[]');
+  const remoto = (_cache.caixaSessoes || []).filter(s => s.status === 'fechado').map(normalizarSessaoCaixaSB);
+  const porId = {};
+  [...remoto, ...local].forEach(s => { porId[s.id] = s; }); // local tem prioridade se já existir com o mesmo id
+  return Object.values(porId).sort((a, b) => new Date(b.fechamento?.dataHoraISO || 0) - new Date(a.fechamento?.dataHoraISO || 0));
+}
 function saveHistoricoCaixas(lista) { localStorage.setItem(CAIXA_HISTORICO_KEY, JSON.stringify(lista)); }
 function proximoNumeroCaixa() {
   const chave = 'oi2026_caixa_seq';
@@ -7831,7 +7899,7 @@ function abrirModalAbrirCaixa() {
   document.getElementById('modal-abrir-caixa').classList.add('open');
 }
 
-function confirmarAberturaCaixa() {
+async function confirmarAberturaCaixa() {
   const fundoInput = document.getElementById('abrir-caixa-fundo').value.trim();
   if (!fundoInput) { alert('Informe o fundo de troco (pode ser 0,00 se a gaveta começar vazia).'); return; }
   const fundo = valorMoeda('abrir-caixa-fundo');
@@ -7852,6 +7920,21 @@ function confirmarAberturaCaixa() {
   fecharModal('modal-abrir-caixa');
   atualizarWidgetCaixa();
   mostrarNotificacao(`✅ Caixa Nº ${sessao.numero} aberto!`);
+
+  try {
+    const criado = await sbPost('caixa_sessoes', {
+      numero: sessao.numero,
+      abertura_hora: sessao.abertura.dataHoraISO,
+      abertura_operador: sessao.abertura.operador,
+      fundo_troco: sessao.abertura.fundoTroco,
+      movimentos: [],
+      fechamento: null,
+      status: 'aberto'
+    });
+    const registro = Array.isArray(criado) ? criado[0] : criado;
+    if (registro && registro.id) { sessao.id = registro.id; saveCaixaAtual(sessao); }
+    invalidarCache('caixaSessoes');
+  } catch (e) { console.warn('Caixa aberto salvo localmente:', e.message); }
 }
 
 // ===== Sangria / Suprimento =====
@@ -7865,7 +7948,7 @@ function abrirModalMovimentoCaixa(tipo) {
   document.getElementById('modal-movimento-caixa').classList.add('open');
 }
 
-function confirmarMovimentoCaixa() {
+async function confirmarMovimentoCaixa() {
   const sessao = getCaixaAtual();
   if (!sessao) return;
   const tipo = document.getElementById('movimento-caixa-tipo').value;
@@ -7886,6 +7969,13 @@ function confirmarMovimentoCaixa() {
   fecharModal('modal-movimento-caixa');
   atualizarWidgetCaixa();
   mostrarNotificacao(tipo === 'sangria' ? '✅ Sangria registrada' : '✅ Suprimento registrado');
+
+  try {
+    if (ehIdRealCaixa(sessao.id)) {
+      await sbPatch('caixa_sessoes', sessao.id, { movimentos: sessao.movimentos });
+      invalidarCache('caixaSessoes');
+    }
+  } catch (e) { console.warn('Movimento salvo localmente:', e.message); }
 }
 
 // ===== Fechar caixa =====
@@ -7985,7 +8075,7 @@ function calcularDiferencaFechamentoCaixa() {
   }
 }
 
-function confirmarFechamentoCaixa() {
+async function confirmarFechamentoCaixa() {
   const sessao = getCaixaAtual();
   if (!sessao) return;
   const linhas = Array.from(document.querySelectorAll('#fechar-caixa-conferencia-body tr[data-forma]'));
@@ -8035,6 +8125,32 @@ function confirmarFechamentoCaixa() {
   mostrarNotificacao('✅ Caixa fechado com sucesso!');
   abrirRelatorioCaixa(sessao);
   if (document.getElementById('subfin-caixa') && document.getElementById('subfin-caixa').style.display !== 'none') renderTelaFechamentoCaixa();
+
+  try {
+    if (ehIdRealCaixa(sessao.id)) {
+      await sbPatch('caixa_sessoes', sessao.id, { fechamento: sessao.fechamento, status: 'fechado' });
+    } else {
+      // Caixa foi aberto antes de sincronizar (ou sem conexão na abertura) —
+      // cria agora, já fechado, com tudo que tem.
+      const criado = await sbPost('caixa_sessoes', {
+        numero: sessao.numero,
+        abertura_hora: sessao.abertura.dataHoraISO,
+        abertura_operador: sessao.abertura.operador,
+        fundo_troco: sessao.abertura.fundoTroco,
+        movimentos: sessao.movimentos,
+        fechamento: sessao.fechamento,
+        status: 'fechado'
+      });
+      const registro = Array.isArray(criado) ? criado[0] : criado;
+      if (registro && registro.id) {
+        sessao.id = registro.id;
+        const hist2 = getHistoricoCaixas();
+        const idx = hist2.findIndex(s => s === sessao || (s.abertura.dataHoraISO === sessao.abertura.dataHoraISO));
+        if (idx >= 0) { hist2[idx] = sessao; saveHistoricoCaixas(hist2); }
+      }
+    }
+    invalidarCache('caixaSessoes');
+  } catch (e) { console.warn('Fechamento salvo localmente:', e.message); }
 }
 
 // ===== Relatório de fechamento (arquivável, estilo cupom) =====
@@ -8399,10 +8515,29 @@ async function salvarNovaReceber() {
 // ===== TROCAS E DEVOLUÇÕES (armazenado localmente por enquanto) =====
 const TROCAS_KEY = 'oi2026_trocas';
 const VOUCHERS_KEY = 'oi2026_vouchers';
-function getTrocas() { return JSON.parse(localStorage.getItem(TROCAS_KEY) || '[]'); }
-function saveTrocas(lista) { localStorage.setItem(TROCAS_KEY, JSON.stringify(lista)); }
-function getVouchers() { return JSON.parse(localStorage.getItem(VOUCHERS_KEY) || '[]'); }
-function saveVouchers(lista) { localStorage.setItem(VOUCHERS_KEY, JSON.stringify(lista)); }
+function getTrocas() {
+  const lista = _cache.trocas || JSON.parse(localStorage.getItem(TROCAS_KEY) || '[]');
+  // Traduz nomes de coluna do Supabase (snake_case) pra como o resto do
+  // sistema já usa (camelCase), e normaliza a data pro formato BR de exibição
+  // (o Supabase guarda como timestamp ISO, o app trabalha com "DD/MM/AAAA, HH:MM:SS").
+  return lista.map(t => ({
+    ...t,
+    numeroVoucher: t.numeroVoucher ?? t.numero_voucher ?? null,
+    vendaId: t.vendaId ?? t.venda_id ?? null,
+    data: (t.data && t.data.includes('T')) ? new Date(t.data).toLocaleString('pt-BR') : t.data
+  }));
+}
+function saveTrocas(lista) { _cache.trocas = lista; localStorage.setItem(TROCAS_KEY, JSON.stringify(lista)); }
+function getVouchers() {
+  const lista = _cache.vouchers || JSON.parse(localStorage.getItem(VOUCHERS_KEY) || '[]');
+  return lista.map(v => ({
+    ...v,
+    valorOriginal: v.valorOriginal ?? v.valor_original ?? 0,
+    valorRestante: v.valorRestante ?? v.valor_restante ?? 0,
+    trocaId: v.trocaId ?? v.troca_id ?? null
+  }));
+}
+function saveVouchers(lista) { _cache.vouchers = lista; localStorage.setItem(VOUCHERS_KEY, JSON.stringify(lista)); }
 function buscarVoucher(numero) {
   const alvo = (numero || '').trim().replace(/^0+/, ''); // compara ignorando zeros à esquerda
   return getVouchers().find(v => v.numero.replace(/^0+/, '') === alvo);
@@ -8560,19 +8695,47 @@ async function confirmarDevolucao() {
   trocas.unshift(trocaRegistro);
   saveTrocas(trocas);
 
+  try {
+    const criadoTroca = await sbPost('trocas', {
+      numero_voucher: numeroVoucher,
+      data: new Date().toISOString(),
+      venda_id: String(venda.id),
+      ref: venda.ref,
+      produto: venda.produto,
+      qtd, valor, destino,
+      cliente: cliente || null,
+      motivo: motivo || null
+    });
+    const registroTroca = Array.isArray(criadoTroca) ? criadoTroca[0] : criadoTroca;
+    if (registroTroca && registroTroca.id) { trocaRegistro.id = registroTroca.id; saveTrocas(trocas); }
+    invalidarCache('trocas');
+  } catch (e) { console.warn('Troca salva localmente:', e.message); }
+
   // Gera o voucher de verdade (número específico, com saldo próprio) — a
   // venda futura só aceita esse crédito informando esse número exato.
   if (destino === 'credito') {
-    const vouchers = getVouchers();
-    vouchers.unshift({
+    const novoVoucher = {
       numero: numeroVoucher,
       cliente,
       valorOriginal: valor,
       valorRestante: valor,
       criadoEm: new Date().toISOString(),
       trocaId: trocaRegistro.id
-    });
+    };
+    const vouchers = getVouchers();
+    vouchers.unshift(novoVoucher);
     saveVouchers(vouchers);
+
+    try {
+      const criadoVoucher = await sbPost('vouchers', {
+        numero: numeroVoucher, cliente,
+        valor_original: valor, valor_restante: valor,
+        troca_id: (trocaRegistro.id && String(trocaRegistro.id).length === 36) ? trocaRegistro.id : null
+      });
+      const registroVoucher = Array.isArray(criadoVoucher) ? criadoVoucher[0] : criadoVoucher;
+      if (registroVoucher && registroVoucher.id) { novoVoucher.id = registroVoucher.id; saveVouchers(vouchers); }
+      invalidarCache('vouchers');
+    } catch (e) { console.warn('Voucher salvo localmente:', e.message); }
   }
 
   fecharModal('modal-devolucao');
@@ -9928,6 +10091,99 @@ function gerCards(cards) {
 
 
 // 1. Produtos mais vendidos
+// Fluxo de Caixa: entradas (recebimentos) e saídas (contas pagas), em ordem
+// cronológica, com saldo acumulado — respeita o mesmo filtro de período dos
+// outros relatórios gerenciais.
+function renderFluxoCaixa() {
+  const eventos = [];
+  getDebitos().forEach(d => {
+    (d.pagamentos || []).forEach(p => {
+      const iso = dataParaISO(p.data);
+      if (!iso || !dentroDoPeriodo('ger', iso)) return;
+      const desc = p.forma === 'Entrada' ? `Entrada de fiado — ${d.cliente || ''}` : `${p.forma} — ${d.cliente || d.produto || ''}`;
+      eventos.push({ data: iso, dataBR: p.data, tipo: 'entrada', valor: p.valor, desc: desc.trim() });
+    });
+  });
+  getContasPagar().filter(c => c.pago && c.data_pagamento).forEach(c => {
+    const iso = dataParaISO(c.data_pagamento);
+    if (!iso || !dentroDoPeriodo('ger', iso)) return;
+    eventos.push({ data: iso, dataBR: c.data_pagamento, tipo: 'saida', valor: c.valor, desc: `${c.descricao || 'Conta paga'}${c.fornecedor ? ' — ' + c.fornecedor : ''}` });
+  });
+  eventos.sort((a, b) => a.data.localeCompare(b.data));
+
+  const cont = document.getElementById('ger-conteudo');
+  if (!eventos.length) { cont.innerHTML = '<div class="empty">Nenhuma entrada ou saída registrada no período.</div>'; return; }
+
+  let saldo = 0;
+  const totalEntradas = eventos.filter(e => e.tipo === 'entrada').reduce((s, e) => s + e.valor, 0);
+  const totalSaidas = eventos.filter(e => e.tipo === 'saida').reduce((s, e) => s + e.valor, 0);
+
+  cont.innerHTML = `
+    <div class="cards" style="margin-bottom:16px;">
+      <div class="card"><div class="card-label">Entradas no período</div><div class="card-value" style="color:var(--success);">${R(totalEntradas)}</div></div>
+      <div class="card"><div class="card-label">Saídas no período</div><div class="card-value" style="color:var(--danger);">${R(totalSaidas)}</div></div>
+      <div class="card"><div class="card-label">Saldo do período</div><div class="card-value">${R(totalEntradas - totalSaidas)}</div></div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Valor</th><th>Saldo acumulado</th></tr></thead>
+      <tbody>${eventos.map(e => {
+        saldo += e.tipo === 'entrada' ? e.valor : -e.valor;
+        return `<tr>
+          <td style="font-size:12px;">${e.dataBR}</td>
+          <td>${e.tipo === 'entrada' ? '🟢 Entrada' : '🔴 Saída'}</td>
+          <td>${e.desc}</td>
+          <td style="color:${e.tipo === 'entrada' ? 'var(--success)' : 'var(--danger)'};">${e.tipo === 'entrada' ? '+' : '-'} ${R(e.valor)}</td>
+          <td><strong>${R(saldo)}</strong></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>
+  `;
+}
+
+// Inadimplência: débitos com saldo em aberto E vencimento já passado.
+function renderInadimplencia() {
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const inadimplentes = getDebitos().filter(d => {
+    const pago = (d.pagamentos || []).reduce((s, p) => s + p.valor, 0);
+    const saldo = (d.total || 0) - pago;
+    if (saldo <= 0.01) return false;
+    if (!d.vencimento) return false;
+    const [dd, mm, yy] = d.vencimento.split('/');
+    if (!dd || !mm || !yy) return false;
+    const venc = new Date(`${yy}-${mm}-${dd}T00:00:00`);
+    return venc < hoje;
+  }).map(d => {
+    const pago = (d.pagamentos || []).reduce((s, p) => s + p.valor, 0);
+    const [dd, mm, yy] = d.vencimento.split('/');
+    const venc = new Date(`${yy}-${mm}-${dd}T00:00:00`);
+    const diasAtraso = Math.floor((hoje - venc) / (1000 * 60 * 60 * 24));
+    return { ...d, saldo: (d.total || 0) - pago, diasAtraso };
+  }).sort((a, b) => b.diasAtraso - a.diasAtraso);
+
+  const cont = document.getElementById('ger-conteudo');
+  if (!inadimplentes.length) { cont.innerHTML = '<div class="empty">Nenhum cliente inadimplente no momento. 🎉</div>'; return; }
+
+  const totalInadimplente = inadimplentes.reduce((s, d) => s + d.saldo, 0);
+  cont.innerHTML = `
+    <div class="cards" style="margin-bottom:16px;">
+      <div class="card"><div class="card-label">Clientes inadimplentes</div><div class="card-value">${inadimplentes.length}</div></div>
+      <div class="card"><div class="card-label">Total em atraso</div><div class="card-value" style="color:var(--danger);">${R(totalInadimplente)}</div></div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Cliente</th><th>Descrição</th><th>Vencimento</th><th>Dias em atraso</th><th>Saldo devedor</th></tr></thead>
+      <tbody>${inadimplentes.map(d => `
+        <tr>
+          <td><strong>${d.cliente || '—'}</strong></td>
+          <td style="font-size:12px;">${d.obs || d.produto || '—'}</td>
+          <td>${d.vencimento}</td>
+          <td style="color:var(--danger);font-weight:700;">${d.diasAtraso} dia${d.diasAtraso === 1 ? '' : 's'}</td>
+          <td><strong>${R(d.saldo)}</strong></td>
+        </tr>
+      `).join('')}</tbody>
+    </table></div>
+  `;
+}
+
 function renderMaisVendidos() {
   const vendas = gerFiltrarVendas(getVendas());
   const map = {};
