@@ -2820,6 +2820,23 @@
   </div>
 </div>
 
+<!-- MODAL VOUCHER DE CRÉDITO (preview na tela, igual o cupom) -->
+<div class="modal-bg" id="modal-voucher">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header" style="background:var(--warn);color:#fff;">
+      <h2 style="color:#fff;">🎫 Voucher de Crédito</h2>
+      <button class="modal-close" style="color:#fff;" onclick="fecharModal('modal-voucher')">×</button>
+    </div>
+    <div class="modal-body" style="padding:20px;background:var(--bg);">
+      <div id="voucher-conteudo" style="background:#fff;padding:24px 22px;border:1px solid var(--border);border-radius:10px;font-family:'Courier New',monospace;font-size:15px;line-height:1.65;color:#111;box-shadow:var(--shadow);"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="imprimirVoucherAgora()">🖨️ Imprimir</button>
+      <button class="btn btn-outline" onclick="fecharModal('modal-voucher')">✕ Fechar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ===== LANDING PAGE: detecta acesso à raiz pura (sem subpath nenhum) =====
 // Se a URL não tiver path nenhum (ex: app.legadoerp.com.br ou legadoerp.com.br),
@@ -8746,12 +8763,11 @@ function proximoNumeroVoucher() {
   return String(atual).padStart(6, '0');
 }
 
-function imprimirVoucher(troca) {
+// Monta o conteúdo do voucher — reaproveitado tanto no preview (dentro do
+// sistema) quanto na impressão de verdade (janela isolada), igual o cupom.
+function montarVoucherHTML(troca) {
   const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
-  const imp = (_dadosEmpresaCache && _dadosEmpresaCache.impressora) || {};
-  const largura = imp.largura || '80mm';
-
-  const corpo = `
+  return `
     <div style="text-align:center;font-size:18px;font-weight:700;margin-bottom:2px;">${nomeLoja}</div>
     <div style="text-align:center;font-size:15px;font-weight:700;color:#b8860b;margin-top:8px;">VOUCHER DE CRÉDITO</div>
     <div style="text-align:center;font-size:11px;color:#666;">Nº ${troca.numeroVoucher}</div>
@@ -8771,6 +8787,25 @@ function imprimirVoucher(troca) {
       Apresente este voucher (ou informe o nome cadastrado) na próxima compra para usar o crédito.
     </div>
   `;
+}
+
+let _trocaParaVoucher = null;
+
+// Mostra o preview dentro do próprio sistema (igual o cupom de venda) —
+// não abre mais aba nova sozinho.
+function imprimirVoucher(troca) {
+  _trocaParaVoucher = troca;
+  document.getElementById('voucher-conteudo').innerHTML = montarVoucherHTML(troca);
+  document.getElementById('modal-voucher').classList.add('open');
+}
+
+// Impressão de verdade só acontece quando clica em "Imprimir" dentro do
+// preview — aí sim abre a janela isolada, igual o cupom.
+function imprimirVoucherAgora() {
+  if (!_trocaParaVoucher) return;
+  const imp = (_dadosEmpresaCache && _dadosEmpresaCache.impressora) || {};
+  const largura = imp.largura || '80mm';
+  const corpo = montarVoucherHTML(_trocaParaVoucher);
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
   <title>Voucher de Crédito</title>
