@@ -920,6 +920,23 @@
 <div id="page-vendas" class="page">
   <div class="section-title">Registrar nova venda · carrinho</div>
 
+  <!-- WIDGET DE CAIXA (abertura/sangria/suprimento/fechamento) -->
+  <div id="caixa-widget-fechado" style="display:none;background:var(--warn-light);border:1px solid var(--warn);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <span style="font-size:14px;font-weight:600;color:var(--warn);">🔒 Nenhum caixa aberto</span>
+    <span style="font-size:12px;color:var(--muted);">Abra o caixa antes de registrar vendas.</span>
+    <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="abrirModalAbrirCaixa()">🔓 Abrir Caixa</button>
+  </div>
+
+  <div id="caixa-widget-aberto" style="display:none;background:var(--success-light);border:1px solid #B8D9C0;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <span style="font-size:14px;font-weight:600;color:var(--success);">🔓 Caixa Aberto</span>
+    <span id="caixa-widget-info" style="font-size:12px;color:var(--muted);"></span>
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-outline btn-sm" onclick="abrirModalMovimentoCaixa('sangria')">💸 Sangria</button>
+      <button class="btn btn-outline btn-sm" onclick="abrirModalMovimentoCaixa('suprimento')">➕ Suprimento</button>
+      <button class="btn btn-secondary btn-sm" onclick="abrirModalFecharCaixa()">🔒 Fechar Caixa</button>
+    </div>
+  </div>
+
 
   <div class="pdv-layout">
 
@@ -2189,49 +2206,16 @@
 
   <!-- ===== FECHAMENTO DE CAIXA ===== -->
   <div id="subfin-caixa" style="display:none;">
-    <div class="toolbar" style="margin-bottom:16px;gap:10px;align-items:center;">
-      <label style="font-size:12px;color:var(--muted);white-space:nowrap;">Data</label>
-      <input type="date" id="caixa-data" onchange="renderFechamentoCaixa()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
-      <button class="btn btn-outline" onclick="renderFechamentoCaixa()">↺ Atualizar</button>
-    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">
+      Abertura, sangria, suprimento e fechamento de caixa acontecem direto na tela de <strong>Registrar Venda</strong>.
+      Aqui você acompanha o caixa em andamento e consulta os relatórios já arquivados.
+    </p>
 
-    <div class="cards" id="caixa-cards-resumo-geral" style="margin-bottom:20px;"></div>
+    <div class="section-title" style="font-size:14px;">📍 Caixa atual</div>
+    <div id="caixa-tab-atual" style="margin-bottom:32px;"></div>
 
-    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">🧾 Vendas do dia, por forma de pagamento (confere se todas foram lançadas)</p>
-    <div class="table-wrap" style="margin-bottom:24px;">
-      <table>
-        <thead><tr><th>Forma de pagamento</th><th>Qtd. de vendas</th><th>Valor total</th></tr></thead>
-        <tbody id="caixa-vendas-por-forma-body"></tbody>
-        <tfoot id="caixa-vendas-por-forma-foot"></tfoot>
-      </table>
-    </div>
-
-    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">💰 Dinheiro recebido no dia (novo + recebimentos de contas em aberto)</p>
-    <div class="cards" id="caixa-cards-recebido" style="margin-bottom:20px;"></div>
-
-    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">ℹ️ Gerado no dia, ainda não é dinheiro em caixa</p>
-    <div class="cards" id="caixa-cards-info" style="margin-bottom:24px;"></div>
-
-    <div class="table-wrap" style="padding:20px;max-width:640px;">
-      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px;">🧮 Conferência por forma de pagamento</p>
-      <p style="font-size:11px;color:var(--muted);margin-bottom:14px;">Confirma o que de fato recebeu em cada forma — dinheiro na gaveta, Pix e cartão no extrato/maquininha.</p>
-      <table>
-        <thead><tr><th>Forma</th><th>Esperado</th><th>Contado / Confirmado</th><th>Diferença</th></tr></thead>
-        <tbody id="caixa-conferencia-body"></tbody>
-        <tfoot id="caixa-conferencia-foot"></tfoot>
-      </table>
-      <div class="form-row" style="margin-top:16px;">
-        <label>Observação (opcional)</label>
-        <input type="text" id="caixa-obs" placeholder="Ex: troco emprestado, saída pra compra...">
-      </div>
-      <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="fecharCaixaDoDia()">🔒 Fechar Caixa do Dia</button>
-      <span id="caixa-msg" style="font-size:12px;display:block;margin-top:8px;"></span>
-    </div>
-
-    <div style="margin-top:32px;">
-      <div class="section-title" style="font-size:14px;">📋 Histórico de fechamentos</div>
-      <div id="caixa-historico"></div>
-    </div>
+    <div class="section-title" style="font-size:14px;">📋 Histórico de fechamentos</div>
+    <div id="caixa-tab-historico"></div>
   </div>
 
   <!-- ===== TAXAS DE CARTÃO ===== -->
@@ -2626,6 +2610,107 @@
 </div>
 
 <!-- MODAL CUPOM DE VENDA (comprovante interno, não fiscal) -->
+<!-- MODAL ABRIR CAIXA -->
+<div class="modal-bg" id="modal-abrir-caixa">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h2>🔓 Abrir Caixa</h2>
+      <button class="modal-close" onclick="fecharModal('modal-abrir-caixa')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label>Fundo de troco (dinheiro inicial na gaveta)</label>
+        <input type="text" inputmode="numeric" id="abrir-caixa-fundo" placeholder="0,00" oninput="mascaraMoeda(this)">
+      </div>
+      <p style="font-size:12px;color:var(--muted);">A partir da abertura, todas as vendas e movimentações ficam vinculadas a este caixa, até o fechamento.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-abrir-caixa')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarAberturaCaixa()">Abrir Caixa</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SANGRIA / SUPRIMENTO -->
+<div class="modal-bg" id="modal-movimento-caixa">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h2 id="movimento-caixa-titulo">Sangria</h2>
+      <button class="modal-close" onclick="fecharModal('modal-movimento-caixa')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="movimento-caixa-tipo">
+      <div class="form-row">
+        <label id="movimento-caixa-label-valor">Valor</label>
+        <input type="text" inputmode="numeric" id="movimento-caixa-valor" placeholder="0,00" oninput="mascaraMoeda(this)">
+      </div>
+      <div class="form-row">
+        <label>Motivo</label>
+        <input type="text" id="movimento-caixa-motivo" placeholder="Ex: depósito no banco, reforço de troco...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-movimento-caixa')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarMovimentoCaixa()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FECHAR CAIXA -->
+<div class="modal-bg" id="modal-fechar-caixa">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header">
+      <h2>🔒 Fechamento de Caixa</h2>
+      <button class="modal-close" onclick="fecharModal('modal-fechar-caixa')">×</button>
+    </div>
+    <div class="modal-body" style="max-height:65vh;overflow-y:auto;">
+      <div class="cards" id="fechar-caixa-resumo" style="margin-bottom:18px;"></div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">Vendas por forma de pagamento neste caixa</p>
+      <table style="margin-bottom:18px;">
+        <thead><tr><th>Forma</th><th>Qtd</th><th>Valor</th></tr></thead>
+        <tbody id="fechar-caixa-vendas-body"></tbody>
+      </table>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">Sangrias e suprimentos deste caixa</p>
+      <div id="fechar-caixa-movimentos" style="margin-bottom:18px;"></div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">Conferência por forma de pagamento</p>
+      <table>
+        <thead><tr><th>Forma</th><th>Esperado</th><th>Contado / Confirmado</th><th>Diferença</th></tr></thead>
+        <tbody id="fechar-caixa-conferencia-body"></tbody>
+        <tfoot id="fechar-caixa-conferencia-foot"></tfoot>
+      </table>
+
+      <div class="form-row" style="margin-top:16px;">
+        <label>Observação (opcional)</label>
+        <input type="text" id="fechar-caixa-obs" placeholder="Ex: quebra de caixa investigada, motivo x...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-fechar-caixa')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarFechamentoCaixa()">🔒 Confirmar Fechamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RELATÓRIO DE FECHAMENTO (arquivável, estilo cupom) -->
+<div class="modal-bg" id="modal-relatorio-caixa">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header" style="background:var(--success);color:#fff;">
+      <h2 style="color:#fff;">📄 Relatório de Fechamento</h2>
+      <button class="modal-close" style="color:#fff;" onclick="fecharModal('modal-relatorio-caixa')">×</button>
+    </div>
+    <div class="modal-body" style="padding:20px;background:var(--bg);max-height:65vh;overflow-y:auto;">
+      <div id="relatorio-caixa-conteudo" style="background:#fff;padding:24px 22px;border:1px solid var(--border);border-radius:10px;font-family:'Courier New',monospace;font-size:14px;line-height:1.6;color:#111;box-shadow:var(--shadow);"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="imprimirRelatorioCaixa()">🖨️ Imprimir</button>
+      <button class="btn btn-outline" onclick="fecharModal('modal-relatorio-caixa')">✕ Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-cupom">
   <div class="modal" style="max-width:440px;">
     <div class="modal-header" style="background:var(--success);color:#fff;">
@@ -3567,7 +3652,7 @@ function showPage(id) {
   if (id === 'financeiro') { renderFinanceiroUnificado(); }
   if (id === 'trocas') { renderTrocas(); }
   if (id === 'usuarios') { renderUsuarios(); }
-  if (id === 'vendas') { popularListaClientesVenda(); popularSelectVendedores(); if (!document.getElementById('venda-data').value) { const t = new Date(); document.getElementById('venda-data').value = t.toISOString().slice(0,10); } }
+  if (id === 'vendas') { popularListaClientesVenda(); popularSelectVendedores(); atualizarWidgetCaixa(); if (!document.getElementById('venda-data').value) { const t = new Date(); document.getElementById('venda-data').value = t.toISOString().slice(0,10); } }
   closeMenuMobile();
 }
 
@@ -5525,6 +5610,7 @@ function proximoDiaUtil(dataISO) {
 
 async function confirmarVenda() {
   if (carrinho.length === 0) { alert('Carrinho vazio. Adicione ao menos um produto.'); return; }
+  if (!getCaixaAtual()) { alert('Abra o caixa antes de registrar vendas — use o botão no topo desta tela.'); return; }
   const cliente = document.getElementById('venda-cliente').value.trim();
   const vendedor = document.getElementById('venda-vendedor').value || '';
 
@@ -5709,7 +5795,7 @@ async function confirmarVenda() {
       };
       if (entradaVal > 0) {
         const [yd,md,dd] = (dataInput||new Date().toISOString().slice(0,10)).split('-');
-        debito.pagamentos.push({ valor: entradaVal, forma: 'Entrada', data: dd+'/'+md+'/'+yd });
+        debito.pagamentos.push({ valor: entradaVal, forma: 'Entrada', data: dd+'/'+md+'/'+yd, horaISO: new Date().toISOString() });
       }
       debitos.unshift(debito);
       saveDebitos(debitos);
@@ -5833,7 +5919,7 @@ async function confirmarVenda() {
         vencimento: dataFmt,
         obs: 'Recebido ' + pagLabel + (cliente ? ' — ' + cliente : ''),
         itens: carrinho.map(c=>({produto:c.produto, qtd:c.qtd, valor:c.valor_unit*c.qtd})),
-        pagamentos: [{ valor: valorLeg, forma: pagLabel, data: dataFmt }]
+        pagamentos: [{ valor: valorLeg, forma: pagLabel, data: dataFmt, horaISO: new Date().toISOString() }]
       };
       debitos.unshift(novoDebito);
       saveDebitos(debitos);
@@ -7022,7 +7108,7 @@ function mostrarSubFin(sub) {
   if (sub === 'receber')  renderSubReceber();
   if (sub === 'pagar')    renderContasPagar();
   if (sub === 'extrato')  renderFinanceiro();
-  if (sub === 'caixa')    renderFechamentoCaixa();
+  if (sub === 'caixa')    renderTelaFechamentoCaixa();
 }
 
 // ===== TAXAS DE CARTÃO =====
@@ -7333,165 +7419,280 @@ function alternarModoFiltroPagar()   { alternarModoFiltroPeriodo('pagar', render
 function dentroDoPeriodoFin(dataISO) { return dentroDoPeriodo('fin', dataISO); }
 
 // ===== FECHAMENTO DE CAIXA (armazenado localmente por enquanto) =====
-const FECHAMENTOS_KEY = 'oi2026_fechamentos_caixa';
-function getFechamentos() { return JSON.parse(localStorage.getItem(FECHAMENTOS_KEY) || '[]'); }
-function saveFechamentos(lista) { localStorage.setItem(FECHAMENTOS_KEY, JSON.stringify(lista)); }
+// ===== SISTEMA DE CAIXA (abertura → sangria/suprimento → fechamento) =====
+// Arquitetura: uma "sessão de caixa" vai da abertura até o fechamento. Vendas
+// e recebimentos são vinculados à sessão pelo horário em que aconteceram, não
+// só pela data — assim, se um dia tiver duas aberturas (turno manhã/tarde),
+// cada uma soma só o que é dela. Armazenado localmente por enquanto (mesmo
+// motivo de sempre: sem tabela própria confirmada no Supabase pra isso ainda).
+const CAIXA_ATUAL_KEY = 'oi2026_caixa_atual';
+const CAIXA_HISTORICO_KEY = 'oi2026_caixa_historico';
+
+function getCaixaAtual() { return JSON.parse(localStorage.getItem(CAIXA_ATUAL_KEY) || 'null'); }
+function saveCaixaAtual(obj) {
+  if (obj) localStorage.setItem(CAIXA_ATUAL_KEY, JSON.stringify(obj));
+  else localStorage.removeItem(CAIXA_ATUAL_KEY);
+}
+function getHistoricoCaixas() { return JSON.parse(localStorage.getItem(CAIXA_HISTORICO_KEY) || '[]'); }
+function saveHistoricoCaixas(lista) { localStorage.setItem(CAIXA_HISTORICO_KEY, JSON.stringify(lista)); }
+function proximoNumeroCaixa() {
+  const chave = 'oi2026_caixa_seq';
+  const atual = parseInt(localStorage.getItem(chave) || '0') + 1;
+  localStorage.setItem(chave, atual);
+  return atual;
+}
+function labelForma(fm) { return (typeof PDV_FORMA_LABELS !== 'undefined' && PDV_FORMA_LABELS[fm]) || fm; }
+function ehFormaDinheiro(fm) { return (fm || '').toLowerCase().includes('vista') || (fm || '').toLowerCase().includes('dinheiro'); }
 
 function dataParaISO(dataBr) {
   const soData = (dataBr || '').split(',')[0].trim();
   const p = soData.split('/');
   return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : '';
 }
-
-// Olha, dia a dia, quanto de fato entrou (não quanto foi vendido — a
-// diferença importa: uma venda no cartão feita hoje só vira dinheiro de
-// verdade quando cai no próximo dia útil, e um fiado só quando for pago).
-// Todas as vendas do dia, por forma de pagamento (inclusive fiado e cartão,
-// que ainda não são dinheiro em caixa, mas são vendas de verdade que
-// precisam ter sido lançadas — é o jeito de conferir que nada ficou de fora).
-function calcularVendasDoDia(dataISO) {
-  const vendas = getVendas().filter(v => dataParaISO(v.data) === dataISO);
-  const porForma = {};
-  vendas.forEach(v => {
-    const forma = v.pagamento || 'Não informado';
-    if (!porForma[forma]) porForma[forma] = { valor: 0, vendaIds: new Set() };
-    porForma[forma].valor += v.valor_total || 0;
-    porForma[forma].vendaIds.add(v.venda_id);
-  });
-  const todosVendaIds = new Set(vendas.map(v => v.venda_id));
-  const resultado = {};
-  Object.keys(porForma).forEach(fm => {
-    resultado[fm] = { valor: porForma[fm].valor, qtd: porForma[fm].vendaIds.size };
-  });
-  return { porForma: resultado, totalValor: vendas.reduce((s, v) => s + (v.valor_total || 0), 0), totalVendas: todosVendaIds.size };
+function parseDataBRParaData(dataBr) {
+  if (!dataBr) return null;
+  const [dataParte, horaParte] = dataBr.split(',').map(s => (s || '').trim());
+  const [d, m, y] = (dataParte || '').split('/');
+  if (!d || !m || !y) return null;
+  return new Date(`${y}-${m}-${d}T${horaParte || '00:00:00'}`);
+}
+// Um pagamento "pertence" à sessão se aconteceu entre a abertura e o
+// fechamento (ou agora, se ainda estiver aberta). Pagamentos antigos sem
+// horário exato (de antes dessa função existir) caem no fallback por dia.
+function dentroDaSessaoCaixa(sessao, horaISO, dataBrFallback) {
+  const inicio = new Date(sessao.abertura.dataHoraISO).getTime();
+  const fim = sessao.fechamento ? new Date(sessao.fechamento.dataHoraISO).getTime() : Date.now();
+  if (horaISO) {
+    const t = new Date(horaISO).getTime();
+    return t >= inicio && t <= fim;
+  }
+  if (!dataBrFallback) return false;
+  return dataParaISO(dataBrFallback) === sessao.abertura.dataHoraISO.slice(0, 10);
 }
 
-function calcularMovimentoCaixa(dataISO) {
+function vendasDoCaixa(sessao) {
+  const inicio = new Date(sessao.abertura.dataHoraISO).getTime();
+  const fim = sessao.fechamento ? new Date(sessao.fechamento.dataHoraISO).getTime() : Date.now();
+  return getVendas().filter(v => {
+    const d = parseDataBRParaData(v.data);
+    if (!d) return false;
+    const t = d.getTime();
+    return t >= inicio && t <= fim;
+  });
+}
+
+function vendasPorFormaNoCaixa(sessao) {
+  const vendas = vendasDoCaixa(sessao);
+  const acumulado = {};
+  vendas.forEach(v => {
+    const forma = v.pagamento || 'Não informado';
+    if (!acumulado[forma]) acumulado[forma] = { valor: 0, vendaIds: new Set() };
+    acumulado[forma].valor += v.valor_total || 0;
+    acumulado[forma].vendaIds.add(v.venda_id);
+  });
+  const resultado = {};
+  Object.keys(acumulado).forEach(fm => { resultado[fm] = { valor: acumulado[fm].valor, qtd: acumulado[fm].vendaIds.size }; });
+  return resultado;
+}
+
+// Dinheiro/Pix/cartão que de fato ENTROU no período (débitos pagos, baixas
+// dadas, entrada de fiado) — é diferente de "vendido", que inclui fiado/
+// cartão ainda em aberto.
+function recebidoPorFormaNoCaixa(sessao) {
   const debitos = getDebitos();
   const porForma = {};
   debitos.forEach(d => {
     (d.pagamentos || []).forEach(p => {
-      if (!p.data) return;
-      const [dia, mes, ano] = p.data.split('/');
-      if (`${ano}-${mes}-${dia}` !== dataISO) return;
+      if (!dentroDaSessaoCaixa(sessao, p.horaISO, p.data)) return;
       const forma = p.forma === 'Entrada' ? 'À vista (entrada fiado)' : p.forma;
       porForma[forma] = (porForma[forma] || 0) + p.valor;
     });
   });
+  return porForma;
+}
 
-  let fiadoGerado = 0, cartaoGerado = 0;
-  debitos.forEach(d => {
-    if (dataParaISO(d.data_venda) !== dataISO) return;
-    const jaPago = (d.pagamentos || []).reduce((s, p) => s + p.valor, 0);
-    const restante = (d.total || 0) - jaPago;
-    if (restante <= 0.005) return;
-    if (d.cartao_dia) cartaoGerado += restante; else fiadoGerado += restante;
+function totaisMovimentosCaixa(sessao) {
+  let sangrias = 0, suprimentos = 0;
+  (sessao.movimentos || []).forEach(m => { if (m.tipo === 'sangria') sangrias += m.valor; else suprimentos += m.valor; });
+  return { sangrias, suprimentos };
+}
+
+// Estornos de troca/devolução no período (assume que saem do dinheiro físico
+// — é o cenário mais comum numa loja pequena; se um dia isso precisar
+// diferenciar por forma, dá pra guardar a forma no registro da troca).
+function estornosNoCaixa(sessao) {
+  const inicio = new Date(sessao.abertura.dataHoraISO).getTime();
+  const fim = sessao.fechamento ? new Date(sessao.fechamento.dataHoraISO).getTime() : Date.now();
+  return getTrocas().filter(t => {
+    if (t.destino !== 'estorno') return false;
+    const d = parseDataBRParaData(t.data);
+    if (!d) return false;
+    const tt = d.getTime();
+    return tt >= inicio && tt <= fim;
+  }).reduce((s, t) => s + t.valor, 0);
+}
+
+function dinheiroEstimadoAgora(sessao) {
+  const recebido = recebidoPorFormaNoCaixa(sessao);
+  const dinheiro = Object.keys(recebido).filter(ehFormaDinheiro).reduce((s, f) => s + recebido[f], 0);
+  const { sangrias, suprimentos } = totaisMovimentosCaixa(sessao);
+  const estornos = estornosNoCaixa(sessao);
+  return sessao.abertura.fundoTroco + dinheiro + suprimentos - sangrias - estornos;
+}
+
+// ===== Widget na tela de Vendas =====
+function atualizarWidgetCaixa() {
+  const wFechado = document.getElementById('caixa-widget-fechado');
+  const wAberto = document.getElementById('caixa-widget-aberto');
+  if (!wFechado || !wAberto) return;
+  const sessao = getCaixaAtual();
+  if (!sessao) {
+    wFechado.style.display = 'flex';
+    wAberto.style.display = 'none';
+  } else {
+    wFechado.style.display = 'none';
+    wAberto.style.display = 'flex';
+    const horaAbertura = (sessao.abertura.dataHoraBR.split(',')[1] || '').trim();
+    document.getElementById('caixa-widget-info').textContent =
+      `Caixa Nº ${sessao.numero} · aberto às ${horaAbertura} por ${sessao.abertura.operador} · dinheiro estimado: ${R(dinheiroEstimadoAgora(sessao))}`;
+  }
+}
+
+// ===== Abrir caixa =====
+function abrirModalAbrirCaixa() {
+  if (getCaixaAtual()) { alert('Já existe um caixa aberto.'); return; }
+  document.getElementById('abrir-caixa-fundo').value = '';
+  document.getElementById('modal-abrir-caixa').classList.add('open');
+}
+
+function confirmarAberturaCaixa() {
+  const fundoInput = document.getElementById('abrir-caixa-fundo').value.trim();
+  if (!fundoInput) { alert('Informe o fundo de troco (pode ser 0,00 se a gaveta começar vazia).'); return; }
+  const fundo = valorMoeda('abrir-caixa-fundo');
+  const agora = new Date();
+  const sessao = {
+    id: 'caixa_' + Date.now(),
+    numero: proximoNumeroCaixa(),
+    abertura: {
+      dataHoraISO: agora.toISOString(),
+      dataHoraBR: agora.toLocaleString('pt-BR'),
+      operador: (usuarioAtual() && usuarioAtual().nome) || '—',
+      fundoTroco: fundo
+    },
+    movimentos: [],
+    fechamento: null
+  };
+  saveCaixaAtual(sessao);
+  fecharModal('modal-abrir-caixa');
+  atualizarWidgetCaixa();
+  mostrarNotificacao(`✅ Caixa Nº ${sessao.numero} aberto!`);
+}
+
+// ===== Sangria / Suprimento =====
+function abrirModalMovimentoCaixa(tipo) {
+  if (!getCaixaAtual()) { alert('Abra o caixa antes.'); return; }
+  document.getElementById('movimento-caixa-tipo').value = tipo;
+  document.getElementById('movimento-caixa-titulo').textContent = tipo === 'sangria' ? '💸 Sangria (retirada)' : '➕ Suprimento (reforço)';
+  document.getElementById('movimento-caixa-label-valor').textContent = tipo === 'sangria' ? 'Valor a retirar da gaveta' : 'Valor a colocar na gaveta';
+  document.getElementById('movimento-caixa-valor').value = '';
+  document.getElementById('movimento-caixa-motivo').value = '';
+  document.getElementById('modal-movimento-caixa').classList.add('open');
+}
+
+function confirmarMovimentoCaixa() {
+  const sessao = getCaixaAtual();
+  if (!sessao) return;
+  const tipo = document.getElementById('movimento-caixa-tipo').value;
+  const valor = valorMoeda('movimento-caixa-valor');
+  const motivo = document.getElementById('movimento-caixa-motivo').value.trim();
+  if (!valor || valor <= 0) { alert('Informe um valor válido.'); return; }
+  if (!motivo) { alert('Informe o motivo — fica registrado no relatório de fechamento.'); return; }
+
+  const agora = new Date();
+  sessao.movimentos.push({
+    id: 'mov_' + Date.now(),
+    tipo, valor, motivo,
+    operador: (usuarioAtual() && usuarioAtual().nome) || '—',
+    horaISO: agora.toISOString(),
+    horaBR: agora.toLocaleString('pt-BR')
+  });
+  saveCaixaAtual(sessao);
+  fecharModal('modal-movimento-caixa');
+  atualizarWidgetCaixa();
+  mostrarNotificacao(tipo === 'sangria' ? '✅ Sangria registrada' : '✅ Suprimento registrado');
+}
+
+// ===== Fechar caixa =====
+function abrirModalFecharCaixa() {
+  const sessao = getCaixaAtual();
+  if (!sessao) { alert('Nenhum caixa aberto.'); return; }
+
+  const vendasPorForma = vendasPorFormaNoCaixa(sessao);
+  const recebidoPorForma = recebidoPorFormaNoCaixa(sessao);
+  const { sangrias, suprimentos } = totaisMovimentosCaixa(sessao);
+  const estornos = estornosNoCaixa(sessao);
+  const totalVendas = Object.values(vendasPorForma).reduce((s, v) => s + v.valor, 0);
+  const qtdVendas = new Set(vendasDoCaixa(sessao).map(v => v.venda_id)).size;
+
+  document.getElementById('fechar-caixa-resumo').innerHTML = `
+    <div class="card"><div class="card-label">Fundo de troco</div><div class="card-value" style="font-size:18px;">${R(sessao.abertura.fundoTroco)}</div></div>
+    <div class="card"><div class="card-label">Total vendido</div><div class="card-value" style="font-size:18px;">${R(totalVendas)}</div></div>
+    <div class="card"><div class="card-label">Qtd. vendas</div><div class="card-value" style="font-size:18px;">${qtdVendas}</div></div>
+    <div class="card"><div class="card-label">Sangria / Suprimento</div><div class="card-value" style="font-size:16px;">${R(sangrias)} / ${R(suprimentos)}</div></div>
+  `;
+
+  const formasVenda = Object.keys(vendasPorForma).sort((a, b) => vendasPorForma[b].valor - vendasPorForma[a].valor);
+  document.getElementById('fechar-caixa-vendas-body').innerHTML = formasVenda.length ? formasVenda.map(fm => `
+    <tr><td>${labelForma(fm)}</td><td style="text-align:center;">${vendasPorForma[fm].qtd}</td><td><strong>${R(vendasPorForma[fm].valor)}</strong></td></tr>
+  `).join('') : '<tr><td colspan="3" class="empty">Nenhuma venda neste caixa ainda.</td></tr>';
+
+  document.getElementById('fechar-caixa-movimentos').innerHTML = (sessao.movimentos || []).length
+    ? `<table><thead><tr><th>Tipo</th><th>Valor</th><th>Motivo</th><th>Hora</th></tr></thead><tbody>${
+        sessao.movimentos.map(m => `<tr><td>${m.tipo === 'sangria' ? '💸 Sangria' : '➕ Suprimento'}</td><td>${R(m.valor)}</td><td style="font-size:12px;">${m.motivo}</td><td style="font-size:12px;">${(m.horaBR.split(',')[1] || '').trim()}</td></tr>`).join('')
+      }</tbody></table>`
+    : '<p style="font-size:13px;color:var(--muted);">Nenhuma sangria ou suprimento registrado neste caixa.</p>';
+
+  // Conferência: dinheiro sempre aparece (mesmo sem venda, pra poder contar fundo/sangria/suprimento);
+  // as demais formas só aparecem se tiveram recebimento no período.
+  const dinheiroRecebido = Object.keys(recebidoPorForma).filter(ehFormaDinheiro).reduce((s, f) => s + recebidoPorForma[f], 0);
+  const esperadoDinheiro = sessao.abertura.fundoTroco + dinheiroRecebido + suprimentos - sangrias - estornos;
+  const linhas = [{ forma: 'Dinheiro', esperado: esperadoDinheiro }];
+  Object.keys(recebidoPorForma).filter(f => !ehFormaDinheiro(f)).forEach(f => {
+    linhas.push({ forma: f, esperado: recebidoPorForma[f] });
   });
 
-  return { porForma, fiadoGerado, cartaoGerado };
-}
-
-function renderFechamentoCaixa() {
-  const dataInput = document.getElementById('caixa-data');
-  if (!dataInput.value) dataInput.value = new Date().toISOString().slice(0, 10);
-  const dataISO = dataInput.value;
-
-  // ===== Resumo geral + vendas do dia por forma (todas, incl. fiado/cartão) =====
-  function labelFormaCaixa(fm) { return PDV_FORMA_LABELS[fm] || fm; }
-  const resumoVendas = calcularVendasDoDia(dataISO);
-  const formasVenda = Object.keys(resumoVendas.porForma).sort((a, b) => resumoVendas.porForma[b].valor - resumoVendas.porForma[a].valor);
-
-  document.getElementById('caixa-cards-resumo-geral').innerHTML = `
-    <div class="card">
-      <div class="card-label">🧾 Total vendido no dia</div>
-      <div class="card-value">${R(resumoVendas.totalValor)}</div>
-    </div>
-    <div class="card">
-      <div class="card-label">🛍️ Quantidade de vendas</div>
-      <div class="card-value">${resumoVendas.totalVendas}</div>
-    </div>
-  `;
-
-  document.getElementById('caixa-vendas-por-forma-body').innerHTML = formasVenda.length
-    ? formasVenda.map(fm => `
-        <tr>
-          <td>${labelFormaCaixa(fm)}</td>
-          <td style="text-align:center;">${resumoVendas.porForma[fm].qtd}</td>
-          <td><strong>${R(resumoVendas.porForma[fm].valor)}</strong></td>
-        </tr>
-      `).join('')
-    : '<tr><td colspan="3" class="empty">Nenhuma venda registrada nesse dia.</td></tr>';
-  document.getElementById('caixa-vendas-por-forma-foot').innerHTML = formasVenda.length
-    ? `<tr><td><strong>Total</strong></td><td style="text-align:center;"><strong>${resumoVendas.totalVendas}</strong></td><td><strong>${R(resumoVendas.totalValor)}</strong></td></tr>`
-    : '';
-
-  const { porForma, fiadoGerado, cartaoGerado } = calcularMovimentoCaixa(dataISO);
-  // Nome/emoji amigável — os mesmos usados nos botões de pagamento da venda,
-  // pra não ficar "À vista" cru aqui e "💵 Dinheiro" lá.
-  function labelFormaCaixa2(fm) {
-    if (fm === 'À vista (entrada fiado)') return '💵 Dinheiro (entrada fiado)';
-    return PDV_FORMA_LABELS[fm] || fm;
-  }
-
-  const formas = Object.keys(porForma);
-  document.getElementById('caixa-cards-recebido').innerHTML = formas.length
-    ? formas.map(fm => `
-        <div class="card">
-          <div class="card-label">${labelFormaCaixa2(fm)}</div>
-          <div class="card-value">${R(porForma[fm])}</div>
-        </div>
-      `).join('')
-    : '<p style="font-size:13px;color:var(--muted);">Nenhum recebimento registrado nesse dia.</p>';
-
-  document.getElementById('caixa-cards-info').innerHTML = `
-    <div class="card">
-      <div class="card-label">📄 Fiado gerado (ainda a receber)</div>
-      <div class="card-value" style="color:var(--warn);">${R(fiadoGerado)}</div>
-    </div>
-    <div class="card">
-      <div class="card-label">💳 Cartão vendido (cai no próximo dia útil)</div>
-      <div class="card-value" style="color:var(--warn);">${R(cartaoGerado)}</div>
-    </div>
-  `;
-
-  // Uma linha de conferência PRA CADA forma que recebeu algo no dia — não só
-  // "dinheiro": Pix confere com o extrato, cartão com a maquininha, etc.
-  const tbody = document.getElementById('caixa-conferencia-body');
-  tbody.innerHTML = formas.length ? formas.map(fm => `
-    <tr data-forma="${fm}">
-      <td>${labelFormaCaixa2(fm)}</td>
-      <td><input type="text" class="caixa-conf-esperado" readonly value="${R(porForma[fm])}" style="background:var(--bg);color:var(--muted);font-weight:700;border:none;width:100px;"></td>
-      <td><input type="text" inputmode="numeric" class="caixa-conf-contado" data-esperado="${porForma[fm]}" placeholder="0,00" oninput="mascaraMoeda(this);calcularDiferencaCaixa();" style="width:100px;"></td>
-      <td class="caixa-conf-diferenca" style="font-weight:700;">—</td>
+  document.getElementById('fechar-caixa-conferencia-body').innerHTML = linhas.map(l => `
+    <tr data-forma="${l.forma}">
+      <td>${labelForma(l.forma)}</td>
+      <td><input type="text" readonly value="${R(l.esperado)}" style="background:var(--bg);color:var(--muted);font-weight:700;border:none;width:100px;"></td>
+      <td><input type="text" inputmode="numeric" class="fc-contado" data-esperado="${l.esperado}" placeholder="0,00" oninput="mascaraMoeda(this);calcularDiferencaFechamentoCaixa();" style="width:100px;"></td>
+      <td class="fc-diferenca" style="font-weight:700;">—</td>
     </tr>
-  `).join('') : '<tr><td colspan="4" class="empty">Nenhum recebimento registrado nesse dia.</td></tr>';
-  document.getElementById('caixa-conferencia-foot').innerHTML = formas.length
-    ? `<tr><td><strong>Total</strong></td><td><strong>${R(formas.reduce((s,fm)=>s+porForma[fm],0))}</strong></td><td></td><td id="caixa-diferenca-total" style="font-weight:700;">—</td></tr>`
-    : '';
+  `).join('');
+  document.getElementById('fechar-caixa-conferencia-foot').innerHTML =
+    `<tr><td><strong>Total</strong></td><td><strong>${R(linhas.reduce((s, l) => s + l.esperado, 0))}</strong></td><td></td><td id="fc-diferenca-total" style="font-weight:700;">—</td></tr>`;
 
-  document.getElementById('caixa-obs').value = '';
-  document.getElementById('caixa-msg').textContent = '';
-
-  renderHistoricoFechamentos();
+  document.getElementById('fechar-caixa-obs').value = '';
+  document.getElementById('modal-fechar-caixa').classList.add('open');
 }
 
-function calcularDiferencaCaixa() {
+function calcularDiferencaFechamentoCaixa() {
   let somaEsperado = 0, somaContado = 0, algumPreenchido = false;
-  document.querySelectorAll('#caixa-conferencia-body tr[data-forma]').forEach(tr => {
-    const esperado = parseFloat(tr.querySelector('.caixa-conf-contado').dataset.esperado) || 0;
-    const inputContado = tr.querySelector('.caixa-conf-contado');
+  document.querySelectorAll('#fechar-caixa-conferencia-body tr[data-forma]').forEach(tr => {
+    const inputContado = tr.querySelector('.fc-contado');
+    const esperado = parseFloat(inputContado.dataset.esperado) || 0;
     const preenchido = inputContado.value.trim() !== '';
     const contado = valorMoeda(inputContado);
     somaEsperado += esperado;
-    if (preenchido) { somaContado += contado; algumPreenchido = true; }
-    else { somaContado += esperado; } // ainda não conferiu essa forma — assume que bate, só pra não distorcer o total
+    somaContado += preenchido ? contado : esperado;
+    if (preenchido) algumPreenchido = true;
     const diff = contado - esperado;
-    const cel = tr.querySelector('.caixa-conf-diferenca');
+    const cel = tr.querySelector('.fc-diferenca');
     if (!preenchido) { cel.textContent = '—'; cel.style.color = 'var(--muted)'; }
     else if (Math.abs(diff) < 0.01) { cel.textContent = '✅ Bate'; cel.style.color = 'var(--success)'; }
     else { cel.textContent = (diff > 0 ? '+' : '') + R(diff); cel.style.color = diff > 0 ? 'var(--warn)' : 'var(--danger)'; }
   });
-  const totalCel = document.getElementById('caixa-diferenca-total');
+  const totalCel = document.getElementById('fc-diferenca-total');
   if (totalCel) {
     if (!algumPreenchido) { totalCel.textContent = '—'; totalCel.style.color = 'var(--muted)'; }
     else {
@@ -7502,79 +7703,182 @@ function calcularDiferencaCaixa() {
   }
 }
 
-function fecharCaixaDoDia() {
-  const dataISO = document.getElementById('caixa-data').value;
-  const linhas = Array.from(document.querySelectorAll('#caixa-conferencia-body tr[data-forma]'));
-  if (linhas.length === 0) { alert('Não há nada pra conferir nesse dia.'); return; }
-
-  const naoPreenchidas = linhas.filter(tr => tr.querySelector('.caixa-conf-contado').value.trim() === '');
+function confirmarFechamentoCaixa() {
+  const sessao = getCaixaAtual();
+  if (!sessao) return;
+  const linhas = Array.from(document.querySelectorAll('#fechar-caixa-conferencia-body tr[data-forma]'));
+  const naoPreenchidas = linhas.filter(tr => tr.querySelector('.fc-contado').value.trim() === '');
   if (naoPreenchidas.length > 0) {
-    const nomes = naoPreenchidas.map(tr => tr.dataset.forma).join(', ');
-    if (!confirm(`Você não confirmou: ${nomes}. Fechar mesmo assim?`)) return;
+    if (!confirm(`Você não confirmou: ${naoPreenchidas.map(tr => tr.dataset.forma).join(', ')}. Fechar mesmo assim?`)) return;
   }
 
-  const porFormaFechamento = {};
+  const porForma = {};
   let esperadoTotal = 0, contadoTotal = 0;
   linhas.forEach(tr => {
     const forma = tr.dataset.forma;
-    const esperado = parseFloat(tr.querySelector('.caixa-conf-contado').dataset.esperado) || 0;
-    const inputContado = tr.querySelector('.caixa-conf-contado');
+    const inputContado = tr.querySelector('.fc-contado');
+    const esperado = parseFloat(inputContado.dataset.esperado) || 0;
     const contado = inputContado.value.trim() !== '' ? valorMoeda(inputContado) : esperado;
-    porFormaFechamento[forma] = { esperado, contado, diferenca: contado - esperado };
+    porForma[forma] = { esperado, contado, diferenca: contado - esperado };
     esperadoTotal += esperado;
     contadoTotal += contado;
   });
 
-  const obs = document.getElementById('caixa-obs').value.trim();
-  const fechamentos = getFechamentos();
-  if (fechamentos.find(fc => fc.data === dataISO) && !confirm('Esse dia já tem um fechamento registrado. Substituir?')) return;
+  const vendasPorForma = vendasPorFormaNoCaixa(sessao);
+  const { sangrias, suprimentos } = totaisMovimentosCaixa(sessao);
+  const estornos = estornosNoCaixa(sessao);
+  const obs = document.getElementById('fechar-caixa-obs').value.trim();
+  const agora = new Date();
 
-  const registro = {
-    data: dataISO,
-    esperado: esperadoTotal,
-    contado: contadoTotal,
-    diferenca: contadoTotal - esperadoTotal,
-    porForma: porFormaFechamento,
-    obs: obs || null,
-    fechadoEm: new Date().toLocaleString('pt-BR'),
-    operador: (usuarioAtual() && usuarioAtual().nome) || '—'
+  sessao.fechamento = {
+    dataHoraISO: agora.toISOString(),
+    dataHoraBR: agora.toLocaleString('pt-BR'),
+    operador: (usuarioAtual() && usuarioAtual().nome) || '—',
+    vendasPorForma,
+    totalVendas: Object.values(vendasPorForma).reduce((s, v) => s + v.valor, 0),
+    qtdVendas: new Set(vendasDoCaixa(sessao).map(v => v.venda_id)).size,
+    sangrias, suprimentos, estornos,
+    porForma,
+    esperadoTotal, contadoTotal, diferencaTotal: contadoTotal - esperadoTotal,
+    obs: obs || null
   };
 
-  const lista = fechamentos.filter(fc => fc.data !== dataISO);
-  lista.unshift(registro);
-  saveFechamentos(lista);
+  const historico = getHistoricoCaixas();
+  historico.unshift(sessao);
+  saveHistoricoCaixas(historico);
+  saveCaixaAtual(null);
 
-  const msg = document.getElementById('caixa-msg');
-  msg.style.color = 'var(--success)';
-  msg.textContent = '✅ Caixa fechado com sucesso!';
-  renderHistoricoFechamentos();
+  fecharModal('modal-fechar-caixa');
+  atualizarWidgetCaixa();
+  mostrarNotificacao('✅ Caixa fechado com sucesso!');
+  abrirRelatorioCaixa(sessao);
+  if (document.getElementById('subfin-caixa') && document.getElementById('subfin-caixa').style.display !== 'none') renderTelaFechamentoCaixa();
 }
 
-function renderHistoricoFechamentos() {
-  const lista = getFechamentos();
-  const box = document.getElementById('caixa-historico');
-  if (lista.length === 0) { box.innerHTML = '<p style="font-size:13px;color:var(--muted);">Nenhum fechamento registrado ainda.</p>'; return; }
-  box.innerHTML = `
+// ===== Relatório de fechamento (arquivável, estilo cupom) =====
+let _sessaoParaRelatorio = null;
+
+function abrirRelatorioCaixa(sessao) {
+  _sessaoParaRelatorio = sessao;
+  document.getElementById('relatorio-caixa-conteudo').innerHTML = montarRelatorioCaixaHTML(sessao, 15);
+  document.getElementById('modal-relatorio-caixa').classList.add('open');
+}
+
+function montarRelatorioCaixaHTML(sessao, fs) {
+  const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
+  const linha = `<hr style="border:none;border-top:1px dashed #999;margin:8px 0;">`;
+  const f = sessao.fechamento;
+  const formasVenda = Object.keys(f.vendasPorForma);
+  const formasConf = Object.keys(f.porForma);
+
+  return `
+    <div style="text-align:center;font-size:${fs + 3}px;font-weight:700;">${nomeLoja}</div>
+    <div style="text-align:center;font-size:${fs - 2}px;font-weight:700;color:#b8860b;margin-top:6px;">RELATÓRIO DE FECHAMENTO DE CAIXA</div>
+    <div style="text-align:center;font-size:${fs - 3}px;color:#666;">Caixa Nº ${sessao.numero}</div>
+    ${linha}
+    <div style="font-size:${fs - 1}px;">Abertura: ${sessao.abertura.dataHoraBR} — ${sessao.abertura.operador}</div>
+    <div style="font-size:${fs - 1}px;">Fechamento: ${f.dataHoraBR} — ${f.operador}</div>
+    <div style="font-size:${fs - 1}px;">Fundo de troco: <strong>${R(sessao.abertura.fundoTroco)}</strong></div>
+    ${linha}
+    <div style="font-weight:700;margin-bottom:6px;">VENDAS POR FORMA (${f.qtdVendas} venda${f.qtdVendas === 1 ? '' : 's'})</div>
+    ${formasVenda.length ? formasVenda.map(fm => `<div style="display:flex;justify-content:space-between;"><span>${labelForma(fm)} (${f.vendasPorForma[fm].qtd})</span><span>${R(f.vendasPorForma[fm].valor)}</span></div>`).join('') : '<div style="color:#777;">Nenhuma venda neste caixa.</div>'}
+    <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:4px;"><span>Total vendido</span><span>${R(f.totalVendas)}</span></div>
+    ${linha}
+    <div style="font-weight:700;margin-bottom:6px;">MOVIMENTAÇÕES</div>
+    <div style="display:flex;justify-content:space-between;"><span>Sangrias</span><span>- ${R(f.sangrias)}</span></div>
+    <div style="display:flex;justify-content:space-between;"><span>Suprimentos</span><span>+ ${R(f.suprimentos)}</span></div>
+    ${f.estornos > 0 ? `<div style="display:flex;justify-content:space-between;"><span>Estornos/devoluções</span><span>- ${R(f.estornos)}</span></div>` : ''}
+    ${linha}
+    <div style="font-weight:700;margin-bottom:6px;">CONFERÊNCIA POR FORMA</div>
+    ${formasConf.map(fm => {
+      const d = f.porForma[fm];
+      const cor = Math.abs(d.diferenca) < 0.01 ? '#2e7d32' : (d.diferenca > 0 ? '#b8860b' : '#c62828');
+      const status = Math.abs(d.diferenca) < 0.01 ? '✓ Bate' : (d.diferenca > 0 ? 'Sobra ' + R(d.diferenca) : 'Falta ' + R(Math.abs(d.diferenca)));
+      return `<div style="margin-bottom:4px;">
+        <div style="display:flex;justify-content:space-between;"><span>${labelForma(fm)}</span><span>Esp. ${R(d.esperado)} · Cont. ${R(d.contado)}</span></div>
+        <div style="text-align:right;font-size:${fs - 3}px;color:${cor};">${status}</div>
+      </div>`;
+    }).join('')}
+    ${linha}
+    <div style="display:flex;justify-content:space-between;font-size:${fs + 2}px;font-weight:800;">
+      <span>DIFERENÇA TOTAL</span><span>${f.diferencaTotal >= 0 ? '+' : ''}${R(f.diferencaTotal)}</span>
+    </div>
+    ${f.obs ? `${linha}<div style="font-size:${fs - 2}px;"><strong>Obs:</strong> ${f.obs}</div>` : ''}
+    <div style="text-align:center;font-size:${fs - 4}px;font-weight:700;border:1px solid #999;border-radius:6px;padding:6px;margin-top:12px;">
+      Documento interno de controle de caixa — não é documento fiscal.
+    </div>
+  `;
+}
+
+function imprimirRelatorioCaixa() {
+  if (!_sessaoParaRelatorio) return;
+  const corpo = montarRelatorioCaixaHTML(_sessaoParaRelatorio, 13);
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+  <title>Relatório de Fechamento de Caixa</title>
+  <style>
+    @page { size: 80mm auto; margin: 0; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Courier New', monospace; color: #000; width: 80mm; margin: 0 auto; padding: 10px; }
+  </style></head><body>
+    ${corpo}
+    <script>window.onload=()=>{ window.print(); }<\\/script>
+  </body></html>`;
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+}
+
+// ===== Aba "Fechamento de Caixa" em Financeiro: status atual + histórico arquivado =====
+function renderTelaFechamentoCaixa() {
+  const sessao = getCaixaAtual();
+  const boxAtual = document.getElementById('caixa-tab-atual');
+  if (sessao) {
+    boxAtual.innerHTML = `
+      <div class="cards" style="margin-bottom:16px;">
+        <div class="card"><div class="card-label">Caixa Nº</div><div class="card-value" style="font-size:20px;">${sessao.numero}</div></div>
+        <div class="card"><div class="card-label">Aberto desde</div><div class="card-value" style="font-size:16px;">${sessao.abertura.dataHoraBR}</div></div>
+        <div class="card"><div class="card-label">Operador</div><div class="card-value" style="font-size:16px;">${sessao.abertura.operador}</div></div>
+        <div class="card"><div class="card-label">Dinheiro estimado agora</div><div class="card-value" style="font-size:18px;">${R(dinheiroEstimadoAgora(sessao))}</div></div>
+      </div>
+      <button class="btn btn-secondary" onclick="abrirModalFecharCaixa()">🔒 Fechar este caixa</button>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;">As ações de sangria e suprimento ficam na tela de Registrar Venda.</p>
+    `;
+  } else {
+    boxAtual.innerHTML = `
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Nenhum caixa aberto no momento.</p>
+      <button class="btn btn-primary" onclick="abrirModalAbrirCaixa()">🔓 Abrir Caixa</button>
+    `;
+  }
+
+  const historico = getHistoricoCaixas();
+  const boxHist = document.getElementById('caixa-tab-historico');
+  boxHist.innerHTML = historico.length ? `
     <table>
-      <thead><tr><th>Data</th><th>Esperado</th><th>Contado</th><th>Diferença</th><th>Operador</th><th>Obs.</th></tr></thead>
+      <thead><tr><th>Caixa Nº</th><th>Abertura</th><th>Fechamento</th><th>Operador</th><th>Total vendido</th><th>Diferença</th><th>Ação</th></tr></thead>
       <tbody>
-        ${lista.map(fc => {
-          const [ano, mes, dia] = fc.data.split('-');
-          const cor = Math.abs(fc.diferenca) < 0.01 ? 'var(--success)' : (fc.diferenca > 0 ? 'var(--warn)' : 'var(--danger)');
+        ${historico.map((s, idx) => {
+          const cor = Math.abs(s.fechamento.diferencaTotal) < 0.01 ? 'var(--success)' : (s.fechamento.diferencaTotal > 0 ? 'var(--warn)' : 'var(--danger)');
           return `
           <tr>
-            <td>${dia}/${mes}/${ano}</td>
-            <td>${R(fc.esperado)}</td>
-            <td>${R(fc.contado)}</td>
-            <td style="color:${cor};font-weight:700;">${fc.diferenca >= 0 ? '+' : ''}${R(fc.diferenca)}</td>
-            <td style="font-size:12px;">${fc.operador}</td>
-            <td style="font-size:12px;color:var(--muted);">${fc.obs || '—'}</td>
+            <td>${s.numero}</td>
+            <td style="font-size:12px;">${s.abertura.dataHoraBR}</td>
+            <td style="font-size:12px;">${s.fechamento.dataHoraBR}</td>
+            <td style="font-size:12px;">${s.fechamento.operador}</td>
+            <td>${R(s.fechamento.totalVendas)}</td>
+            <td style="color:${cor};font-weight:700;">${s.fechamento.diferencaTotal >= 0 ? '+' : ''}${R(s.fechamento.diferencaTotal)}</td>
+            <td><button class="btn btn-sm btn-outline" onclick="abrirRelatorioCaixaDoHistorico(${idx})">📄 Ver</button></td>
           </tr>
         `;
         }).join('')}
       </tbody>
     </table>
-  `;
+  ` : '<p style="font-size:13px;color:var(--muted);">Nenhum caixa fechado ainda.</p>';
+}
+
+function abrirRelatorioCaixaDoHistorico(idx) {
+  const historico = getHistoricoCaixas();
+  if (historico[idx]) abrirRelatorioCaixa(historico[idx]);
+}
 }
 
 function renderFinanceiro() {
@@ -8407,7 +8711,7 @@ async function confirmarBaixa() {
                     parseFloat(document.getElementById('baixa-bruto').value) || 0;
       const saldoAtual = debitos[idx].total - debitos[idx].pagamentos.reduce((s,p)=>s+p.valor,0);
       const valorParaQuitar = saldoAtual; // quita o débito pelo valor cheio
-      debitos[idx].pagamentos.push({ valor: valorParaQuitar, forma, data: dataFmt });
+      debitos[idx].pagamentos.push({ valor: valorParaQuitar, forma, data: dataFmt, horaISO: new Date().toISOString() });
 
       await sbPatch('debitos', id, { pagamentos: debitos[idx].pagamentos });
       invalidarCache('debitos');
@@ -8436,7 +8740,7 @@ async function confirmarBaixa() {
       }
     } else {
       // Pagamento normal — registra exatamente o valor informado
-      debitos[idx].pagamentos.push({ valor: val, forma, data: dataFmt });
+      debitos[idx].pagamentos.push({ valor: val, forma, data: dataFmt, horaISO: new Date().toISOString() });
       await sbPatch('debitos', id, { pagamentos: debitos[idx].pagamentos });
       invalidarCache('debitos');
       saveDebitos(debitos);
