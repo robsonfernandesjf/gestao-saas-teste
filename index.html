@@ -9322,7 +9322,7 @@ async function aplicarConfigLoja() {
   // Busca a configuração mais recente direto da tabela "lojas" no Supabase
   // (assim o Painel Admin pode editar nome/logo/cores sem precisar editar este arquivo)
   try {
-    const resp = await fetch(`${SB_URL}/rest/v1/lojas?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,logo_base64,cor_accent,cor_accent2,cor_bg,usa_nfce,usa_grade,usa_catalogo,catalogo_whatsapp`, { headers: SB_HEADS });
+    const resp = await fetch(`${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,logo_base64,cor_accent,cor_accent2,cor_bg,usa_nfce,usa_grade,usa_catalogo,catalogo_whatsapp`, { headers: SB_HEADS });
     if (resp.ok) {
       const rows = await resp.json();
       const loja = rows[0];
@@ -9411,7 +9411,7 @@ async function renderizarCatalogoPublico() {
 
   try {
     // Busca dados da loja (nome, whatsapp do catálogo, banner, cores já aplicadas por aplicarConfigLoja)
-    const respLoja = await fetch(`${SB_URL}/rest/v1/lojas?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,catalogo_whatsapp,catalogo_banner_url`, { headers: SB_HEADS });
+    const respLoja = await fetch(`${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,catalogo_whatsapp,catalogo_banner_url`, { headers: SB_HEADS });
     const lojas = await respLoja.json();
     const nomeLoja = (lojas[0] && lojas[0].nome) || CONFIG_LOJA.nomeLoja;
     const whats = (lojas[0] && lojas[0].catalogo_whatsapp) || '';
