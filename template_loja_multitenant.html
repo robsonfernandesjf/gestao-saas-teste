@@ -207,10 +207,11 @@
 
   /* ===== LAYOUT 2 COLUNAS ESTILO PDV ===== */
   .pdv-layout { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
-  .pdv-col-esquerda { min-width: 0; }
+  .pdv-col-esquerda { min-width: 0; max-height: calc(100vh - 200px); overflow-y: auto; padding-right: 6px; }
   .pdv-col-direita {
     background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
     padding: 20px; box-shadow: var(--shadow); position: sticky; top: 12px;
+    max-height: calc(100vh - 24px); overflow-y: auto;
   }
 
   /* Tabela de carrinho estilo PDV (cabeçalho fixo, linhas simples) */
@@ -277,9 +278,10 @@
   .pdv-resumo-lateral .linha .valor-total { font-size: 22px; font-weight: 800; color: var(--accent); }
   .pdv-resumo-lateral .linha.lucro span { color: var(--success); font-weight: 700; }
 
-  @media (max-width: 900px) {
+  @media (max-width: 700px) {
     .pdv-layout { grid-template-columns: 1fr; }
-    .pdv-col-direita { position: static; }
+    .pdv-col-direita { position: static; max-height: none; }
+    .pdv-col-esquerda { max-height: none; overflow-y: visible; }
   }
   @media (max-width: 640px) {
     .pdv-carrinho-tabela-head { display: none; }
@@ -1079,122 +1081,10 @@
         </label>
       </div>
 
-      <div id="pagamento-misto-wrap" style="display:none;margin-top:10px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);">
-        <div class="form-grid">
-          <div class="form-row">
-            <label>Forma 1</label>
-            <select id="misto-forma-1" onchange="recalcularMisto()">
-              <option value="À vista">💵 Dinheiro</option>
-              <option value="Pix">📱 Pix</option>
-              <option value="Cartão débito">💳 Débito</option>
-              <option value="Cartão crédito">💳 Crédito</option>
-              <option value="A prazo">📄 Fiado</option>
-              <option value="Voucher">🎫 Voucher</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <label>Valor 1 (R$)</label>
-            <input type="text" inputmode="numeric" id="misto-valor-1" placeholder="0,00" oninput="mascaraMoeda(this);recalcularMisto();">
-          </div>
-        </div>
-        <div class="form-row" id="misto-voucher-1-wrap" style="display:none;">
-          <label>Número do Voucher (forma 1)</label>
-          <input type="text" id="misto-voucher-1" placeholder="Ex: 000012" oninput="checarSaldoVoucherMisto(1)">
-          <div id="misto-voucher-1-saldo" style="font-size:12px;margin-top:4px;"></div>
-        </div>
-        <div class="form-row" id="misto-parcelas-1-wrap" style="display:none;">
-          <label>Parcelas (forma 1)</label>
-          <select id="misto-parcelas-1">
-            <option value="1">1x (à vista)</option><option value="2">2x</option><option value="3">3x</option>
-            <option value="4">4x</option><option value="5">5x</option><option value="6">6x</option>
-            <option value="7">7x</option><option value="8">8x</option><option value="9">9x</option>
-            <option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
-          </select>
-        </div>
-
-        <div class="form-grid" style="margin-top:10px;">
-          <div class="form-row">
-            <label>Forma 2</label>
-            <select id="misto-forma-2" onchange="recalcularMisto()">
-              <option value="À vista">💵 Dinheiro</option>
-              <option value="Pix">📱 Pix</option>
-              <option value="Cartão débito" selected>💳 Débito</option>
-              <option value="Cartão crédito">💳 Crédito</option>
-              <option value="A prazo">📄 Fiado</option>
-              <option value="Voucher">🎫 Voucher</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <label>Valor 2 (R$) — restante automático</label>
-            <input type="text" id="misto-valor-2" placeholder="0,00" readonly style="background:var(--bg);color:var(--muted);">
-          </div>
-        </div>
-        <div class="form-row" id="misto-voucher-2-wrap" style="display:none;">
-          <label>Número do Voucher (forma 2)</label>
-          <input type="text" id="misto-voucher-2" placeholder="Ex: 000012" oninput="checarSaldoVoucherMisto(2)">
-          <div id="misto-voucher-2-saldo" style="font-size:12px;margin-top:4px;"></div>
-        </div>
-        <div class="form-row" id="misto-parcelas-2-wrap" style="display:none;">
-          <label>Parcelas (forma 2)</label>
-          <select id="misto-parcelas-2">
-            <option value="1">1x (à vista)</option><option value="2">2x</option><option value="3">3x</option>
-            <option value="4">4x</option><option value="5">5x</option><option value="6">6x</option>
-            <option value="7">7x</option><option value="8">8x</option><option value="9">9x</option>
-            <option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
-          </select>
-        </div>
-        <div id="misto-status" style="font-size:12px;margin-top:8px;color:var(--muted);"></div>
-      </div>
-
-      <div class="form-row" style="margin-bottom:0;display:none;" id="venda-parcelas-wrap">
-        <label>Parcelas</label>
-        <select id="venda-parcelas">
-          <option value="1">1x (à vista)</option>
-          <option value="2">2x</option>
-          <option value="3">3x</option>
-          <option value="4">4x</option>
-          <option value="5">5x</option>
-          <option value="6">6x</option>
-          <option value="7">7x</option>
-          <option value="8">8x</option>
-          <option value="9">9x</option>
-          <option value="10">10x</option>
-          <option value="11">11x</option>
-          <option value="12">12x</option>
-        </select>
-      </div>
-
-      <!-- Campo extra para pagamento com voucher -->
-      <div id="voucher-fields" style="display:none;margin-top:12px;padding:14px;background:var(--accent-light);border:1px solid #D4C0B5;border-radius:var(--radius);">
-        <div class="form-row" style="margin-bottom:0;">
-          <label>Número do Voucher</label>
-          <input type="text" id="venda-voucher-numero" placeholder="Ex: 000012" oninput="checarSaldoVoucher('venda-voucher-numero', 'venda-voucher-saldo')">
-        </div>
-        <div id="venda-voucher-saldo" style="font-size:12px;margin-top:6px;"></div>
-      </div>
-
-      <!-- Campos extras para venda a prazo -->
-      <div id="prazo-fields" style="display:none;margin-top:12px;padding:14px;background:var(--warn-light);border:1px solid var(--warn);border-radius:var(--radius);">
-        <div style="font-size:12px;font-weight:700;color:var(--warn);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.4px;">⚠️ Venda a prazo — preencha os dados abaixo</div>
-        <div class="form-row" style="margin-bottom:8px;">
-          <label>Vencimento (data)</label>
-          <input type="date" id="prazo-vencimento">
-        </div>
-        <div class="form-row" style="margin-bottom:8px;">
-          <label>Entrada (R$) — opcional</label>
-          <input type="text" inputmode="numeric" id="prazo-entrada" placeholder="0,00" oninput="mascaraMoeda(this)">
-        </div>
-        <div class="form-row" style="margin-bottom:0;">
-          <label>Observação (ex: combinou pagar em 3x)</label>
-          <input type="text" id="prazo-obs" placeholder="Ex: paga R$200 em 15/07 e R$200 em 15/08">
-        </div>
-      </div>
-
       <div class="pdv-resumo-lateral" id="carrinho-resumo"></div>
 
       <div class="pdv-finalizar-bar">
         <button class="pdv-btn-limpar" onclick="limparCarrinho()">🗑 Limpar</button>
-        <button class="pdv-btn-finalizar" onclick="confirmarVenda()">✓ Finalizar Venda</button>
       </div>
 
     </div>
@@ -2595,6 +2485,142 @@
 </div>
 
 <!-- MODAL CONFIRMAÇÃO VENDA -->
+<!-- MODAL FINALIZAR VENDA (abre ao escolher a forma de pagamento) -->
+<div class="modal-bg" id="modal-finalizar-venda">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <h2>Finalizar Venda</h2>
+      <button class="modal-close" onclick="fecharModal('modal-finalizar-venda')">×</button>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;background:var(--bg);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;">
+        <span style="font-size:13px;color:var(--muted);">Forma selecionada</span>
+        <strong id="finalizar-forma-texto" style="font-size:15px;"></strong>
+      </div>
+
+      <div id="pagamento-misto-wrap" style="display:none;margin-top:10px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);">
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Forma 1</label>
+            <select id="misto-forma-1" onchange="recalcularMisto()">
+              <option value="À vista">💵 Dinheiro</option>
+              <option value="Pix">📱 Pix</option>
+              <option value="Cartão débito">💳 Débito</option>
+              <option value="Cartão crédito">💳 Crédito</option>
+              <option value="A prazo">📄 Fiado</option>
+              <option value="Voucher">🎫 Voucher</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Valor 1 (R$)</label>
+            <input type="text" inputmode="numeric" id="misto-valor-1" placeholder="0,00" oninput="mascaraMoeda(this);recalcularMisto();">
+          </div>
+        </div>
+        <div class="form-row" id="misto-voucher-1-wrap" style="display:none;">
+          <label>Número do Voucher (forma 1)</label>
+          <input type="text" id="misto-voucher-1" placeholder="Ex: 000012" oninput="checarSaldoVoucherMisto(1)">
+          <div id="misto-voucher-1-saldo" style="font-size:12px;margin-top:4px;"></div>
+        </div>
+        <div class="form-row" id="misto-parcelas-1-wrap" style="display:none;">
+          <label>Parcelas (forma 1)</label>
+          <select id="misto-parcelas-1">
+            <option value="1">1x (à vista)</option><option value="2">2x</option><option value="3">3x</option>
+            <option value="4">4x</option><option value="5">5x</option><option value="6">6x</option>
+            <option value="7">7x</option><option value="8">8x</option><option value="9">9x</option>
+            <option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
+          </select>
+        </div>
+
+        <div class="form-grid" style="margin-top:10px;">
+          <div class="form-row">
+            <label>Forma 2</label>
+            <select id="misto-forma-2" onchange="recalcularMisto()">
+              <option value="À vista">💵 Dinheiro</option>
+              <option value="Pix">📱 Pix</option>
+              <option value="Cartão débito" selected>💳 Débito</option>
+              <option value="Cartão crédito">💳 Crédito</option>
+              <option value="A prazo">📄 Fiado</option>
+              <option value="Voucher">🎫 Voucher</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Valor 2 (R$) — restante automático</label>
+            <input type="text" id="misto-valor-2" placeholder="0,00" readonly style="background:var(--bg);color:var(--muted);">
+          </div>
+        </div>
+        <div class="form-row" id="misto-voucher-2-wrap" style="display:none;">
+          <label>Número do Voucher (forma 2)</label>
+          <input type="text" id="misto-voucher-2" placeholder="Ex: 000012" oninput="checarSaldoVoucherMisto(2)">
+          <div id="misto-voucher-2-saldo" style="font-size:12px;margin-top:4px;"></div>
+        </div>
+        <div class="form-row" id="misto-parcelas-2-wrap" style="display:none;">
+          <label>Parcelas (forma 2)</label>
+          <select id="misto-parcelas-2">
+            <option value="1">1x (à vista)</option><option value="2">2x</option><option value="3">3x</option>
+            <option value="4">4x</option><option value="5">5x</option><option value="6">6x</option>
+            <option value="7">7x</option><option value="8">8x</option><option value="9">9x</option>
+            <option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
+          </select>
+        </div>
+        <div id="misto-status" style="font-size:12px;margin-top:8px;color:var(--muted);"></div>
+      </div>
+
+      <div class="form-row" style="margin-bottom:0;display:none;" id="venda-parcelas-wrap">
+        <label>Parcelas</label>
+        <select id="venda-parcelas">
+          <option value="1">1x (à vista)</option>
+          <option value="2">2x</option>
+          <option value="3">3x</option>
+          <option value="4">4x</option>
+          <option value="5">5x</option>
+          <option value="6">6x</option>
+          <option value="7">7x</option>
+          <option value="8">8x</option>
+          <option value="9">9x</option>
+          <option value="10">10x</option>
+          <option value="11">11x</option>
+          <option value="12">12x</option>
+        </select>
+      </div>
+
+      <!-- Campo extra para pagamento com voucher -->
+      <div id="voucher-fields" style="display:none;margin-top:12px;padding:14px;background:var(--accent-light);border:1px solid #D4C0B5;border-radius:var(--radius);">
+        <div class="form-row" style="margin-bottom:0;">
+          <label>Número do Voucher</label>
+          <input type="text" id="venda-voucher-numero" placeholder="Ex: 000012" oninput="checarSaldoVoucher('venda-voucher-numero', 'venda-voucher-saldo')">
+        </div>
+        <div id="venda-voucher-saldo" style="font-size:12px;margin-top:6px;"></div>
+      </div>
+
+      <!-- Campos extras para venda a prazo -->
+      <div id="prazo-fields" style="display:none;margin-top:12px;padding:14px;background:var(--warn-light);border:1px solid var(--warn);border-radius:var(--radius);">
+        <div style="font-size:12px;font-weight:700;color:var(--warn);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.4px;">⚠️ Venda a prazo — preencha os dados abaixo</div>
+        <div class="form-row" style="margin-bottom:8px;">
+          <label>Vencimento (data)</label>
+          <input type="date" id="prazo-vencimento">
+        </div>
+        <div class="form-row" style="margin-bottom:8px;">
+          <label>Entrada (R$) — opcional</label>
+          <input type="text" inputmode="numeric" id="prazo-entrada" placeholder="0,00" oninput="mascaraMoeda(this)">
+        </div>
+        <div class="form-row" style="margin-bottom:0;">
+          <label>Observação (ex: combinou pagar em 3x)</label>
+          <input type="text" id="prazo-obs" placeholder="Ex: paga R$200 em 15/07 e R$200 em 15/08">
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
+        <span style="font-size:14px;color:var(--muted);">Total da venda</span>
+        <strong id="finalizar-total-texto" style="font-size:22px;color:var(--accent);"></strong>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-finalizar-venda')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarVenda()">✓ Finalizar Venda</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-confirm-venda">
   <div class="modal">
     <div class="modal-header">
@@ -5509,8 +5535,12 @@ function togglePagamentoMisto() {
   document.querySelector('.pdv-forma-selecionada').style.display = ativo ? 'none' : 'flex';
   document.getElementById('venda-parcelas-wrap').style.display = 'none';
   document.getElementById('prazo-fields').style.display = 'none';
+  document.getElementById('voucher-fields').style.display = 'none';
   document.getElementById('pagamento-misto-wrap').style.display = ativo ? 'block' : 'none';
-  if (ativo) recalcularMisto();
+  if (ativo) {
+    recalcularMisto();
+    abrirModalFinalizarVenda();
+  }
 }
 
 // Mostra o saldo do voucher assim que o número é digitado (pagamento único)
@@ -5596,6 +5626,7 @@ function limparCarrinho() {
   document.getElementById('misto-voucher-1-saldo').textContent = '';
   document.getElementById('misto-voucher-2-saldo').textContent = '';
   togglePagamentoMisto();
+  fecharModal('modal-finalizar-venda');
   renderCarrinho();
 }
 
@@ -5980,6 +6011,7 @@ async function confirmarVenda() {
     dataHora: agora
   };
 
+  fecharModal('modal-finalizar-venda');
   document.getElementById('modal-confirm-venda').classList.add('open');
 
   // Reabilita o botão de finalizar venda (ficava travado em "Salvando..." até recarregar a página)
@@ -7095,6 +7127,22 @@ function selecionarFormaPagamento(btn) {
   btn.classList.add('ativo');
   document.getElementById('pdv-forma-texto').textContent = PDV_FORMA_LABELS[valor] || valor;
   togglePrazoFields();
+  abrirModalFinalizarVenda();
+}
+
+// Abre o "splash" de finalização assim que uma forma de pagamento é escolhida
+// (ou o pagamento misto é ativado) — mostra só os campos daquela forma
+// específica e já deixa o botão de finalizar ali dentro, em vez de ir
+// empurrando a lateral pra baixo conforme os campos aparecem.
+function abrirModalFinalizarVenda() {
+  if (carrinho.length === 0) { alert('Carrinho vazio. Adicione ao menos um produto antes de escolher o pagamento.'); return; }
+  const misto = document.getElementById('venda-pag-misto').checked;
+  const valor = document.getElementById('venda-pagamento').value;
+  document.getElementById('finalizar-forma-texto').textContent = misto ? 'Pagamento dividido em 2 formas' : (PDV_FORMA_LABELS[valor] || valor || '—');
+  const totalBruto = carrinho.reduce((s, c) => s + c.valor_unit * c.qtd, 0);
+  const desconto = valorMoeda('venda-desconto');
+  document.getElementById('finalizar-total-texto').textContent = R(Math.max(0, totalBruto - desconto));
+  document.getElementById('modal-finalizar-venda').classList.add('open');
 }
 
 // ===== FINANCEIRO UNIFICADO =====
