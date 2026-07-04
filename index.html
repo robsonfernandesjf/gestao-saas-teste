@@ -2167,6 +2167,17 @@
       <button class="btn btn-outline" onclick="renderFechamentoCaixa()">↺ Atualizar</button>
     </div>
 
+    <div class="cards" id="caixa-cards-resumo-geral" style="margin-bottom:20px;"></div>
+
+    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">🧾 Vendas do dia, por forma de pagamento (confere se todas foram lançadas)</p>
+    <div class="table-wrap" style="margin-bottom:24px;">
+      <table>
+        <thead><tr><th>Forma de pagamento</th><th>Qtd. de vendas</th><th>Valor total</th></tr></thead>
+        <tbody id="caixa-vendas-por-forma-body"></tbody>
+        <tfoot id="caixa-vendas-por-forma-foot"></tfoot>
+      </table>
+    </div>
+
     <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">💰 Dinheiro recebido no dia (novo + recebimentos de contas em aberto)</p>
     <div class="cards" id="caixa-cards-recebido" style="margin-bottom:20px;"></div>
 
@@ -7271,6 +7282,26 @@ function dataParaISO(dataBr) {
 // Olha, dia a dia, quanto de fato entrou (não quanto foi vendido — a
 // diferença importa: uma venda no cartão feita hoje só vira dinheiro de
 // verdade quando cai no próximo dia útil, e um fiado só quando for pago).
+// Todas as vendas do dia, por forma de pagamento (inclusive fiado e cartão,
+// que ainda não são dinheiro em caixa, mas são vendas de verdade que
+// precisam ter sido lançadas — é o jeito de conferir que nada ficou de fora).
+function calcularVendasDoDia(dataISO) {
+  const vendas = getVendas().filter(v => dataParaISO(v.data) === dataISO);
+  const porForma = {};
+  vendas.forEach(v => {
+    const forma = v.pagamento || 'Não informado';
+    if (!porForma[forma]) porForma[forma] = { valor: 0, vendaIds: new Set() };
+    porForma[forma].valor += v.valor_total || 0;
+    porForma[forma].vendaIds.add(v.venda_id);
+  });
+  const todosVendaIds = new Set(vendas.map(v => v.venda_id));
+  const resultado = {};
+  Object.keys(porForma).forEach(fm => {
+    resultado[fm] = { valor: porForma[fm].valor, qtd: porForma[fm].vendaIds.size };
+  });
+  return { porForma: resultado, totalValor: vendas.reduce((s, v) => s + (v.valor_total || 0), 0), totalVendas: todosVendaIds.size };
+}
+
 function calcularMovimentoCaixa(dataISO) {
   const debitos = getDebitos();
   const porForma = {};
@@ -7300,6 +7331,35 @@ function renderFechamentoCaixa() {
   const dataInput = document.getElementById('caixa-data');
   if (!dataInput.value) dataInput.value = new Date().toISOString().slice(0, 10);
   const dataISO = dataInput.value;
+
+  // ===== Resumo geral + vendas do dia por forma (todas, incl. fiado/cartão) =====
+  const iconeVendaForma = { 'À vista': '💵', 'Dinheiro': '💵', 'Pix': '📱', 'Cartão débito': '💳', 'Cartão crédito': '💳', 'A prazo': '📄', 'Voucher': '🎫' };
+  const resumoVendas = calcularVendasDoDia(dataISO);
+  const formasVenda = Object.keys(resumoVendas.porForma).sort((a, b) => resumoVendas.porForma[b].valor - resumoVendas.porForma[a].valor);
+
+  document.getElementById('caixa-cards-resumo-geral').innerHTML = `
+    <div class="card">
+      <div class="card-label">🧾 Total vendido no dia</div>
+      <div class="card-value">${R(resumoVendas.totalValor)}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">🛍️ Quantidade de vendas</div>
+      <div class="card-value">${resumoVendas.totalVendas}</div>
+    </div>
+  `;
+
+  document.getElementById('caixa-vendas-por-forma-body').innerHTML = formasVenda.length
+    ? formasVenda.map(fm => `
+        <tr>
+          <td>${iconeVendaForma[fm] || '💰'} ${fm}</td>
+          <td style="text-align:center;">${resumoVendas.porForma[fm].qtd}</td>
+          <td><strong>${R(resumoVendas.porForma[fm].valor)}</strong></td>
+        </tr>
+      `).join('')
+    : '<tr><td colspan="3" class="empty">Nenhuma venda registrada nesse dia.</td></tr>';
+  document.getElementById('caixa-vendas-por-forma-foot').innerHTML = formasVenda.length
+    ? `<tr><td><strong>Total</strong></td><td style="text-align:center;"><strong>${resumoVendas.totalVendas}</strong></td><td><strong>${R(resumoVendas.totalValor)}</strong></td></tr>`
+    : '';
 
   const { porForma, fiadoGerado, cartaoGerado } = calcularMovimentoCaixa(dataISO);
   const iconePorForma = { 'À vista': '💵', 'Dinheiro': '💵', 'À vista (entrada fiado)': '💵', 'Pix': '📱', 'Cartão débito': '💳', 'Cartão crédito': '💳' };
