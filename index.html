@@ -234,6 +234,22 @@
   /* Painel de pagamento (botões clicáveis) */
   .pdv-pagamento-label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 10px; }
   .pdv-pagamento-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .etq-campo-chip {
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface); font-size: 12px; font-weight: 600; cursor: grab;
+    user-select: none; transition: all .15s;
+  }
+  .etq-campo-chip:hover { border-color: var(--accent); background: var(--accent-light); }
+  .etq-campo-chip:active { cursor: grabbing; }
+  .etq-elemento { user-select: none; }
+  .etq-elemento .etq-remover {
+    position: absolute; top: -8px; right: -8px; background: var(--danger); color: #fff;
+    border-radius: 50%; width: 14px; height: 14px; font-size: 10px; line-height: 14px;
+    text-align: center; cursor: pointer; display: none;
+  }
+  .etq-elemento:hover .etq-remover { display: block; }
+  .etq-elemento:hover { outline: 1px dashed var(--accent); }
+
   .pdv-pag-btn {
     padding: 14px 10px; border: 1px solid var(--border); border-radius: 10px;
     background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600;
@@ -796,10 +812,18 @@
     </select>
     <button class="btn btn-primary" onclick="abrirModalCadastro()">+ Novo Produto</button>
   </div>
+
+  <div id="etq-barra-selecao" style="display:none;background:var(--accent-light);border:1px solid #D4C0B5;border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:12px;">
+    <span id="etq-barra-texto" style="font-size:13px;font-weight:600;"></span>
+    <button class="btn btn-primary btn-sm" onclick="abrirImpressaoEtiquetaLote()">🏷️ Imprimir Etiquetas Selecionadas</button>
+    <button class="btn btn-outline btn-sm" onclick="limparSelecaoEtiquetas()">Limpar seleção</button>
+  </div>
+
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
+          <th><input type="checkbox" id="etq-selecionar-todos" onchange="toggleTodosEtiquetas(this)" style="width:auto;"></th>
           <th onclick="sortEstoque('ref')">Ref. ↕</th>
           <th onclick="sortEstoque('produto')">Produto ↕</th>
           <th onclick="sortEstoque('categoria')">Categoria ↕</th>
@@ -2236,21 +2260,37 @@
 <div class="modal-bg" id="modal-etiqueta">
   <div class="modal" style="max-width:420px;">
     <div class="modal-header">
-      <h2>🏷️ Imprimir Etiqueta</h2>
+      <h2>🏷️ Imprimir Etiquetas</h2>
       <button class="modal-close" onclick="fecharModal('modal-etiqueta')">×</button>
     </div>
     <div class="modal-body">
-      <input type="hidden" id="etq-ref-atual">
-      <p style="margin-bottom:14px;"><strong id="etq-produto-nome"></strong></p>
+      <p id="etq-lote-resumo" style="margin-bottom:14px;font-size:13px;"></p>
       <div class="form-row">
-        <label>Quantidade de etiquetas</label>
+        <label>Quantidade de etiquetas por produto</label>
         <input type="number" id="etq-qtd" min="1" value="1">
       </div>
-      <p id="etq-sem-barras-aviso" style="display:none;font-size:12px;color:var(--warn);margin-top:8px;">⚠ Esse produto não tem código de barras cadastrado — a etiqueta sai sem o código.</p>
+      <p id="etq-sem-barras-aviso" style="display:none;font-size:12px;color:var(--warn);margin-top:8px;">⚠ Algum produto selecionado não tem código de barras cadastrado — a etiqueta dele sai sem o código.</p>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="fecharModal('modal-etiqueta')">Cancelar</button>
-      <button class="btn btn-primary" onclick="confirmarImpressaoEtiqueta()">🖨️ Imprimir</button>
+      <button class="btn btn-primary" onclick="gerarPreviewEtiquetas()">👁️ Visualizar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PREVIEW DE ETIQUETAS (estilo cupom — dentro do sistema, não tela cheia) -->
+<div class="modal-bg" id="modal-etiqueta-preview">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header" style="background:var(--success);color:#fff;">
+      <h2 style="color:#fff;">🏷️ Pré-visualização das Etiquetas</h2>
+      <button class="modal-close" style="color:#fff;" onclick="fecharModal('modal-etiqueta-preview')">×</button>
+    </div>
+    <div class="modal-body" style="padding:20px;background:var(--bg);max-height:60vh;overflow-y:auto;">
+      <div id="etq-preview-conteudo" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;background:#EDEDED;padding:16px;border-radius:8px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="imprimirEtiquetasAgora()">🖨️ Imprimir</button>
+      <button class="btn btn-outline" onclick="fecharModal('modal-etiqueta-preview')">✕ Fechar</button>
     </div>
   </div>
 </div>
@@ -4132,6 +4172,7 @@ function renderEstoque() {
   document.getElementById('estoque-body').innerHTML = pagina.map(p => {
     const margem = p.custo > 0 ? ((p.preco_venda - p.custo) / p.preco_venda * 100) : null;
     return `<tr>
+      <td><input type="checkbox" class="etq-select-produto" value="${p.ref}" onchange="atualizarBarraSelecaoEtiqueta()" style="width:auto;"></td>
       <td><code style="font-size:11px;">${p.ref}</code></td>
       <td>${p.produto}</td>
       <td><span class="tag-cat">${p.categoria}</span></td>
@@ -4151,7 +4192,7 @@ function renderEstoque() {
         <button class="btn btn-outline btn-sm" onclick="abrirImpressaoEtiqueta('${p.ref}')" title="Imprimir etiqueta">🏷️</button>
       </td>
     </tr>`;
-  }).join('') || '<tr><td colspan="8" class="empty">Nenhum produto encontrado.</td></tr>';
+  }).join('') || '<tr><td colspan="9" class="empty">Nenhum produto encontrado.</td></tr>';
 
   const totalPages = Math.ceil(total/PER_PAGE);
   document.getElementById('estoque-pag').innerHTML = `
@@ -7965,38 +8006,115 @@ function renderHistoricoTrocas() {
 }
 
 // ===== IMPRESSÃO DE ETIQUETA (código de barras via JsBarcode, janela isolada) =====
+// ===== SELEÇÃO MÚLTIPLA E IMPRESSÃO DE ETIQUETAS =====
+function toggleTodosEtiquetas(chk) {
+  document.querySelectorAll('.etq-select-produto').forEach(c => c.checked = chk.checked);
+  atualizarBarraSelecaoEtiqueta();
+}
+
+function atualizarBarraSelecaoEtiqueta() {
+  const marcados = document.querySelectorAll('.etq-select-produto:checked');
+  const barra = document.getElementById('etq-barra-selecao');
+  if (marcados.length === 0) { barra.style.display = 'none'; return; }
+  barra.style.display = 'flex';
+  document.getElementById('etq-barra-texto').textContent = `${marcados.length} produto(s) selecionado(s)`;
+}
+
+function limparSelecaoEtiquetas() {
+  document.querySelectorAll('.etq-select-produto').forEach(c => c.checked = false);
+  const todos = document.getElementById('etq-selecionar-todos');
+  if (todos) todos.checked = false;
+  atualizarBarraSelecaoEtiqueta();
+}
+
+// Botão 🏷️ de uma linha só — marca aquele produto e já abre o fluxo normal
 function abrirImpressaoEtiqueta(ref) {
-  const p = getProdutos().find(x => x.ref === ref);
-  if (!p) return;
-  document.getElementById('etq-ref-atual').value = ref;
-  document.getElementById('etq-produto-nome').textContent = `${p.produto} (${p.ref})`;
+  document.querySelectorAll('.etq-select-produto').forEach(c => { c.checked = (c.value === ref); });
+  atualizarBarraSelecaoEtiqueta();
+  abrirImpressaoEtiquetaLote();
+}
+
+function abrirImpressaoEtiquetaLote() {
+  const refs = Array.from(document.querySelectorAll('.etq-select-produto:checked')).map(c => c.value);
+  if (refs.length === 0) { alert('Selecione ao menos um produto.'); return; }
+  const produtos = getProdutos().filter(p => refs.includes(p.ref));
+  document.getElementById('etq-lote-resumo').innerHTML = produtos.length === 1
+    ? `<strong>${produtos[0].produto}</strong> (${produtos[0].ref})`
+    : `<strong>${produtos.length} produtos selecionados:</strong> ${produtos.map(p => p.produto).join(', ')}`;
   document.getElementById('etq-qtd').value = 1;
-  document.getElementById('etq-sem-barras-aviso').style.display = p.ean13 ? 'none' : 'block';
+  document.getElementById('etq-sem-barras-aviso').style.display = produtos.some(p => !p.ean13) ? 'block' : 'none';
   document.getElementById('modal-etiqueta').classList.add('open');
 }
 
-function confirmarImpressaoEtiqueta() {
-  const ref = document.getElementById('etq-ref-atual').value;
+let _etqRefsParaImprimir = [];
+
+function gerarPreviewEtiquetas() {
+  const refs = Array.from(document.querySelectorAll('.etq-select-produto:checked')).map(c => c.value);
   const qtd = Math.max(1, parseInt(document.getElementById('etq-qtd').value) || 1);
-  const p = getProdutos().find(x => x.ref === ref);
-  if (!p) return;
+  _etqRefsParaImprimir = refs.flatMap(ref => Array.from({ length: qtd }, () => ref));
 
   const cfg = getConfigEtiqueta();
+  const produtos = getProdutos();
   const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
 
-  function montarUmaEtiqueta() {
-    let html = '<div class="etiqueta">';
-    if (cfg.campos.includes('loja')) html += `<div class="etq-loja">${nomeLoja}</div>`;
-    if (cfg.campos.includes('nome')) html += `<div class="etq-nome">${p.produto}</div>`;
-    if (cfg.campos.includes('categoria')) html += `<div class="etq-cat">${p.categoria || ''}</div>`;
-    if (cfg.campos.includes('ref')) html += `<div class="etq-ref">Ref: ${p.ref}</div>`;
-    if (cfg.campos.includes('preco')) html += `<div class="etq-preco">${R(p.preco_venda)}</div>`;
-    if (cfg.campos.includes('barras') && p.ean13) html += `<svg class="etq-barcode" data-code="${p.ean13}"></svg>`;
-    html += '</div>';
-    return html;
-  }
+  document.getElementById('etq-preview-conteudo').innerHTML = _etqRefsParaImprimir.map(ref => {
+    const p = produtos.find(x => x.ref === ref);
+    return montarEtiquetaHTML(p, cfg, nomeLoja, ETQ_ESCALA, true);
+  }).join('');
 
-  const labelsHtml = Array.from({ length: qtd }, montarUmaEtiqueta).join('');
+  fecharModal('modal-etiqueta');
+  document.getElementById('modal-etiqueta-preview').classList.add('open');
+
+  carregarJsBarcodeSeNecessario(() => {
+    document.querySelectorAll('#etq-preview-conteudo .etq-barcode-svg').forEach(svg => {
+      try { JsBarcode(svg, svg.dataset.code, { format: 'EAN13', width: 1.3, height: 32, fontSize: 10, margin: 0 }); } catch (e) {}
+    });
+  });
+}
+
+function carregarJsBarcodeSeNecessario(callback) {
+  if (window.JsBarcode) { callback(); return; }
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js';
+  script.onload = callback;
+  document.head.appendChild(script);
+}
+
+// Monta o HTML de UMA etiqueta a partir do layout salvo — reaproveitado tanto
+// no preview (escala de tela, em px) quanto na impressão de verdade (escala
+// real, em mm), pra garantir que o que a pessoa vê é o que sai impresso.
+function montarEtiquetaHTML(p, cfg, nomeLoja, escalaPx, ehPreview) {
+  if (!p) return '';
+  const unidade = escalaPx ? 'px' : 'mm';
+  const conv = v => escalaPx ? (v * escalaPx) : v;
+  const partes = cfg.elementos.map(el => {
+    const style = `position:absolute;left:${conv(el.x)}${unidade};top:${conv(el.y)}${unidade};`;
+    if (el.tipo === 'barras') {
+      if (!p.ean13) return '';
+      const w = el.w || Math.max(10, cfg.largura - 8);
+      const h = el.h || 10;
+      return `<svg class="${ehPreview ? 'etq-barcode-svg' : 'etq-barcode'}" data-code="${p.ean13}" style="${style}width:${conv(w)}${unidade};height:${conv(h)}${unidade};"></svg>`;
+    }
+    const valores = { loja: nomeLoja, nome: p.produto, ref: `Ref: ${p.ref}`, preco: R(p.preco_venda), categoria: p.categoria || '' };
+    const fontes = { loja: 6, nome: 7, ref: 6, preco: 13, categoria: 6 };
+    const fonte = (fontes[el.tipo] || 7) * (escalaPx ? (escalaPx / 8) : 1);
+    return `<div style="${style}font-size:${fonte}px;font-weight:${el.tipo === 'preco' ? 800 : 700};white-space:nowrap;">${valores[el.tipo] || ''}</div>`;
+  }).join('');
+  const wrapStyle = escalaPx
+    ? `position:relative;width:${cfg.largura * escalaPx}px;height:${cfg.altura * escalaPx}px;background:#fff;border:1px solid #ccc;box-shadow:0 1px 3px rgba(0,0,0,.15);overflow:hidden;`
+    : `position:relative;width:${cfg.largura}mm;height:${cfg.altura}mm;overflow:hidden;page-break-after:always;`;
+  return `<div class="etiqueta" style="${wrapStyle}">${partes}</div>`;
+}
+
+function imprimirEtiquetasAgora() {
+  const cfg = getConfigEtiqueta();
+  const produtos = getProdutos();
+  const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
+
+  const labelsHtml = _etqRefsParaImprimir.map(ref => {
+    const p = produtos.find(x => x.ref === ref);
+    return montarEtiquetaHTML(p, cfg, nomeLoja, 0, false);
+  }).join('');
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
   <title>Etiquetas</title>
@@ -8005,18 +8123,7 @@ function confirmarImpressaoEtiqueta() {
     @page { size: ${cfg.largura}mm ${cfg.altura}mm; margin: 0; }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: Arial, sans-serif; }
-    .etiqueta {
-      width: ${cfg.largura}mm; height: ${cfg.altura}mm; padding: 1.5mm;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 0.5mm; overflow: hidden; page-break-after: always;
-    }
     .etiqueta:last-child { page-break-after: auto; }
-    .etq-loja { font-size: 6px; font-weight: 700; text-align: center; }
-    .etq-nome { font-size: 7px; font-weight: 700; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-    .etq-cat { font-size: 6px; color: #555; }
-    .etq-ref { font-size: 6px; color: #333; }
-    .etq-preco { font-size: 13px; font-weight: 800; }
-    .etq-barcode { max-width: 95%; }
   </style></head><body>
     ${labelsHtml}
     <script>
@@ -8032,7 +8139,7 @@ function confirmarImpressaoEtiqueta() {
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank');
-  fecharModal('modal-etiqueta');
+  fecharModal('modal-etiqueta-preview');
 }
 
 function abrirBaixa(id) {
@@ -9982,9 +10089,107 @@ function toggleConfigSecao(nome) {
   }
 }
 
-function toggleEtiquetaPersonalizada() {
-  document.getElementById('etq-personalizado-wrap').style.display =
-    document.getElementById('etq-tamanho').value === 'personalizado' ? 'grid' : 'none';
+// ===== EDITOR VISUAL DE ETIQUETA (arrastar e soltar, posição livre em mm) =====
+const ETQ_ESCALA = 8; // px por mm, na tela de edição/preview
+let _etqLargura = 40, _etqAltura = 30;
+let _etqElementos = []; // [{id, tipo, x, y, w?, h?}] — x/y/w/h em mm
+
+const ETQ_TIPO_AMOSTRA = { loja: 'Fátima Cigani', nome: 'Vestido Midi Floral', ref: 'Ref: VL03', preco: 'R$ 99,90', categoria: 'Vestidos' };
+const ETQ_TIPO_FONTE = { loja: 6, nome: 7, ref: 6, preco: 13, categoria: 6 };
+
+function mudarTamanhoEtiqueta() {
+  const tam = document.getElementById('etq-tamanho').value;
+  document.getElementById('etq-personalizado-wrap').style.display = tam === 'personalizado' ? 'grid' : 'none';
+  const presets = { '40x30': [40, 30], '50x30': [50, 30], '40x60': [40, 60] };
+  if (tam === 'personalizado') {
+    _etqLargura = parseInt(document.getElementById('etq-largura-custom').value) || 40;
+    _etqAltura = parseInt(document.getElementById('etq-altura-custom').value) || 30;
+  } else {
+    [_etqLargura, _etqAltura] = presets[tam] || [40, 30];
+  }
+  renderCanvasEtiqueta();
+}
+
+function renderCanvasEtiqueta() {
+  const canvas = document.getElementById('etq-canvas');
+  if (!canvas) return;
+  canvas.style.width = (_etqLargura * ETQ_ESCALA) + 'px';
+  canvas.style.height = (_etqAltura * ETQ_ESCALA) + 'px';
+  canvas.innerHTML = _etqElementos.map(montarElementoCanvas).join('');
+  canvas.querySelectorAll('.etq-elemento').forEach(div => div.addEventListener('mousedown', iniciarArrastarElemento));
+}
+
+function montarElementoCanvas(el) {
+  const isBarras = el.tipo === 'barras';
+  const fonte = (ETQ_TIPO_FONTE[el.tipo] || 7) * (ETQ_ESCALA / 8);
+  const largura = isBarras ? (el.w || Math.max(10, _etqLargura - 8)) : null;
+  const altura = isBarras ? (el.h || 10) : null;
+  const conteudo = isBarras
+    ? '<div style="width:100%;height:100%;background:repeating-linear-gradient(90deg,#000 0 2px,#fff 2px 4px);"></div>'
+    : (ETQ_TIPO_AMOSTRA[el.tipo] || el.tipo);
+  return `
+    <div class="etq-elemento" data-id="${el.id}" data-tipo="${el.tipo}"
+         style="position:absolute;left:${el.x * ETQ_ESCALA}px;top:${el.y * ETQ_ESCALA}px;
+                ${isBarras ? `width:${largura * ETQ_ESCALA}px;height:${altura * ETQ_ESCALA}px;` : ''}
+                font-size:${fonte}px;font-family:Arial;white-space:nowrap;cursor:move;padding:1px 2px;">
+      ${conteudo}
+      <span class="etq-remover" onmousedown="event.stopPropagation()" onclick="removerElementoEtiqueta('${el.id}')">×</span>
+    </div>
+  `;
+}
+
+function dragCampoStart(event) {
+  event.dataTransfer.setData('tipo', event.target.dataset.tipo);
+}
+
+function dropCampoNoCanvas(event) {
+  event.preventDefault();
+  const tipo = event.dataTransfer.getData('tipo');
+  if (!tipo) return;
+  const canvas = document.getElementById('etq-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const xMm = Math.max(0, Math.round((event.clientX - rect.left) / ETQ_ESCALA));
+  const yMm = Math.max(0, Math.round((event.clientY - rect.top) / ETQ_ESCALA));
+  _etqElementos.push({
+    id: 'el_' + Date.now() + Math.random().toString(36).slice(2, 6),
+    tipo, x: xMm, y: yMm,
+    w: tipo === 'barras' ? Math.max(10, _etqLargura - 8) : undefined,
+    h: tipo === 'barras' ? 10 : undefined
+  });
+  renderCanvasEtiqueta();
+}
+
+function removerElementoEtiqueta(id) {
+  _etqElementos = _etqElementos.filter(e => e.id !== id);
+  renderCanvasEtiqueta();
+}
+
+let _etqArrastando = null;
+function iniciarArrastarElemento(event) {
+  if (event.target.classList.contains('etq-remover')) return;
+  const id = event.currentTarget.dataset.id;
+  const el = _etqElementos.find(e => e.id === id);
+  if (!el) return;
+  const rect = document.getElementById('etq-canvas').getBoundingClientRect();
+  _etqArrastando = { el, offsetX: event.clientX - rect.left - el.x * ETQ_ESCALA, offsetY: event.clientY - rect.top - el.y * ETQ_ESCALA };
+  document.addEventListener('mousemove', moverElementoArrastando);
+  document.addEventListener('mouseup', pararArrastarElemento);
+  event.preventDefault();
+}
+function moverElementoArrastando(event) {
+  if (!_etqArrastando) return;
+  const canvas = document.getElementById('etq-canvas');
+  const rect = canvas.getBoundingClientRect();
+  let xPx = Math.max(0, Math.min(event.clientX - rect.left - _etqArrastando.offsetX, canvas.offsetWidth - 10));
+  let yPx = Math.max(0, Math.min(event.clientY - rect.top - _etqArrastando.offsetY, canvas.offsetHeight - 10));
+  _etqArrastando.el.x = Math.round(xPx / ETQ_ESCALA);
+  _etqArrastando.el.y = Math.round(yPx / ETQ_ESCALA);
+  renderCanvasEtiqueta();
+}
+function pararArrastarElemento() {
+  _etqArrastando = null;
+  document.removeEventListener('mousemove', moverElementoArrastando);
+  document.removeEventListener('mouseup', pararArrastarElemento);
 }
 
 function carregarConfigEtiqueta() {
@@ -9992,45 +10197,41 @@ function carregarConfigEtiqueta() {
   document.getElementById('etq-tamanho').value = cfg.tamanho || '40x30';
   document.getElementById('etq-largura-custom').value = cfg.largura || 40;
   document.getElementById('etq-altura-custom').value = cfg.altura || 30;
-  const campos = cfg.campos || ['loja', 'nome', 'ref', 'preco', 'barras'];
-  document.getElementById('etq-campo-loja').checked = campos.includes('loja');
-  document.getElementById('etq-campo-nome').checked = campos.includes('nome');
-  document.getElementById('etq-campo-ref').checked = campos.includes('ref');
-  document.getElementById('etq-campo-preco').checked = campos.includes('preco');
-  document.getElementById('etq-campo-barras').checked = campos.includes('barras');
-  document.getElementById('etq-campo-categoria').checked = campos.includes('categoria');
-  toggleEtiquetaPersonalizada();
+  document.getElementById('etq-personalizado-wrap').style.display = cfg.tamanho === 'personalizado' ? 'grid' : 'none';
+  _etqLargura = cfg.largura || 40;
+  _etqAltura = cfg.altura || 30;
+  _etqElementos = (cfg.elementos && cfg.elementos.length) ? JSON.parse(JSON.stringify(cfg.elementos)) : [
+    { id: 'el_padrao_1', tipo: 'nome', x: 2, y: 2 },
+    { id: 'el_padrao_2', tipo: 'preco', x: 2, y: 12 },
+    { id: 'el_padrao_3', tipo: 'barras', x: 2, y: 20, w: Math.max(10, _etqLargura - 8), h: 8 }
+  ];
+  renderCanvasEtiqueta();
 }
 
+// Usada na hora de imprimir de verdade — sempre lê o que está salvo (não o
+// estado do editor, que só existe enquanto a tela de Configurações está aberta).
 function getConfigEtiqueta() {
   const cfg = (_dadosEmpresaCache && _dadosEmpresaCache.etiqueta) || {};
   const presets = { '40x30': [40, 30], '50x30': [50, 30], '40x60': [40, 60] };
-  let largura = 40, altura = 30;
-  if (cfg.tamanho === 'personalizado') { largura = cfg.largura || 40; altura = cfg.altura || 30; }
-  else if (presets[cfg.tamanho]) { [largura, altura] = presets[cfg.tamanho]; }
-  return { largura, altura, campos: cfg.campos || ['loja', 'nome', 'ref', 'preco', 'barras'] };
+  let largura = cfg.largura || 40, altura = cfg.altura || 30;
+  if (presets[cfg.tamanho] && cfg.tamanho !== 'personalizado') [largura, altura] = presets[cfg.tamanho];
+  const elementos = (cfg.elementos && cfg.elementos.length) ? cfg.elementos : [
+    { tipo: 'nome', x: 2, y: 2 }, { tipo: 'preco', x: 2, y: 12 }, { tipo: 'barras', x: 2, y: 20, w: Math.max(10, largura - 8), h: 8 }
+  ];
+  return { largura, altura, elementos };
 }
 
 async function salvarConfigEtiqueta() {
-  const campos = [];
-  if (document.getElementById('etq-campo-loja').checked) campos.push('loja');
-  if (document.getElementById('etq-campo-nome').checked) campos.push('nome');
-  if (document.getElementById('etq-campo-ref').checked) campos.push('ref');
-  if (document.getElementById('etq-campo-preco').checked) campos.push('preco');
-  if (document.getElementById('etq-campo-barras').checked) campos.push('barras');
-  if (document.getElementById('etq-campo-categoria').checked) campos.push('categoria');
-
   _dadosEmpresaCache.etiqueta = {
     tamanho: document.getElementById('etq-tamanho').value,
-    largura: parseInt(document.getElementById('etq-largura-custom').value) || 40,
-    altura: parseInt(document.getElementById('etq-altura-custom').value) || 30,
-    campos
+    largura: _etqLargura,
+    altura: _etqAltura,
+    elementos: _etqElementos
   };
-
   const msg = document.getElementById('etq-msg');
   try {
     await sbPatch('lojas', LOJA_ID, { dados_empresa: JSON.stringify(_dadosEmpresaCache) });
-    msg.style.color = 'var(--success)'; msg.textContent = '✅ Configuração salva!';
+    msg.style.color = 'var(--success)'; msg.textContent = '✅ Layout salvo!';
   } catch (e) { msg.style.color = 'var(--danger)'; msg.textContent = '❌ Erro: ' + e.message; }
   setTimeout(() => { msg.textContent = ''; }, 4000);
 }
@@ -10288,14 +10489,15 @@ atualizarHora();
       </button>
       <div id="config-body-etiqueta" class="config-secao-body" style="display:none;padding:18px;border-top:1px solid var(--border);">
         <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
-          Configura o tamanho da etiqueta e quais informações aparecem nela. Funciona com as impressoras de
-          etiqueta térmica compactas (tipo as vendidas como "impressora de etiquetas Bluetooth" — comuns em
-          lojas de roupa pra colar preço/código de barras na peça).
+          Escolha o tamanho e arraste os campos pra dentro da etiqueta, na posição que quiser. Dá pra repetir
+          o mesmo campo mais de uma vez. Funciona com as impressoras de etiqueta térmica compactas (tipo as
+          vendidas como "impressora de etiquetas Bluetooth" — comuns em loja de roupa pra colar preço/código
+          de barras na peça).
         </p>
-        <div class="form-grid">
+        <div class="form-grid" style="max-width:240px;">
           <div class="form-row">
             <label>Tamanho da etiqueta</label>
-            <select id="etq-tamanho" onchange="toggleEtiquetaPersonalizada()">
+            <select id="etq-tamanho" onchange="mudarTamanhoEtiqueta()">
               <option value="40x30">40 x 30 mm</option>
               <option value="50x30">50 x 30 mm</option>
               <option value="40x60">40 x 60 mm</option>
@@ -10303,27 +10505,42 @@ atualizarHora();
             </select>
           </div>
         </div>
-        <div class="form-grid" id="etq-personalizado-wrap" style="display:none;">
+        <div class="form-grid" id="etq-personalizado-wrap" style="display:none;max-width:300px;">
           <div class="form-row">
             <label>Largura (mm)</label>
-            <input type="number" id="etq-largura-custom" min="20" max="120" value="40">
+            <input type="number" id="etq-largura-custom" min="20" max="120" value="40" onchange="mudarTamanhoEtiqueta()">
           </div>
           <div class="form-row">
             <label>Altura (mm)</label>
-            <input type="number" id="etq-altura-custom" min="15" max="120" value="30">
+            <input type="number" id="etq-altura-custom" min="15" max="120" value="30" onchange="mudarTamanhoEtiqueta()">
           </div>
         </div>
-        <p style="font-size:12px;font-weight:600;margin:14px 0 8px;">Informações que aparecem na etiqueta:</p>
-        <div style="display:flex;flex-wrap:wrap;gap:14px;">
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="etq-campo-loja" checked style="width:auto;"> Nome da loja</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="etq-campo-nome" checked style="width:auto;"> Nome do produto</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="etq-campo-ref" checked style="width:auto;"> Referência</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="etq-campo-preco" checked style="width:auto;"> Preço</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="etq-campo-barras" checked style="width:auto;"> Código de barras</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="etq-campo-categoria" style="width:auto;"> Categoria</label>
+
+        <div style="display:flex;gap:28px;margin-top:16px;flex-wrap:wrap;">
+          <div>
+            <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Campos disponíveis</p>
+            <div style="display:flex;flex-direction:column;gap:8px;width:170px;">
+              <div class="etq-campo-chip" draggable="true" data-tipo="loja" ondragstart="dragCampoStart(event)">🏪 Nome da Loja</div>
+              <div class="etq-campo-chip" draggable="true" data-tipo="nome" ondragstart="dragCampoStart(event)">📦 Nome do Produto</div>
+              <div class="etq-campo-chip" draggable="true" data-tipo="ref" ondragstart="dragCampoStart(event)">🔖 Referência</div>
+              <div class="etq-campo-chip" draggable="true" data-tipo="preco" ondragstart="dragCampoStart(event)">💰 Preço</div>
+              <div class="etq-campo-chip" draggable="true" data-tipo="barras" ondragstart="dragCampoStart(event)">▮▮▮ Código de Barras</div>
+              <div class="etq-campo-chip" draggable="true" data-tipo="categoria" ondragstart="dragCampoStart(event)">🏷️ Categoria</div>
+            </div>
+            <p style="font-size:11px;color:var(--muted);margin-top:10px;max-width:170px;">Arraste pra dentro da etiqueta. Clique no × de um campo já colocado pra excluir.</p>
+          </div>
+
+          <div>
+            <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Sua etiqueta</p>
+            <div style="background:#EDEDED;padding:20px;border-radius:8px;display:inline-block;">
+              <div id="etq-canvas" ondragover="event.preventDefault()" ondrop="dropCampoNoCanvas(event)"
+                   style="position:relative;background:#fff;border:2px dashed #bbb;box-shadow:0 1px 4px rgba(0,0,0,.15);"></div>
+            </div>
+          </div>
         </div>
-        <div style="margin-top:16px;display:flex;gap:10px;">
-          <button class="btn btn-primary" onclick="salvarConfigEtiqueta()">💾 Salvar configuração</button>
+
+        <div style="margin-top:20px;display:flex;gap:10px;">
+          <button class="btn btn-primary" onclick="salvarConfigEtiqueta()">💾 Salvar layout</button>
           <span id="etq-msg" style="font-size:12px;align-self:center;"></span>
         </div>
       </div>
