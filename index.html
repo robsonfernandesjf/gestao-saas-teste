@@ -3686,6 +3686,315 @@ button.selected,
 }
 </style>
 
+
+
+<!-- ===== LEGADO ERP UI V10: ESTOQUE + FINANCEIRO COMPACTO ===== -->
+<style id="legado-ui-v10-estoque-financeiro">
+/* Estoque e Financeiro: layout executivo/compacto sem alterar IDs ou JS */
+#page-estoque,
+#page-financeiro{
+  --v10-card:#fff;
+  --v10-border:#e5edf7;
+  --v10-soft:#f7f9fc;
+  --v10-text:#07152f;
+  --v10-muted:#607089;
+  --v10-accent:var(--accent, #d4146b);
+  --v10-success:var(--success, #16a34a);
+}
+
+#page-estoque .cat-tabs,
+#page-financeiro .cat-tabs{
+  display:flex !important;
+  align-items:center;
+  gap:8px !important;
+  flex-wrap:wrap;
+  margin:0 0 12px !important;
+  padding:8px;
+  background:rgba(255,255,255,.74);
+  border:1px solid var(--v10-border);
+  border-radius:18px;
+  box-shadow:0 12px 30px rgba(9,24,48,.06);
+  width:max-content;
+  max-width:100%;
+}
+
+#page-estoque .cat-tab,
+#page-financeiro .cat-tab{
+  min-height:38px;
+  padding:9px 15px !important;
+  border-radius:12px !important;
+  border:1px solid transparent !important;
+  background:transparent !important;
+  font-size:13px !important;
+  font-weight:800 !important;
+  color:#44546c !important;
+  letter-spacing:-.01em;
+  transition:.16s ease;
+}
+
+#page-estoque .cat-tab:hover,
+#page-financeiro .cat-tab:hover{
+  background:#f7f9fd !important;
+  transform:translateY(-1px);
+}
+
+#page-estoque .cat-tab.active,
+#page-financeiro .cat-tab.active{
+  color:var(--v10-accent) !important;
+  background:linear-gradient(135deg, rgba(236,72,153,.10), rgba(147,51,234,.08)) !important;
+  border-color:rgba(236,72,153,.28) !important;
+  box-shadow:0 10px 24px rgba(214,20,107,.10);
+}
+
+#page-estoque .toolbar,
+#page-financeiro .toolbar{
+  display:grid !important;
+  grid-template-columns:minmax(260px, 1.4fr) minmax(150px,.7fr) minmax(150px,.7fr) auto;
+  gap:10px !important;
+  align-items:center;
+  padding:12px !important;
+  margin:0 0 12px !important;
+  background:rgba(255,255,255,.86);
+  border:1px solid var(--v10-border);
+  border-radius:18px;
+  box-shadow:0 10px 28px rgba(9,24,48,.05);
+}
+
+#page-financeiro #subfin-receber .toolbar,
+#page-financeiro #subfin-pagar .toolbar,
+#page-financeiro #subfin-extrato .toolbar{
+  grid-template-columns:repeat(4,minmax(145px,1fr)) auto;
+}
+
+#page-financeiro #subfin-receber .toolbar > div[style*="margin-left:auto"],
+#page-financeiro #subfin-pagar .toolbar > div[style*="margin-left:auto"],
+#page-financeiro #subfin-extrato .toolbar > div[style*="margin-left:auto"]{
+  margin-left:0 !important;
+  display:flex !important;
+  justify-content:flex-end;
+  gap:8px !important;
+  grid-column:auto;
+}
+
+#page-financeiro .toolbar > p,
+#page-financeiro .toolbar label{
+  font-weight:700;
+}
+
+#page-estoque .toolbar input,
+#page-estoque .toolbar select,
+#page-financeiro .toolbar input,
+#page-financeiro .toolbar select{
+  width:100% !important;
+  min-width:0 !important;
+  height:42px !important;
+  padding:0 14px !important;
+  border-radius:13px !important;
+  border:1px solid #dbe5f1 !important;
+  background:#fff !important;
+  font-size:13px !important;
+  color:#0d1b32 !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8);
+}
+
+#page-estoque .toolbar input:focus,
+#page-estoque .toolbar select:focus,
+#page-financeiro .toolbar input:focus,
+#page-financeiro .toolbar select:focus{
+  outline:none !important;
+  border-color:rgba(214,20,107,.55) !important;
+  box-shadow:0 0 0 4px rgba(214,20,107,.08) !important;
+}
+
+#page-estoque .toolbar .btn,
+#page-financeiro .toolbar .btn{
+  height:42px !important;
+  padding:0 14px !important;
+  border-radius:13px !important;
+  white-space:nowrap;
+  font-weight:800 !important;
+}
+
+#page-estoque .table-wrap,
+#page-financeiro .table-wrap,
+#page-financeiro #rel-receber-lista,
+#page-financeiro #financeiro-lista{
+  background:#fff;
+  border:1px solid var(--v10-border);
+  border-radius:18px;
+  box-shadow:0 14px 35px rgba(9,24,48,.06);
+  overflow:auto;
+}
+
+#page-estoque #subestoque-lista .table-wrap{
+  max-height:calc(100vh - 290px);
+  min-height:360px;
+}
+
+#page-financeiro #subfin-pagar .table-wrap,
+#page-financeiro #financeiro-lista,
+#page-financeiro #rel-receber-lista{
+  max-height:calc(100vh - 330px);
+  min-height:330px;
+}
+
+#page-estoque table,
+#page-financeiro table{
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  width:100%;
+}
+
+#page-estoque thead th,
+#page-financeiro thead th{
+  position:sticky;
+  top:0;
+  z-index:3;
+  height:42px !important;
+  padding:10px 13px !important;
+  background:linear-gradient(180deg,#f8fafc 0%,#f2f5fa 100%) !important;
+  border-bottom:1px solid #e3ebf6 !important;
+  color:#52627a !important;
+  font-size:11px !important;
+  font-weight:900 !important;
+  letter-spacing:.04em !important;
+  text-transform:uppercase;
+}
+
+#page-estoque tbody td,
+#page-financeiro tbody td{
+  padding:11px 13px !important;
+  border-bottom:1px solid #edf2f7 !important;
+  font-size:13px !important;
+  vertical-align:middle;
+}
+
+#page-estoque tbody tr,
+#page-financeiro tbody tr{
+  transition:background .14s ease, transform .14s ease;
+}
+#page-estoque tbody tr:hover,
+#page-financeiro tbody tr:hover{
+  background:#fbfdff !important;
+}
+
+#page-estoque tbody td strong,
+#page-financeiro tbody td strong{
+  font-weight:900;
+  color:#07152f;
+}
+
+#page-estoque code,
+#page-financeiro code{
+  background:#f3f6fb;
+  border:1px solid #e5edf7;
+  padding:3px 7px;
+  border-radius:8px;
+  color:#33445e;
+  font-weight:800;
+}
+
+#page-estoque .pagination{
+  position:sticky;
+  bottom:0;
+  z-index:2;
+  padding:9px 12px !important;
+  background:rgba(255,255,255,.92);
+  backdrop-filter:blur(10px);
+  border-top:1px solid #e8eef6;
+}
+
+#etq-barra-selecao{
+  margin:0 0 12px !important;
+  border-radius:16px !important;
+  background:linear-gradient(135deg,rgba(214,20,107,.08),rgba(147,51,234,.07)) !important;
+  border-color:rgba(214,20,107,.22) !important;
+  box-shadow:0 10px 25px rgba(214,20,107,.06);
+}
+
+#page-financeiro #cards-fin-unif.cards{
+  display:grid !important;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px !important;
+  margin-bottom:12px !important;
+}
+
+#page-financeiro #cards-fin-unif .card{
+  min-height:92px;
+  padding:16px 18px !important;
+  border-radius:18px !important;
+  border:1px solid var(--v10-border) !important;
+  background:linear-gradient(135deg,#fff 0%,#fbfdff 100%) !important;
+  box-shadow:0 14px 32px rgba(9,24,48,.06) !important;
+  overflow:hidden;
+  position:relative;
+}
+#page-financeiro #cards-fin-unif .card::after{
+  content:"";
+  position:absolute;
+  width:74px;
+  height:74px;
+  border-radius:999px;
+  right:-22px;
+  top:-22px;
+  background:linear-gradient(135deg,rgba(214,20,107,.11),rgba(147,51,234,.08));
+}
+#page-financeiro #cards-fin-unif .card-label{
+  font-size:11px !important;
+  font-weight:900 !important;
+  color:#63728a !important;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+#page-financeiro #cards-fin-unif .card-value{
+  font-size:22px !important;
+  line-height:1.1;
+  font-weight:950 !important;
+  color:#07152f !important;
+  letter-spacing:-.04em;
+}
+
+#page-financeiro #cartao-dia-banner{
+  border-radius:16px !important;
+  margin:0 0 12px !important;
+}
+
+#page-financeiro #subfin-caixa > p{
+  padding:12px 14px;
+  background:#fff;
+  border:1px solid var(--v10-border);
+  border-radius:16px;
+}
+
+#page-financeiro .section-title{
+  margin:12px 0 10px !important;
+  font-weight:900 !important;
+  color:#07152f !important;
+}
+
+@media (max-width: 1180px){
+  #page-financeiro #cards-fin-unif.cards{grid-template-columns:repeat(2,minmax(0,1fr));}
+  #page-financeiro #subfin-receber .toolbar,
+  #page-financeiro #subfin-pagar .toolbar,
+  #page-financeiro #subfin-extrato .toolbar{grid-template-columns:repeat(2,minmax(150px,1fr));}
+  #page-financeiro #subfin-receber .toolbar > div[style*="margin-left:auto"],
+  #page-financeiro #subfin-pagar .toolbar > div[style*="margin-left:auto"],
+  #page-financeiro #subfin-extrato .toolbar > div[style*="margin-left:auto"]{grid-column:1/-1;justify-content:flex-start;}
+}
+@media (max-width: 760px){
+  #page-estoque .cat-tabs,#page-financeiro .cat-tabs{width:100%;}
+  #page-estoque .cat-tab,#page-financeiro .cat-tab{flex:1;justify-content:center;text-align:center;}
+  #page-estoque .toolbar,#page-financeiro .toolbar,
+  #page-financeiro #subfin-receber .toolbar,
+  #page-financeiro #subfin-pagar .toolbar,
+  #page-financeiro #subfin-extrato .toolbar{grid-template-columns:1fr !important;}
+  #page-financeiro #cards-fin-unif.cards{grid-template-columns:1fr;}
+  #page-estoque #subestoque-lista .table-wrap,
+  #page-financeiro #subfin-pagar .table-wrap,
+  #page-financeiro #financeiro-lista,
+  #page-financeiro #rel-receber-lista{max-height:none;min-height:0;}
+}
+</style>
 </head>
 <body>
 
