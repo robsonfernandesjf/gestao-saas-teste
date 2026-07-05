@@ -3388,6 +3388,8 @@ function mostrarNotificacao(msg, tipo = 'success') {
 
 // URL da Edge Function de login (mesmo domínio do Supabase, path /functions/v1/<nome>)
 const EDGE_LOGIN_URL = `${SB_URL}/functions/v1/clever-action`;
+// URL da Edge Function que assina os pedidos do QZ Tray (impressão silenciosa)
+const EDGE_QZ_SIGN_URL = `${SB_URL}/functions/v1/qz-sign`;
 
 async function fazerLogin() {
   const login = document.getElementById('login-user').value.trim();
@@ -6702,8 +6704,31 @@ function mostrarModalCupom() {
 // janela isolada + Ctrl+P — sem quebrar nada pra quem não instalou o QZ.
 function qzInstalado() { return typeof qz !== 'undefined'; }
 
+// Certificado público da LegadoERP (sem problema estar aqui — é o par PÚBLICO;
+// a chave privada que assina de verdade fica só na Edge Function, no servidor).
+const QZ_CERTIFICADO = "-----BEGIN CERTIFICATE-----\nMIIDzTCCArWgAwIBAgIUUZjKRnVUgBuNUDL6BikclsUFWrswDQYJKoZIhvcNAQEL\nBQAwdjELMAkGA1UEBhMCQlIxCzAJBgNVBAgMAk1HMRMwEQYDVQQHDApKdWl6RGVG\nb3JhMRIwEAYDVQQKDAlMZWdhZG9FUlAxEjAQBgNVBAsMCUxlZ2Fkb0VSUDEdMBsG\nA1UEAwwUTGVnYWRvRVJQIFFaIFNpZ25pbmcwHhcNMjYwNzA0MjMzNDQ0WhcNMzYw\nNzAxMjMzNDQ0WjB2MQswCQYDVQQGEwJCUjELMAkGA1UECAwCTUcxEzARBgNVBAcM\nCkp1aXpEZUZvcmExEjAQBgNVBAoMCUxlZ2Fkb0VSUDESMBAGA1UECwwJTGVnYWRv\nRVJQMR0wGwYDVQQDDBRMZWdhZG9FUlAgUVogU2lnbmluZzCCASIwDQYJKoZIhvcN\nAQEBBQADggEPADCCAQoCggEBAO1mNhwCUIbKOQ6ustmwEW8zY0CWnTCCFXR1kC4h\nwf9z7+hNByDCbmTHKqreg0B1Lw7rQ1DR71MDidwoFPRl8sVz32Ch61uTewEAWWCZ\nvTzQxuI5oFzLW12ruF5rXzTr1ITI1vfJMlhztXxMI3BoM7R/AqtEgzO+FAMnn61S\nyY0bwiOfRGaUeq05zKgsHDHE4Weyejb8srKkGkrvmpLZkRaQWMA1M55BwfdfSy1d\nsOZeA9PEYkoNN+5p1+4EW/hsBro47IRJ29forZq8Cuhg9EHlr68TMffGs1bZ5JGq\nSweKCOovuVIdBCHNgHT2sJlwo0NOjLwm2b7207Pt6ScTmXMCAwEAAaNTMFEwHQYD\nVR0OBBYEFIWDGIgKE4Bs66SwIWiPrCSUI/qUMB8GA1UdIwQYMBaAFIWDGIgKE4Bs\n66SwIWiPrCSUI/qUMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEB\nANBh52KA8oNsRCEd4Sku35OzXelmKLhMM1gv7OJKWQDv7Kg8LmGy6N3p6Ium/LTt\nYwDdtalQQLx/WVl8DAQq81lHQBZbqF4HvuLubAOJ+PM2NvX4MGoxKFweOrENRQEO\nrHrFFKHPAhH9n5BKb3VSdvXEcy++KhNamcXN3OSA5eT0pHm1MpFk2Q/LSVC9Eyll\nspL69fHJXhPJoqKPJAX+6712x37yhBqVZn3ykori3qFNgSenIchG09qTk9ZV5yjB\nn1EmxJmIr4XUbdI5D7FDQUpZ18VsALJhU7v8EoqnXTFyRgRyoj5RsJnrFpIkFmMV\n/BMhs98a4mkR0G4Pd7CqP6k=\n-----END CERTIFICATE-----";
+let _qzAssinaturaConfigurada = false;
+
+function configurarAssinaturaQZ() {
+  if (_qzAssinaturaConfigurada || !qzInstalado()) return;
+  qz.security.setCertificatePromise((resolve) => resolve(QZ_CERTIFICADO));
+  qz.security.setSignatureAlgorithm('SHA512');
+  qz.security.setSignaturePromise((toSign) => (resolve, reject) => {
+    fetch(EDGE_QZ_SIGN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ request: toSign })
+    })
+      .then(r => r.text())
+      .then(resolve)
+      .catch(reject);
+  });
+  _qzAssinaturaConfigurada = true;
+}
+
 async function conectarQZ() {
   if (!qzInstalado()) return false;
+  configurarAssinaturaQZ();
   try {
     if (qz.websocket.isActive()) return true;
     await qz.websocket.connect();
@@ -11544,7 +11569,7 @@ atualizarHora();
               <li>Abre o arquivo baixado e segue a instalação (é next → next → finalizar, como qualquer programa).</li>
               <li>Depois de instalado, o QZ Tray fica rodando sozinho (ícone perto do relógio, na bandeja do Windows).</li>
               <li>Volta nessa tela e clica em "Verificar de novo" — deve aparecer <strong>Conectado e pronto</strong>.</li>
-              <li>Na próxima impressão, o navegador vai perguntar uma vez se pode usar a impressora — marca <strong>"Remember this decision"</strong> (ou "Sempre permitir") e confirma. Depois disso, não pergunta mais.</li>
+              <li>Na próxima impressão, vai aparecer uma janela do QZ Tray pedindo confiança no certificado da LegadoERP — marca <strong>"Remember this decision"</strong> e clica em <strong>Allow</strong>. Só acontece essa vez; depois disso, imprime direto, sem nenhum aviso.</li>
             </ol>
             <a href="https://qz.io/download/" target="_blank" rel="noopener" class="btn btn-primary" style="display:inline-block;text-decoration:none;">⬇️ Baixar QZ Tray</a>
           </div>
