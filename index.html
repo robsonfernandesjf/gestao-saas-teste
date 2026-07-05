@@ -13006,7 +13006,189 @@ function gerarPDFContasPagar() {
     td { padding: 7px 9px; border-bottom: 1px solid #F0EDE8; font-size: 11px; }
     tfoot td { font-weight: 700; background: #F7F4F0; border-top: 2px solid #E2DDD8; }
     @media print { body { padding: 10px; } }
-  </style></head><body>
+  
+/* === CADASTRO PRODUTO COMPACTO V8 === */
+/* Tela Cadastrar Produto: layout compacto em duas colunas, sem alterar IDs/funções */
+#page-cadastro{
+  --cad-gap:14px;
+  --cad-radius:18px;
+}
+#page-cadastro > div{
+  max-width:none!important;
+  width:100%!important;
+}
+#page-cadastro .section-title{
+  font-size:24px!important;
+  line-height:1.15!important;
+  margin:0 0 14px!important;
+  letter-spacing:-.04em!important;
+  color:var(--text)!important;
+}
+#page-cadastro .section-title:first-of-type{
+  display:none!important;
+}
+#page-cadastro > div::before{
+  content:'🛍️ Cadastrar novo produto';
+  display:block;
+  font-size:28px;
+  font-weight:900;
+  letter-spacing:-.045em;
+  color:var(--text);
+  margin:0 0 16px;
+}
+#page-cadastro > div > .table-wrap{
+  border:1px solid rgba(148,163,184,.28)!important;
+  border-radius:var(--cad-radius)!important;
+  background:rgba(255,255,255,.94)!important;
+  box-shadow:0 18px 48px rgba(15,23,42,.07)!important;
+}
+#page-cadastro > div > .table-wrap:first-of-type{
+  display:grid!important;
+  grid-template-columns:1fr auto auto!important;
+  align-items:center!important;
+  gap:12px 18px!important;
+  padding:18px 22px!important;
+  margin-bottom:14px!important;
+  background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(255,244,250,.92))!important;
+}
+#page-cadastro > div > .table-wrap:first-of-type::before{
+  content:'📄';
+  width:54px;
+  height:54px;
+  border-radius:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(135deg,rgba(220,38,127,.12),rgba(124,58,237,.12));
+  border:1px solid rgba(220,38,127,.18);
+  font-size:28px;
+  grid-row:1 / span 2;
+}
+#page-cadastro > div > .table-wrap:first-of-type p{
+  margin:0!important;
+  font-size:14px!important;
+  color:#52637A!important;
+  max-width:620px!important;
+}
+#page-cadastro > div > .table-wrap:first-of-type p::before{
+  content:'Importar produtos de uma planilha';
+  display:block;
+  color:var(--text);
+  font-size:18px;
+  font-weight:850;
+  letter-spacing:-.02em;
+  margin-bottom:4px;
+}
+#page-cadastro > div > .table-wrap:first-of-type > div[style*="display:flex"]{
+  grid-column:2 / 4!important;
+  grid-row:1 / span 2!important;
+  justify-content:flex-end!important;
+}
+#page-cadastro > div > .table-wrap:first-of-type .btn{
+  min-height:44px!important;
+  border-radius:12px!important;
+  padding:0 18px!important;
+}
+#page-cadastro > div > .table-wrap:has(#cad-ref){
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(330px,.82fr)!important;
+  gap:12px 18px!important;
+  align-items:start!important;
+  padding:20px!important;
+}
+#page-cadastro > div > .table-wrap:has(#cad-ref)::before,
+#page-cadastro > div > .table-wrap:has(#cad-ref)::after{
+  display:block;
+  font-size:18px;
+  font-weight:850;
+  letter-spacing:-.02em;
+  color:var(--text);
+  margin:0 0 2px;
+}
+#page-cadastro > div > .table-wrap:has(#cad-ref)::before{
+  content:'🏷️ Dados do produto';
+  grid-column:1;
+  grid-row:1;
+}
+#page-cadastro > div > .table-wrap:has(#cad-ref)::after{
+  content:'💵 Preços e estoque';
+  grid-column:2;
+  grid-row:1;
+}
+#page-cadastro > div > .table-wrap:has(#cad-ref) .form-grid,
+#page-cadastro > div > .table-wrap:has(#cad-ref) .form-row{
+  margin-bottom:0!important;
+}
+#page-cadastro > div > .table-wrap:has(#cad-ref) label{
+  font-size:11px!important;
+  letter-spacing:.04em!important;
+  color:#50617A!important;
+  margin-bottom:6px!important;
+}
+#page-cadastro > div > .table-wrap:has(#cad-ref) input,
+#page-cadastro > div > .table-wrap:has(#cad-ref) select,
+#page-cadastro > div > .table-wrap:has(#cad-ref) textarea{
+  min-height:44px!important;
+  border-radius:12px!important;
+  font-size:14px!important;
+  padding:0 14px!important;
+  background:rgba(255,255,255,.98)!important;
+}
+#page-cadastro > div > .table-wrap:has(#cad-ref) textarea{padding-top:12px!important;min-height:82px!important;}
+#page-cadastro > div > .table-wrap:has(#cad-ref) > .form-grid:nth-of-type(1){grid-column:1;grid-row:2;}
+#page-cadastro > div > .table-wrap:has(#cad-ref) > .form-grid:nth-of-type(2){grid-column:1;grid-row:3;}
+#page-cadastro > div > .table-wrap:has(#cad-ref) > .form-row:has(#cad-nome){grid-column:1;grid-row:4;}
+#page-cadastro > div > .table-wrap:has(#cad-ref) > .form-row:has(#cad-fornecedor){grid-column:1;grid-row:5;}
+#page-cadastro > div > .table-wrap:has(#cad-ref) > .form-row:has(#cad-custo){grid-column:2;grid-row:2;}
+#page-cadastro > div > .table-wrap:has(#cad-ref) > div:has(#cad-parcela){
+  grid-column:2;
+  grid-row:3 / span 2;
+  margin:0!important;
+  border-radius:16px!important;
+  padding:14px!important;
+  background:linear-gradient(135deg,rgba(236,72,153,.10),rgba(124,58,237,.08))!important;
+  border:1px solid rgba(236,72,153,.18)!important;
+}
+#page-cadastro > div > .table-wrap:has(#cad-ref) > .form-row:has(#cad-preco){grid-column:2;grid-row:5;}
+#page-cadastro > div > .table-wrap:has(#cad-ref) > #cad-margem-preview{grid-column:2;grid-row:6;margin-bottom:0!important;}
+#page-cadastro > div > .table-wrap:has(#cad-ref) > .form-grid:has(#cad-cp){grid-column:2;grid-row:7;}
+#page-cadastro > div > .table-wrap:has(#cad-ref) > .form-row:has(#cad-est-min){grid-column:2;grid-row:8;}
+#page-cadastro > div > .table-wrap:has(#cad-ref) > #secao-catalogo-produto,
+#page-cadastro > div > .table-wrap:has(#cad-ref) > #secao-grade-produto,
+#page-cadastro > div > .table-wrap:has(#cad-ref) > #secao-fiscal-produto{
+  grid-column:1 / -1!important;
+  margin-top:2px!important;
+}
+#page-cadastro > div > .table-wrap:has(#cad-ref) > button.btn-primary[onclick="salvarCadastro()"]{
+  grid-column:2!important;
+  margin-top:2px!important;
+  min-height:50px!important;
+  border-radius:14px!important;
+  font-size:15px!important;
+  font-weight:850!important;
+  background:linear-gradient(135deg,#D4145A,#8B2CF5)!important;
+  box-shadow:0 14px 28px rgba(212,20,90,.22)!important;
+}
+#page-cadastro > div > .table-wrap:has(#cad-ref) > p#cad-msg,
+#page-cadastro > div > .table-wrap:has(#cad-ref) > #btn-cad-etiqueta{
+  grid-column:1 / -1!important;
+}
+@media (min-width:1100px){
+  #page-cadastro{padding-top:16px!important;}
+  #page-cadastro > div > .table-wrap:has(#cad-ref){min-height:0!important;}
+}
+@media (max-width:900px){
+  #page-cadastro > div > .table-wrap:first-of-type,
+  #page-cadastro > div > .table-wrap:has(#cad-ref){display:block!important;}
+  #page-cadastro > div > .table-wrap:first-of-type::before,
+  #page-cadastro > div > .table-wrap:has(#cad-ref)::before,
+  #page-cadastro > div > .table-wrap:has(#cad-ref)::after{display:none!important;}
+  #page-cadastro .section-title:first-of-type{display:block!important;}
+  #page-cadastro > div::before{font-size:22px!important;}
+}
+/* === FIM CADASTRO PRODUTO COMPACTO V8 === */
+
+</style></head><body>
   <h1>💸 Contas a Pagar</h1>
   <p class="sub">${statusFil ? 'Status: '+statusFil+' · ' : ''}${catFil ? 'Categoria: '+catFil+' · ' : ''}Gerado em: ${agora}</p>
   <div class="cards">
