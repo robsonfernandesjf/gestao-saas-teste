@@ -1484,6 +1484,273 @@ body .btn-secondary{background:#fff!important;color:var(--leg-text)!important;bo
     input,select,textarea,#page-vendas input,#page-vendas select,#page-vendas button{min-height:48px!important;font-size:15px!important;}
   }
 </style>
+
+
+<!-- LEGADO ERP UI 2.3 · CORREÇÃO DEFINITIVA TOPO/SIDEBAR -->
+<style id="legado-ui23-topo-sidebar-fix">
+  :root{
+    --ui23-sidebar-w:276px;
+    --ui23-brand-h:122px;
+    --ui23-topbar-h:72px;
+    --ui23-banner-h:40px;
+    --ui23-bg:#F6F8FC;
+    --ui23-surface:#FFFFFF;
+    --ui23-border:#E6EBF3;
+    --ui23-text:#0F172A;
+    --ui23-muted:#64748B;
+    --ui23-brand:#D4145A;
+    --ui23-brand-2:#8B5CF6;
+    --ui23-success:#16A34A;
+    --ui23-warning:#F97316;
+    --ui23-shadow:0 14px 40px rgba(15,23,42,.08);
+    --ui23-radius:16px;
+  }
+
+  html,body{background:var(--ui23-bg)!important;color:var(--ui23-text)!important;overflow-x:hidden!important;}
+  body{font-family:Inter,'Segoe UI',system-ui,-apple-system,BlinkMacSystemFont,sans-serif!important;}
+
+  /* Header real: fica somente na área superior direita. A marca sai dele visualmente e fica na sidebar. */
+  body #app-header{
+    position:fixed!important;
+    top:0!important;
+    left:var(--ui23-sidebar-w)!important;
+    right:0!important;
+    height:var(--ui23-topbar-h)!important;
+    z-index:220!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    padding:0 26px!important;
+    background:rgba(255,255,255,.92)!important;
+    backdrop-filter:blur(16px)!important;
+    -webkit-backdrop-filter:blur(16px)!important;
+    border-bottom:1px solid var(--ui23-border)!important;
+    box-shadow:0 1px 0 rgba(15,23,42,.04)!important;
+    color:var(--ui23-text)!important;
+    overflow:visible!important;
+  }
+
+  /* Logo + nome da loja fixos em cima do menu lateral, alinhados com Dashboard */
+  body #app-header > div:first-child{
+    position:fixed!important;
+    top:0!important;
+    left:0!important;
+    width:var(--ui23-sidebar-w)!important;
+    height:var(--ui23-brand-h)!important;
+    z-index:260!important;
+    display:flex!important;
+    align-items:center!important;
+    gap:12px!important;
+    padding:22px 22px!important;
+    background:rgba(255,255,255,.96)!important;
+    border-right:1px solid var(--ui23-border)!important;
+    border-bottom:1px solid var(--ui23-border)!important;
+    box-shadow:none!important;
+    overflow:hidden!important;
+  }
+
+  body #app-header > div:first-child img{
+    width:54px!important;
+    height:54px!important;
+    min-width:54px!important;
+    border-radius:16px!important;
+    object-fit:cover!important;
+    border:0!important;
+    background:#fff!important;
+    box-shadow:0 10px 26px rgba(15,23,42,.12)!important;
+  }
+
+  body #app-header > div:first-child h1{
+    margin:0!important;
+    padding:0!important;
+    color:var(--ui23-text)!important;
+    font-size:18px!important;
+    line-height:1.02!important;
+    font-weight:950!important;
+    letter-spacing:-.04em!important;
+    max-width:168px!important;
+    white-space:normal!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+  }
+  body #app-header > div:first-child h1::after{
+    content:'Gestão Empresarial';
+    display:block;
+    margin-top:6px;
+    font-size:12px;
+    line-height:1;
+    font-weight:800;
+    letter-spacing:-.01em;
+    color:var(--ui23-muted);
+  }
+
+  body #app-header .header-user{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:10px!important;
+    margin-left:auto!important;
+    min-width:0!important;
+    color:var(--ui23-text)!important;
+  }
+  body #header-user-nome{font-size:13px!important;font-weight:900!important;color:var(--ui23-text)!important;background:transparent!important;white-space:nowrap!important;}
+  body #header-user-role{font-size:10px!important;font-weight:950!important;color:var(--ui23-brand)!important;background:#FCE7F3!important;border-radius:999px!important;padding:4px 9px!important;}
+  body #data-hora{font-size:12px!important;color:var(--ui23-muted)!important;background:transparent!important;white-space:nowrap!important;}
+  body .btn-logout{border:1px solid var(--ui23-border)!important;background:#fff!important;color:#64748B!important;border-radius:10px!important;padding:8px 12px!important;font-weight:800!important;}
+  body .btn-menu-mobile{display:none!important;}
+
+  /* Sidebar abaixo da marca */
+  body #main-nav{
+    position:fixed!important;
+    top:var(--ui23-brand-h)!important;
+    left:0!important;
+    bottom:0!important;
+    width:var(--ui23-sidebar-w)!important;
+    z-index:210!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:8px!important;
+    padding:20px 16px!important;
+    background:rgba(255,255,255,.92)!important;
+    backdrop-filter:blur(14px)!important;
+    -webkit-backdrop-filter:blur(14px)!important;
+    border-right:1px solid var(--ui23-border)!important;
+    overflow-y:auto!important;
+    box-shadow:none!important;
+  }
+
+  body #main-nav button{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    width:100%!important;
+    min-height:48px!important;
+    padding:0 16px!important;
+    border:0!important;
+    border-radius:14px!important;
+    background:transparent!important;
+    color:#334155!important;
+    font-size:14px!important;
+    font-weight:850!important;
+    text-align:left!important;
+    letter-spacing:-.01em!important;
+    box-shadow:none!important;
+    border-bottom:0!important;
+    transition:background .18s ease,color .18s ease,transform .18s ease!important;
+  }
+  body #main-nav button:hover{background:#F8FAFC!important;color:var(--ui23-brand)!important;transform:translateX(2px)!important;}
+  body #main-nav button.active{
+    color:var(--ui23-brand)!important;
+    background:linear-gradient(90deg,#FCE7F3 0%,#F5F3FF 100%)!important;
+    box-shadow:inset 4px 0 0 var(--ui23-brand)!important;
+  }
+
+  /* Banner de licença não passa por cima da marca/sidebar */
+  body #banner-licenca-vencendo{
+    position:fixed!important;
+    top:var(--ui23-topbar-h)!important;
+    left:var(--ui23-sidebar-w)!important;
+    right:0!important;
+    height:var(--ui23-banner-h)!important;
+    z-index:205!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    padding:0 46px!important;
+    margin:0!important;
+    background:linear-gradient(90deg,#F59E0B,#FB923C,#F97316)!important;
+    color:#fff!important;
+    font-weight:900!important;
+    font-size:13px!important;
+    border:0!important;
+    box-shadow:0 10px 28px rgba(249,115,22,.18)!important;
+    overflow:hidden!important;
+    white-space:nowrap!important;
+    text-overflow:ellipsis!important;
+  }
+
+  /* Conteúdo começa depois da sidebar e do topo */
+  body #app-main, body main{
+    max-width:none!important;
+    margin:0!important;
+    padding:calc(var(--ui23-topbar-h) + var(--ui23-banner-h) + 26px) 28px 58px calc(var(--ui23-sidebar-w) + 28px)!important;
+    background:linear-gradient(135deg,#F8FAFC 0%,#FFFFFF 48%,#F6F8FC 100%)!important;
+    min-height:100vh!important;
+  }
+
+  /* Acabamento visual dos blocos */
+  body .card, body .panel, body .table-wrap,
+  body section, body .page > div:not(.modal):not(.modal-content),
+  body .resumo-card, body .metric-card{
+    border-radius:var(--ui23-radius)!important;
+  }
+  body .card, body .panel, body .table-wrap,
+  body .page.active > .card, body .page.active > .panel{
+    border:1px solid var(--ui23-border)!important;
+    box-shadow:var(--ui23-shadow)!important;
+    background:#fff!important;
+  }
+  body input,body select,body textarea{
+    border-radius:12px!important;
+    border:1px solid #DFE7F1!important;
+    background:#fff!important;
+    min-height:42px;
+  }
+  body button.btn,body .btn,body .btn-primary,body .btn-secondary,body .btn-danger{
+    border-radius:12px!important;
+    font-weight:900!important;
+  }
+
+  /* PWA / celular */
+  @media (max-width: 820px){
+    :root{--ui23-sidebar-w:0px;--ui23-brand-h:0px;--ui23-topbar-h:66px;--ui23-banner-h:38px;}
+    body #app-header{
+      left:0!important;
+      height:var(--ui23-topbar-h)!important;
+      padding:0 10px!important;
+      justify-content:space-between!important;
+    }
+    body #app-header > div:first-child{
+      position:static!important;
+      width:auto!important;
+      height:var(--ui23-topbar-h)!important;
+      padding:0!important;
+      background:transparent!important;
+      border:0!important;
+      box-shadow:none!important;
+      gap:8px!important;
+      flex:1 1 auto!important;
+      min-width:0!important;
+    }
+    body #app-header > div:first-child img{width:38px!important;height:38px!important;min-width:38px!important;border-radius:12px!important;}
+    body #app-header > div:first-child h1{font-size:13px!important;line-height:1.05!important;max-width:138px!important;}
+    body #app-header > div:first-child h1::after{font-size:10px!important;margin-top:3px!important;}
+    body #header-user-nome,body #data-hora{display:none!important;}
+    body #header-user-role{font-size:9px!important;padding:3px 7px!important;}
+    body .btn-logout{display:none!important;}
+    body .btn-menu-mobile{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:42px!important;height:42px!important;border-radius:12px!important;border:1px solid var(--ui23-border)!important;background:#fff!important;color:var(--ui23-text)!important;font-size:20px!important;}
+    body #main-nav{
+      top:var(--ui23-topbar-h)!important;
+      left:0!important;
+      bottom:0!important;
+      width:286px!important;
+      transform:translateX(-106%)!important;
+      transition:transform .22s ease!important;
+      z-index:1000!important;
+      padding:16px!important;
+      box-shadow:18px 0 46px rgba(15,23,42,.20)!important;
+    }
+    body.menu-open #main-nav{transform:translateX(0)!important;}
+    body #nav-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.38);z-index:990;}
+    body.menu-open #nav-overlay{display:block!important;}
+    body #banner-licenca-vencendo{left:0!important;top:var(--ui23-topbar-h)!important;height:auto!important;min-height:var(--ui23-banner-h)!important;font-size:12px!important;padding:8px 34px 8px 10px!important;}
+    body #app-main,body main{padding:calc(var(--ui23-topbar-h) + var(--ui23-banner-h) + 18px) 12px 36px!important;}
+    body .cards{display:grid!important;grid-template-columns:1fr!important;gap:12px!important;}
+    body table{font-size:12px!important;}
+    body .table-wrap{overflow-x:auto!important;}
+  }
+</style>
+
 </head>
 <body>
 
