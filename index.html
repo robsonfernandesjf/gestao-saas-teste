@@ -3251,6 +3251,304 @@ body .btn-secondary{background:#fff!important;color:var(--leg-text)!important;bo
   }
 }
 </style>
+
+
+<!-- LEGADO ERP - SPRINT CSS PREMIUM v7 (somente acabamento visual, sem alterar HTML/JS) -->
+<style id="legado-premium-css-v7">
+/* =========================================================
+   LEGADO ERP · CSS PREMIUM v7
+   Acabamento visual: botões, tabelas, cards, inputs, mobile/PWA
+   Não altera estrutura, IDs, eventos ou regras de negócio.
+   ========================================================= */
+:root{
+  --ui-bg-soft:#F7F9FC;
+  --ui-surface:#FFFFFF;
+  --ui-surface-2:#FBFCFE;
+  --ui-border:#E5EAF2;
+  --ui-border-strong:#D8E0EC;
+  --ui-text:#0F172A;
+  --ui-muted:#64748B;
+  --ui-primary: var(--accent, #D91667);
+  --ui-primary-2:#FF6B00;
+  --ui-success: var(--success, #16A34A);
+  --ui-danger: var(--danger, #DC2626);
+  --ui-warn: var(--warn, #F59E0B);
+  --ui-radius:14px;
+  --ui-radius-sm:10px;
+  --ui-shadow:0 10px 28px rgba(15, 23, 42, .07);
+  --ui-shadow-sm:0 4px 14px rgba(15, 23, 42, .055);
+  --ui-ring:0 0 0 4px color-mix(in srgb, var(--ui-primary) 14%, transparent);
+}
+
+html{scroll-behavior:smooth;}
+body{
+  background:
+    radial-gradient(circle at 15% 0%, rgba(217,22,103,.055), transparent 34%),
+    linear-gradient(180deg, #fff 0%, var(--ui-bg-soft) 58%, #fff 100%) !important;
+  color:var(--ui-text) !important;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ===== Acabamento geral ===== */
+.card,
+.cards .card,
+.table-wrap,
+.page > div:not(.tabs):not(.modal):not(.modal-content),
+section,
+.panel,
+.box,
+[class*="card"],
+[class*="painel"],
+[class*="resumo"],
+[class*="lista"]{
+  border-color:var(--ui-border) !important;
+}
+
+.card,
+.cards .card,
+.table-wrap,
+.modal-content,
+.login-card{
+  box-shadow:var(--ui-shadow-sm) !important;
+  border-radius:var(--ui-radius) !important;
+}
+
+.card:hover,
+.cards .card:hover{
+  transform:translateY(-1px);
+  box-shadow:var(--ui-shadow) !important;
+}
+
+/* ===== Botões premium ===== */
+button,
+.btn,
+.action-btn,
+.tab-btn,
+nav button,
+.payment-option,
+.pagamento-btn,
+button[class*="btn"],
+input[type="button"],
+input[type="submit"]{
+  border-radius:12px !important;
+  font-weight:700 !important;
+  letter-spacing:-.01em;
+  transition:transform .14s ease, box-shadow .14s ease, border-color .14s ease, background .14s ease, color .14s ease !important;
+  box-shadow:none;
+}
+
+button:hover,
+.btn:hover,
+.action-btn:hover,
+.tab-btn:hover,
+.payment-option:hover,
+.pagamento-btn:hover,
+input[type="button"]:hover,
+input[type="submit"]:hover{
+  transform:translateY(-1px);
+  box-shadow:var(--ui-shadow-sm) !important;
+}
+
+button:active,
+.btn:active,
+.action-btn:active,
+.tab-btn:active,
+.payment-option:active,
+.pagamento-btn:active{
+  transform:translateY(0) scale(.99);
+}
+
+.btn-primary,
+button.primary,
+button[onclick*="finalizar"],
+button[onclick*="confirmarVenda"],
+button[onclick*="salvar"],
+.finalizar,
+.finalizar-venda{
+  background:linear-gradient(135deg, var(--ui-primary), var(--ui-primary-2)) !important;
+  color:#fff !important;
+  border-color:transparent !important;
+  box-shadow:0 10px 24px color-mix(in srgb, var(--ui-primary) 25%, transparent) !important;
+}
+
+button[onclick*="finalizar"]:hover,
+button[onclick*="confirmarVenda"]:hover,
+.finalizar:hover,
+.finalizar-venda:hover{
+  filter:saturate(1.05) brightness(1.02);
+  box-shadow:0 14px 30px color-mix(in srgb, var(--ui-primary) 30%, transparent) !important;
+}
+
+button[onclick*="limpar"],
+button[onclick*="cancelar"],
+.btn-danger{
+  background:#fff !important;
+  color:var(--ui-danger) !important;
+  border:1px solid color-mix(in srgb, var(--ui-danger) 22%, var(--ui-border)) !important;
+}
+
+button[onclick*="limpar"]:hover,
+button[onclick*="cancelar"]:hover,
+.btn-danger:hover{
+  background:color-mix(in srgb, var(--ui-danger) 7%, #fff) !important;
+}
+
+/* ===== Inputs e selects ===== */
+input,
+select,
+textarea{
+  border-radius:12px !important;
+  border:1px solid var(--ui-border-strong) !important;
+  background:#fff !important;
+  color:var(--ui-text) !important;
+  transition:border-color .14s ease, box-shadow .14s ease, background .14s ease !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus{
+  outline:none !important;
+  border-color:var(--ui-primary) !important;
+  box-shadow:var(--ui-ring) !important;
+}
+
+input::placeholder,
+textarea::placeholder{ color:#94A3B8 !important; }
+label, .label, .card-label, th{
+  letter-spacing:.02em;
+}
+
+/* ===== Tabelas premium ===== */
+table{
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  width:100%;
+}
+th{
+  background:linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%) !important;
+  color:#475569 !important;
+  font-size:11px !important;
+  font-weight:800 !important;
+  text-transform:uppercase;
+  border-bottom:1px solid var(--ui-border) !important;
+}
+td{
+  border-bottom:1px solid color-mix(in srgb, var(--ui-border) 75%, transparent) !important;
+  color:#172033;
+}
+tbody tr{
+  transition:background .12s ease, transform .12s ease;
+}
+tbody tr:hover td{
+  background:linear-gradient(90deg, color-mix(in srgb, var(--ui-primary) 4%, #fff), #fff) !important;
+}
+tbody tr:last-child td{ border-bottom-color:transparent !important; }
+
+/* ===== Badges/status ===== */
+.badge,
+.tag,
+.status,
+[class*="badge"],
+[class*="status"],
+.tag-cat{
+  border-radius:999px !important;
+  font-weight:800 !important;
+  padding:.32rem .62rem !important;
+}
+
+/* ===== Sidebar: só acabamento, sem mudar estrutura ===== */
+nav button.active,
+.sidebar .active,
+.menu .active,
+nav .active{
+  box-shadow:inset 4px 0 0 var(--ui-primary), 0 8px 20px rgba(15,23,42,.045) !important;
+}
+nav button:hover{
+  background:color-mix(in srgb, var(--ui-primary) 7%, #fff) !important;
+}
+
+/* ===== Tela de venda: acabamento sem mexer na estrutura ===== */
+#page-venda input,
+#venda input,
+#registrar-venda input,
+[id*="venda"] input{
+  font-weight:600;
+}
+
+#page-venda table,
+#venda table,
+#registrar-venda table{
+  overflow:hidden;
+}
+
+#page-venda .empty,
+#venda .empty,
+#registrar-venda .empty{
+  color:#94A3B8 !important;
+}
+
+/* Pagamentos selecionados ou botões com valor ativo */
+.payment-option.active,
+.pagamento-btn.active,
+button.active[onclick*="pagamento"],
+button.selected,
+.selected{
+  border-color:var(--ui-primary) !important;
+  background:linear-gradient(180deg, color-mix(in srgb, var(--ui-primary) 10%, #fff), #fff) !important;
+  color:var(--ui-primary) !important;
+  box-shadow:var(--ui-ring) !important;
+}
+
+/* Caixa aberto / alerts */
+[class*="caixa"],
+[class*="alert"],
+.alerta,
+.aviso{
+  border-radius:var(--ui-radius) !important;
+}
+
+/* ===== Scroll interno bonito ===== */
+*::-webkit-scrollbar{ width:10px; height:10px; }
+*::-webkit-scrollbar-thumb{ background:#CBD5E1; border-radius:999px; border:2px solid #F8FAFC; }
+*::-webkit-scrollbar-thumb:hover{ background:#94A3B8; }
+*::-webkit-scrollbar-track{ background:#F8FAFC; }
+
+/* ===== PWA / Mobile ===== */
+@media (max-width: 900px){
+  body{ background:#fff !important; }
+  main{ padding-left:10px !important; padding-right:10px !important; }
+  .card,
+  .table-wrap,
+  .modal-content,
+  section{
+    border-radius:12px !important;
+  }
+  button,
+  .btn,
+  .payment-option,
+  .pagamento-btn{
+    min-height:44px;
+  }
+  input,
+  select,
+  textarea{
+    min-height:44px;
+    font-size:16px !important; /* evita zoom no iOS/PWA */
+  }
+  table{ font-size:13px; }
+  th,td{ padding:10px 8px !important; }
+}
+
+@media (max-width: 560px){
+  .cards{ gap:10px !important; }
+  .card{ width:100% !important; }
+  button,
+  .btn{ width:auto; }
+  .hide-mobile{ display:none !important; }
+}
+</style>
+
 </head>
 <body>
 
