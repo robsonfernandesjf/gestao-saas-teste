@@ -2682,6 +2682,311 @@ body .btn-secondary{background:#fff!important;color:var(--leg-text)!important;bo
   }
 </style>
 
+
+<style id="pdv-modo-caixa-compacto-v5">
+/* ==========================================================
+   PDV MODO CAIXA COMPACTO V5
+   Objetivo: caber melhor em notebooks/PWA, reduzir scroll da
+   página e deixar apenas o carrinho rolar quando necessário.
+   Mantém IDs e JS originais.
+   ========================================================== */
+
+@media (min-width: 901px){
+  body:has(#page-vendas.active){ overflow: hidden !important; }
+}
+
+/* compacta área geral somente na tela de venda */
+#page-vendas.active,
+#page-vendas{
+  --pdv-right: clamp(300px, 28vw, 360px);
+  --pdv-gap: 18px;
+}
+
+#page-vendas .section-title{
+  margin: 0 0 10px !important;
+  padding: 0 !important;
+  min-height: 42px !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: #07142E !important;
+  font-size: clamp(20px, 2vw, 28px) !important;
+  line-height: 1.1 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+#page-vendas .section-title::before{
+  content: '🛒' !important;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: linear-gradient(135deg, rgba(219,39,119,.12), rgba(249,115,22,.10)) !important;
+  color: var(--accent, #DB2777) !important;
+  flex: 0 0 auto !important;
+}
+#page-vendas .section-title::after{ display:none !important; }
+
+/* caixa aberto mais fino */
+#page-vendas #caixa-widget-aberto,
+#page-vendas #caixa-widget-fechado{
+  min-height: 48px !important;
+  padding: 9px 12px !important;
+  margin-bottom: 12px !important;
+  border-radius: 18px !important;
+  gap: 10px !important;
+}
+#page-vendas #caixa-widget-aberto .btn,
+#page-vendas #caixa-widget-fechado .btn{
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 0 12px !important;
+  border-radius: 12px !important;
+  font-size: 12px !important;
+}
+
+/* estrutura principal: esquerda grande, direita fixa */
+#page-vendas .pdv-layout{
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) var(--pdv-right) !important;
+  gap: var(--pdv-gap) !important;
+  align-items: stretch !important;
+  height: calc(100vh - 220px) !important;
+  min-height: 520px !important;
+  overflow: hidden !important;
+}
+
+#page-vendas .pdv-col-esquerda,
+#page-vendas .pdv-col-direita{
+  min-width: 0 !important;
+  border-radius: 22px !important;
+}
+
+#page-vendas .pdv-col-esquerda{
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  overflow: hidden !important;
+}
+
+#page-vendas .pdv-col-direita{
+  align-self: stretch !important;
+  position: sticky !important;
+  top: 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  overflow: hidden !important;
+  padding: 14px !important;
+  background: rgba(255,255,255,.94) !important;
+  border: 1px solid rgba(226,232,240,.95) !important;
+  box-shadow: 0 18px 55px rgba(15,23,42,.08) !important;
+}
+
+/* Busca grande, mas mais baixa para caber em 768px */
+#page-vendas .pdv-busca-card{
+  flex: 0 0 auto !important;
+  padding: 14px !important;
+  border-radius: 20px !important;
+  margin: 0 !important;
+  background: #fff !important;
+  box-shadow: 0 12px 34px rgba(15,23,42,.06) !important;
+}
+#page-vendas .pdv-busca-card label{
+  margin-bottom: 8px !important;
+  font-size: 11px !important;
+  letter-spacing: .05em !important;
+}
+#page-vendas #busca-venda{
+  height: 56px !important;
+  min-height: 56px !important;
+  border-radius: 16px !important;
+  font-size: 17px !important;
+  padding: 0 18px !important;
+}
+
+/* remove espaço morto do estado vazio; carrinho vira a área principal */
+#page-vendas #sem-produto-msg{
+  display: none !important;
+}
+#page-vendas #produto-selecionado-info:not([style*="display:none"]){
+  flex: 0 0 auto !important;
+}
+#page-vendas .pdv-produto-card{
+  padding: 14px !important;
+  border-radius: 18px !important;
+}
+
+/* carrinho ocupa o espaço restante; somente ele rola */
+#page-vendas .pdv-carrinho-tabela{
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 22px !important;
+  background: #fff !important;
+}
+#page-vendas .pdv-carrinho-tabela::before{
+  content: 'Itens da venda' !important;
+  display: block !important;
+  padding: 14px 16px 10px !important;
+  font-weight: 800 !important;
+  color: #07142E !important;
+  font-size: 15px !important;
+}
+#page-vendas .pdv-carrinho-tabela-head{
+  flex: 0 0 auto !important;
+  padding: 10px 16px !important;
+  background: #F8FAFC !important;
+  border-top: 1px solid #EEF2F7 !important;
+  border-bottom: 1px solid #EEF2F7 !important;
+}
+#page-vendas #carrinho-body-wrap{
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+#page-vendas .pdv-carrinho-vazio{
+  height: 100% !important;
+  min-height: 210px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #94A3B8 !important;
+  font-size: 15px !important;
+}
+#page-vendas #carrinho-tabela-real td{
+  padding: 11px 14px !important;
+}
+
+/* desconto compacto */
+#page-vendas .pdv-col-esquerda > div[style*="Desconto"],
+#page-vendas .pdv-col-esquerda > div[style*="display:flex"]:last-child{
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  padding: 0 2px !important;
+}
+#page-vendas #venda-desconto{
+  height: 38px !important;
+  min-height: 38px !important;
+  border-radius: 12px !important;
+}
+
+/* lateral compacta, total sempre forte */
+#page-vendas .pdv-col-direita .form-row{
+  margin: 0 !important;
+}
+#page-vendas .pdv-col-direita label,
+#page-vendas .pdv-pagamento-label{
+  font-size: 11px !important;
+  margin-bottom: 5px !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase !important;
+}
+#page-vendas .pdv-col-direita input,
+#page-vendas .pdv-col-direita select{
+  height: 40px !important;
+  min-height: 40px !important;
+  border-radius: 13px !important;
+  font-size: 13px !important;
+  padding: 0 12px !important;
+}
+#page-vendas .pdv-pagamento-grid{
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+  gap: 8px !important;
+}
+#page-vendas .pdv-pag-btn{
+  min-height: 50px !important;
+  height: 50px !important;
+  border-radius: 14px !important;
+  font-size: 13px !important;
+  padding: 6px !important;
+}
+#page-vendas .pdv-forma-selecionada{
+  min-height: 36px !important;
+  padding: 8px 10px !important;
+  border-radius: 13px !important;
+  font-size: 12px !important;
+}
+#page-vendas .pdv-resumo-lateral{
+  flex: 1 1 auto !important;
+  min-height: 92px !important;
+  max-height: 190px !important;
+  overflow: auto !important;
+  padding: 12px !important;
+  border-radius: 18px !important;
+  background: linear-gradient(135deg, rgba(255,247,237,.92), rgba(253,242,248,.92)) !important;
+  border: 1px solid rgba(251,146,60,.20) !important;
+}
+#page-vendas .pdv-resumo-lateral:empty::before{
+  content: 'TOTAL DA VENDA\A R$ 0,00' !important;
+  white-space: pre !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 100% !important;
+  text-align: center !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: #64748B !important;
+}
+#page-vendas .pdv-resumo-lateral .valor-total{
+  font-size: clamp(28px, 3.2vw, 42px) !important;
+  line-height: 1 !important;
+  color: var(--accent, #DB2777) !important;
+}
+#page-vendas .pdv-finalizar-bar{
+  flex: 0 0 auto !important;
+  display: grid !important;
+  grid-template-columns: 96px 1fr !important;
+  gap: 8px !important;
+  margin-top: 0 !important;
+}
+#page-vendas .pdv-btn-limpar,
+#page-vendas .pdv-btn-finalizar-premium{
+  height: 48px !important;
+  min-height: 48px !important;
+  border-radius: 15px !important;
+  font-size: 13px !important;
+  padding: 0 12px !important;
+}
+#page-vendas .pdv-btn-finalizar-premium{
+  font-size: 15px !important;
+  font-weight: 900 !important;
+}
+#page-vendas .pdv-btn-finalizar-premium::after{
+  content: ' (F12)' !important;
+  opacity: .9 !important;
+}
+
+/* PWA/celular: mantém rolagem normal e empilha */
+@media (max-width: 900px){
+  body:has(#page-vendas.active){ overflow:auto !important; }
+  #page-vendas .pdv-layout{
+    height:auto !important;
+    min-height:0 !important;
+    overflow:visible !important;
+    grid-template-columns:1fr !important;
+  }
+  #page-vendas .pdv-col-direita{
+    position: static !important;
+    overflow: visible !important;
+  }
+  #page-vendas #sem-produto-msg{display:none!important;}
+  #page-vendas .pdv-carrinho-tabela{min-height: 260px !important;}
+  #page-vendas .pdv-pagamento-grid{grid-template-columns:repeat(2,1fr)!important;}
+  #page-vendas .pdv-finalizar-bar{grid-template-columns:1fr!important;}
+}
+</style>
+
 </head>
 <body>
 
