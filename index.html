@@ -576,6 +576,214 @@
   tfoot td { font-weight: 700; background: var(--bg); border-top: 2px solid var(--border); padding: 10px 14px; font-size: 13px; }
 
 </style>
+
+<!-- =========================================================
+     LEGADO ERP UI 2.0 · HOTFIX CLEAN COLORIDO
+     Corrige logo/sidebar/topbar sem mexer na lógica JS.
+     ========================================================= -->
+<style id="legado-ui-clean-colorido-hotfix">
+  :root{
+    --sidebar-w:260px;
+    --topbar-h:72px;
+    --bg:#F8FAFC;
+    --surface:#FFFFFF;
+    --border:#E5E7EB;
+    --text:#0F172A;
+    --muted:#64748B;
+    --accent:#C2185B;
+    --accent-light:#FCE7F3;
+    --success:#16A34A;
+    --success-light:#DCFCE7;
+    --danger:#DC2626;
+    --danger-light:#FEE2E2;
+    --warn:#F59E0B;
+    --warn-light:#FEF3C7;
+    --radius:16px;
+    --shadow:0 10px 30px rgba(15,23,42,.07);
+  }
+
+  html,body{background:var(--bg)!important;overflow-x:hidden!important;}
+  body{font-family:'Inter','Segoe UI',system-ui,sans-serif!important;color:var(--text)!important;}
+
+  /* Remove qualquer marcação cinza/realce visual herdado */
+  #main-nav button,
+  .section-title,
+  .card-label,
+  label,
+  th,
+  td,
+  h1,h2,h3,h4,
+  .chart-card strong,
+  .toolbar label{
+    text-shadow:none!important;
+    box-decoration-break:clone;
+  }
+
+  /* TOPO */
+  #app-header{
+    position:fixed!important;
+    top:0!important;
+    left:var(--sidebar-w)!important;
+    right:0!important;
+    height:var(--topbar-h)!important;
+    padding:0 22px!important;
+    z-index:120!important;
+    background:rgba(255,255,255,.96)!important;
+    backdrop-filter:blur(16px)!important;
+    border-bottom:1px solid var(--border)!important;
+    box-shadow:0 1px 0 rgba(15,23,42,.02)!important;
+    color:var(--text)!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+  }
+  #app-header img,
+  #app-header h1{display:none!important;}
+  #app-header > div:first-child{
+    display:flex!important;
+    align-items:center!important;
+    gap:16px!important;
+    min-width:0!important;
+    flex:1 1 auto!important;
+  }
+  #app-header > div:first-child::before{
+    content:'☰';
+    width:42px!important;height:42px!important;min-width:42px!important;
+    display:inline-flex!important;align-items:center!important;justify-content:center!important;
+    border:1px solid var(--border)!important;border-radius:14px!important;
+    background:#fff!important;color:var(--muted)!important;font-size:20px!important;
+    box-shadow:0 6px 18px rgba(15,23,42,.05)!important;
+  }
+  #app-header > div:first-child::after{
+    content:'Pesquisar (Ctrl + K)';
+    width:min(460px,45vw)!important;height:44px!important;
+    display:inline-flex!important;align-items:center!important;
+    padding-left:48px!important;
+    border:1px solid var(--border)!important;border-radius:14px!important;
+    background:#fff!important;color:#94A3B8!important;font-size:14px!important;font-weight:600!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.8)!important;
+  }
+  #app-header .header-user{display:flex!important;align-items:center!important;gap:12px!important;flex:0 0 auto!important;}
+  #header-user-nome{font-size:13px!important;font-weight:800!important;color:var(--text)!important;background:transparent!important;}
+  #header-user-role{font-size:10px!important;font-weight:900!important;color:var(--accent)!important;background:var(--accent-light)!important;border-radius:999px!important;padding:4px 8px!important;}
+  #data-hora{font-size:12px!important;color:var(--muted)!important;background:transparent!important;}
+  .btn-logout{height:36px!important;padding:0 12px!important;border-radius:12px!important;border:1px solid var(--border)!important;background:#fff!important;color:var(--danger)!important;font-weight:800!important;}
+
+  /* SIDEBAR */
+  #main-nav{
+    position:fixed!important;
+    top:0!important;left:0!important;bottom:0!important;
+    width:var(--sidebar-w)!important;
+    z-index:130!important;
+    padding:112px 16px 20px!important;
+    background:#fff!important;
+    border-right:1px solid var(--border)!important;
+    border-bottom:0!important;
+    box-shadow:8px 0 28px rgba(15,23,42,.035)!important;
+    display:flex!important;flex-direction:column!important;gap:6px!important;
+    overflow-y:auto!important;
+  }
+  #main-nav::before{
+    content:'Vitrine Legado\A Gestão Empresarial'!important;
+    white-space:pre!important;
+    position:fixed!important;
+    top:22px!important;left:76px!important;
+    width:160px!important;height:auto!important;
+    display:block!important;
+    color:var(--text)!important;
+    font-size:17px!important;font-weight:900!important;line-height:1.05!important;
+    letter-spacing:-.03em!important;
+    pointer-events:none!important;
+    background:transparent!important;
+  }
+  #main-nav::first-line{font-size:18px!important;}
+  #main-nav + #nav-overlay::before{
+    content:'VL'!important;
+    position:fixed!important;
+    top:18px!important;left:18px!important;
+    width:48px!important;height:48px!important;
+    z-index:140!important;
+    display:flex!important;align-items:center!important;justify-content:center!important;
+    background:linear-gradient(135deg,var(--accent),#9F1239)!important;
+    color:#fff!important;font-size:20px!important;font-weight:900!important;
+    border-radius:14px!important;
+    box-shadow:0 10px 24px rgba(194,24,91,.22)!important;
+    pointer-events:none!important;
+  }
+  #main-nav::after{
+    content:'‹  Recolher menu'!important;
+    margin-top:auto!important;
+    min-height:46px!important;
+    display:flex!important;align-items:center!important;justify-content:center!important;
+    border:1px solid var(--border)!important;border-radius:14px!important;
+    color:var(--muted)!important;background:#fff!important;
+    font-size:13px!important;font-weight:800!important;
+  }
+  #main-nav button{
+    width:100%!important;min-height:46px!important;height:auto!important;
+    padding:0 14px!important;margin:0!important;
+    border:0!important;border-radius:14px!important;
+    background:transparent!important;color:#334155!important;
+    font-size:14px!important;font-weight:700!important;line-height:1!important;
+    display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:10px!important;
+    text-align:left!important;
+    border-bottom:0!important;
+    transform:none!important;
+  }
+  #main-nav button:hover{background:#F8FAFC!important;color:var(--text)!important;transform:none!important;}
+  #main-nav button.active{
+    background:linear-gradient(135deg,var(--accent-light),#FFF7FB)!important;
+    color:var(--accent)!important;
+    box-shadow:inset 4px 0 0 var(--accent)!important;
+  }
+
+  /* CONTEÚDO */
+  #banner-licenca-vencendo{
+    position:fixed!important;
+    top:var(--topbar-h)!important;
+    left:var(--sidebar-w)!important;
+    right:0!important;
+    z-index:100!important;
+    height:34px!important;
+    padding:8px 18px!important;
+    background:linear-gradient(135deg,#F59E0B,#D97706)!important;
+  }
+  main,#app-main{
+    max-width:none!important;
+    margin:0!important;
+    padding:calc(var(--topbar-h) + 58px) 24px 56px calc(var(--sidebar-w) + 28px)!important;
+    background:radial-gradient(circle at top left,rgba(194,24,91,.04),transparent 36%),var(--bg)!important;
+    min-height:100vh!important;
+  }
+  .page{width:100%!important;}
+  .section-title{font-size:24px!important;font-weight:900!important;color:var(--text)!important;border:0!important;padding:0!important;margin:0 0 18px!important;letter-spacing:-.03em!important;text-transform:none!important;background:transparent!important;}
+  .section-title::after{content:none!important;}
+
+  .card,.stat-card,.chart-card,.panel,.toolbar,.table-wrap,.modal-box,
+  #caixa-widget-aberto,#caixa-widget-fechado,
+  .pdv-busca-card,.pdv-col-direita,.pdv-carrinho-card,.pdv-carrinho-tabela{
+    background:#fff!important;border:1px solid var(--border)!important;border-radius:var(--radius)!important;box-shadow:var(--shadow)!important;
+  }
+  .toolbar{padding:16px!important;gap:12px!important;align-items:center!important;}
+  .toolbar input,.toolbar select,input,select,textarea{
+    border:1px solid var(--border)!important;border-radius:12px!important;background:#fff!important;color:var(--text)!important;min-height:38px!important;
+  }
+  table{border-collapse:separate!important;border-spacing:0!important;width:100%!important;}
+  th{background:#F8FAFC!important;color:var(--muted)!important;font-size:11px!important;font-weight:900!important;letter-spacing:.04em!important;}
+  td{background:#fff!important;color:var(--text)!important;}
+  tbody tr:hover td{background:#F8FAFC!important;}
+
+  @media(max-width:900px){
+    :root{--sidebar-w:0px;--topbar-h:64px;}
+    #main-nav{transform:translateX(-105%)!important;transition:.2s ease!important;}
+    #main-nav.open{transform:translateX(0)!important;width:260px!important;}
+    #app-header{left:0!important;height:var(--topbar-h)!important;}
+    #app-header > div:first-child::after{width:min(300px,48vw)!important;}
+    #banner-licenca-vencendo{left:0!important;top:var(--topbar-h)!important;}
+    main,#app-main{padding:calc(var(--topbar-h) + 54px) 14px 40px!important;}
+  }
+</style>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
