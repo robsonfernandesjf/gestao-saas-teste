@@ -1016,6 +1016,427 @@ body .btn-secondary{background:#fff!important;color:var(--leg-text)!important;bo
   body input,body select,body textarea,body #page-vendas input,body #page-vendas select,body #page-vendas button{min-height:48px!important;font-size:15px!important;}
 }
 
+
+
+/* =========================================================
+   LEGADO ERP · PDV PREMIUM V3 (Clean Colorido / PWA)
+   Aplicado apenas na tela Registrar Venda - sem alterar JS
+   ========================================================= */
+#page-vendas{
+  --pdv-bg:#f6f8fc;
+  --pdv-card:#ffffff;
+  --pdv-line:#e8edf6;
+  --pdv-text:#172033;
+  --pdv-muted:#64748b;
+  --pdv-primary:var(--accent,#7c3aed);
+  --pdv-success:#16a34a;
+  --pdv-warning:#f59e0b;
+  --pdv-danger:#dc2626;
+}
+#page-vendas .section-title{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:14px!important;
+  margin:0 0 18px!important;
+  padding:18px 20px!important;
+  border:1px solid rgba(226,232,240,.9)!important;
+  border-radius:22px!important;
+  background:linear-gradient(135deg,#ffffff 0%,#f8fbff 65%,rgba(124,58,237,.08) 100%)!important;
+  box-shadow:0 14px 36px rgba(15,23,42,.07)!important;
+  color:#111827!important;
+  font-size:22px!important;
+  font-weight:850!important;
+  letter-spacing:-.04em!important;
+}
+#page-vendas .section-title::before{
+  content:'🛒';
+  width:44px;
+  height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:16px;
+  margin-right:2px;
+  background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(59,130,246,.12));
+  box-shadow:inset 0 0 0 1px rgba(124,58,237,.12);
+}
+#caixa-widget-fechado,#caixa-widget-aberto{
+  border-radius:20px!important;
+  box-shadow:0 12px 30px rgba(15,23,42,.06)!important;
+  border-width:1px!important;
+}
+#page-vendas .pdv-layout{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 380px!important;
+  gap:22px!important;
+  align-items:start!important;
+}
+#page-vendas .pdv-col-esquerda,
+#page-vendas .pdv-col-direita{
+  min-width:0!important;
+}
+#page-vendas .pdv-col-direita{
+  position:sticky!important;
+  top:92px!important;
+  background:var(--pdv-card)!important;
+  border:1px solid var(--pdv-line)!important;
+  border-radius:24px!important;
+  padding:18px!important;
+  box-shadow:0 18px 44px rgba(15,23,42,.09)!important;
+}
+#page-vendas .pdv-busca-card{
+  position:relative!important;
+  overflow:visible!important;
+  border:1px solid rgba(226,232,240,.92)!important;
+  border-radius:26px!important;
+  padding:20px!important;
+  margin-bottom:18px!important;
+  background:linear-gradient(135deg,#ffffff 0%,#f8fbff 100%)!important;
+  box-shadow:0 16px 42px rgba(15,23,42,.075)!important;
+}
+#page-vendas .pdv-busca-card label{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  margin-bottom:10px!important;
+  color:#334155!important;
+  font-size:13px!important;
+  font-weight:800!important;
+  text-transform:uppercase!important;
+  letter-spacing:.05em!important;
+}
+#page-vendas #busca-venda{
+  width:100%!important;
+  height:64px!important;
+  min-height:64px!important;
+  border-radius:20px!important;
+  border:2px solid transparent!important;
+  background:#f1f5f9!important;
+  font-size:18px!important;
+  font-weight:650!important;
+  padding:0 18px!important;
+  color:var(--pdv-text)!important;
+  box-shadow:inset 0 0 0 1px #e2e8f0!important;
+  transition:.18s ease!important;
+}
+#page-vendas #busca-venda:focus{
+  outline:none!important;
+  background:#fff!important;
+  border-color:rgba(124,58,237,.32)!important;
+  box-shadow:0 0 0 5px rgba(124,58,237,.10), inset 0 0 0 1px rgba(124,58,237,.25)!important;
+}
+#page-vendas #sugestoes-venda > *{
+  border-radius:16px!important;
+  box-shadow:0 18px 40px rgba(15,23,42,.14)!important;
+  overflow:hidden!important;
+}
+#page-vendas .pdv-produto-card,
+#page-vendas .pdv-carrinho-tabela{
+  border:1px solid var(--pdv-line)!important;
+  border-radius:24px!important;
+  background:#fff!important;
+  box-shadow:0 14px 34px rgba(15,23,42,.065)!important;
+  overflow:hidden!important;
+}
+#page-vendas .pdv-produto-card{
+  padding:18px!important;
+  margin-bottom:18px!important;
+}
+#page-vendas .pdv-produto-header{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:14px!important;
+  padding-bottom:14px!important;
+  border-bottom:1px solid var(--pdv-line)!important;
+}
+#page-vendas .pdv-produto-nome{
+  font-size:20px!important;
+  line-height:1.15!important;
+  font-weight:850!important;
+  color:#0f172a!important;
+  letter-spacing:-.03em!important;
+}
+#page-vendas .pdv-produto-ref,
+#page-vendas code{
+  color:#64748b!important;
+}
+#page-vendas .pdv-produto-cat-badge,
+#page-vendas .tag-cat{
+  border:0!important;
+  border-radius:999px!important;
+  background:rgba(124,58,237,.10)!important;
+  color:#6d28d9!important;
+  padding:7px 10px!important;
+  font-weight:800!important;
+}
+#page-vendas .pdv-produto-stats{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:10px!important;
+  margin:16px 0!important;
+}
+#page-vendas .pdv-stat{
+  border:1px solid #edf2f7!important;
+  border-radius:18px!important;
+  background:#f8fafc!important;
+  padding:12px!important;
+}
+#page-vendas .pdv-stat-label{
+  color:#64748b!important;
+  font-size:11px!important;
+  font-weight:800!important;
+  text-transform:uppercase!important;
+  letter-spacing:.04em!important;
+}
+#page-vendas .pdv-stat-value{
+  margin-top:4px!important;
+  color:#111827!important;
+  font-size:18px!important;
+  font-weight:850!important;
+}
+#page-vendas .pdv-stat-value.preco{
+  color:var(--pdv-success)!important;
+}
+#page-vendas .pdv-produto-form .form-grid{
+  gap:12px!important;
+}
+#page-vendas .form-row label,
+#page-vendas .pdv-pagamento-label{
+  font-size:12px!important;
+  font-weight:850!important;
+  color:#475569!important;
+  text-transform:uppercase!important;
+  letter-spacing:.055em!important;
+  margin-bottom:8px!important;
+}
+#page-vendas input,
+#page-vendas select{
+  border-radius:16px!important;
+  border:1px solid #e2e8f0!important;
+  background:#f8fafc!important;
+  color:#172033!important;
+  min-height:48px!important;
+  font-weight:600!important;
+  transition:.18s ease!important;
+}
+#page-vendas input:focus,
+#page-vendas select:focus{
+  outline:none!important;
+  background:#fff!important;
+  border-color:rgba(124,58,237,.40)!important;
+  box-shadow:0 0 0 4px rgba(124,58,237,.10)!important;
+}
+#page-vendas .pdv-btn-add{
+  width:100%!important;
+  border:0!important;
+  border-radius:18px!important;
+  min-height:54px!important;
+  background:linear-gradient(135deg,#2563eb,#7c3aed)!important;
+  color:#fff!important;
+  font-size:15px!important;
+  font-weight:900!important;
+  box-shadow:0 16px 32px rgba(37,99,235,.25)!important;
+  cursor:pointer!important;
+  transition:.18s ease!important;
+}
+#page-vendas .pdv-btn-add:hover{
+  transform:translateY(-1px)!important;
+  box-shadow:0 20px 38px rgba(37,99,235,.30)!important;
+}
+#page-vendas .pdv-empty-state{
+  border:1px dashed #cbd5e1!important;
+  border-radius:24px!important;
+  background:linear-gradient(135deg,#fff,#f8fafc)!important;
+  padding:30px 20px!important;
+  color:#64748b!important;
+  margin-bottom:18px!important;
+}
+#page-vendas .pdv-empty-state .icon{
+  width:66px!important;
+  height:66px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0 auto 10px!important;
+  border-radius:22px!important;
+  background:#eef2ff!important;
+  font-size:34px!important;
+}
+#page-vendas .pdv-carrinho-tabela-head{
+  display:grid!important;
+  grid-template-columns:minmax(220px,1fr) 70px 105px 120px 54px!important;
+  gap:8px!important;
+  padding:14px 16px!important;
+  background:#f8fafc!important;
+  border-bottom:1px solid var(--pdv-line)!important;
+  color:#64748b!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  text-transform:uppercase!important;
+  letter-spacing:.06em!important;
+}
+#page-vendas #carrinho-body-wrap{
+  padding:4px 0!important;
+}
+#page-vendas .pdv-carrinho-vazio{
+  padding:42px 16px!important;
+  color:#94a3b8!important;
+  font-size:15px!important;
+  text-align:center!important;
+}
+#page-vendas #carrinho-tabela-real{
+  width:100%!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+}
+#page-vendas #carrinho-tabela-real td{
+  padding:14px 16px!important;
+  border-bottom:1px solid #f1f5f9!important;
+  vertical-align:middle!important;
+}
+#page-vendas #carrinho-tabela-real tr:hover td{
+  background:#f8fafc!important;
+}
+#page-vendas #carrinho-tabela-real tr:last-child td{
+  border-bottom:0!important;
+}
+#page-vendas .pdv-pagamento-grid{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:10px!important;
+  margin:8px 0 14px!important;
+}
+#page-vendas .pdv-pag-btn{
+  min-height:54px!important;
+  border-radius:18px!important;
+  border:1px solid #e2e8f0!important;
+  background:#f8fafc!important;
+  color:#1e293b!important;
+  font-weight:850!important;
+  cursor:pointer!important;
+  box-shadow:none!important;
+  transition:.18s ease!important;
+}
+#page-vendas .pdv-pag-btn:hover{
+  background:#fff!important;
+  border-color:rgba(124,58,237,.30)!important;
+  transform:translateY(-1px)!important;
+}
+#page-vendas .pdv-pag-btn.ativo{
+  background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(59,130,246,.12))!important;
+  border-color:rgba(124,58,237,.42)!important;
+  color:#5b21b6!important;
+  box-shadow:0 10px 24px rgba(124,58,237,.12)!important;
+}
+#page-vendas .pdv-forma-selecionada{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:18px!important;
+  padding:11px 12px!important;
+  background:#f8fafc!important;
+  margin-bottom:12px!important;
+}
+#page-vendas .pdv-resumo-lateral{
+  margin-top:16px!important;
+  border-radius:22px!important;
+  background:linear-gradient(135deg,#0f172a,#1e293b)!important;
+  color:#fff!important;
+  padding:18px!important;
+  min-height:120px!important;
+  box-shadow:0 18px 40px rgba(15,23,42,.18)!important;
+}
+#page-vendas .pdv-resumo-lateral:empty{
+  display:none!important;
+}
+#page-vendas .pdv-resumo-lateral .linha{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:14px!important;
+  padding:8px 0!important;
+  color:#cbd5e1!important;
+  border-bottom:1px solid rgba(255,255,255,.08)!important;
+}
+#page-vendas .pdv-resumo-lateral .linha:last-child{
+  border-bottom:0!important;
+  padding-top:14px!important;
+}
+#page-vendas .pdv-resumo-lateral .valor-total{
+  display:block!important;
+  color:#fff!important;
+  font-size:34px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  letter-spacing:-.06em!important;
+}
+#page-vendas .pdv-finalizar-bar{
+  display:grid!important;
+  grid-template-columns:1fr 1.7fr!important;
+  gap:10px!important;
+  margin-top:14px!important;
+}
+#page-vendas .pdv-btn-limpar,
+#page-vendas .pdv-btn-finalizar-premium{
+  min-height:54px!important;
+  border-radius:18px!important;
+  font-weight:900!important;
+  cursor:pointer!important;
+  border:0!important;
+}
+#page-vendas .pdv-btn-limpar{
+  background:#f1f5f9!important;
+  color:#475569!important;
+  border:1px solid #e2e8f0!important;
+}
+#page-vendas .pdv-btn-finalizar-premium{
+  background:linear-gradient(135deg,#16a34a,#22c55e)!important;
+  color:#fff!important;
+  box-shadow:0 16px 30px rgba(22,163,74,.25)!important;
+}
+#page-vendas .pdv-btn-finalizar-premium:hover{
+  transform:translateY(-1px)!important;
+}
+#modal-finalizar-venda .modal{
+  border-radius:24px!important;
+  box-shadow:0 30px 80px rgba(15,23,42,.28)!important;
+}
+#modal-finalizar-venda .modal-header{
+  border-bottom:1px solid #eef2f7!important;
+}
+#modal-finalizar-venda .modal-footer .btn-primary{
+  background:linear-gradient(135deg,#16a34a,#22c55e)!important;
+  border:0!important;
+  box-shadow:0 14px 28px rgba(22,163,74,.24)!important;
+}
+@media (max-width: 1100px){
+  #page-vendas .pdv-layout{grid-template-columns:1fr!important;}
+  #page-vendas .pdv-col-direita{position:static!important;}
+  #page-vendas .pdv-produto-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
+@media (max-width: 720px){
+  #page-vendas .section-title{font-size:18px!important;padding:14px!important;border-radius:18px!important;}
+  #page-vendas .section-title::before{width:38px;height:38px;border-radius:14px;}
+  #page-vendas .pdv-busca-card{padding:14px!important;border-radius:20px!important;}
+  #page-vendas #busca-venda{height:58px!important;min-height:58px!important;font-size:16px!important;border-radius:17px!important;}
+  #page-vendas .pdv-produto-card,#page-vendas .pdv-carrinho-tabela,#page-vendas .pdv-col-direita{border-radius:20px!important;padding:14px!important;}
+  #page-vendas .pdv-produto-stats{grid-template-columns:1fr 1fr!important;}
+  #page-vendas .pdv-carrinho-tabela-head{display:none!important;}
+  #page-vendas #carrinho-tabela-real,
+  #page-vendas #carrinho-tabela-real tbody,
+  #page-vendas #carrinho-tabela-real tr,
+  #page-vendas #carrinho-tabela-real td{display:block!important;width:100%!important;text-align:left!important;}
+  #page-vendas #carrinho-tabela-real tr{padding:12px!important;border-bottom:1px solid #eef2f7!important;}
+  #page-vendas #carrinho-tabela-real td{border:0!important;padding:5px 0!important;}
+  #page-vendas .pdv-pagamento-grid{grid-template-columns:1fr 1fr!important;}
+  #page-vendas .pdv-resumo-lateral .valor-total{font-size:30px!important;}
+  #page-vendas .pdv-finalizar-bar{grid-template-columns:1fr!important;}
+}
+
 </style>
 
 
@@ -2265,6 +2686,7 @@ body .btn-secondary{background:#fff!important;color:var(--leg-text)!important;bo
 
       <div class="pdv-finalizar-bar">
         <button class="pdv-btn-limpar" onclick="limparCarrinho()">🗑 Limpar</button>
+        <button class="pdv-btn-finalizar-premium" onclick="abrirModalFinalizarVenda()">✅ Finalizar venda</button>
       </div>
 
     </div>
