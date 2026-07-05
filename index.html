@@ -4331,6 +4331,260 @@ button.selected,
 }
 </style>
 
+
+
+<style id="legado-clientes-premium-v15">
+/* =========================================================
+   LEGADO ERP — CLIENTES/FORNECEDORES PREMIUM V15
+   Ajuste visual isolado, sem alterar IDs/funções JS.
+   ========================================================= */
+#page-clientes{
+  --cli-primary: var(--accent, #d4145a);
+  --cli-primary-2: #8b5cf6;
+  --cli-ink: #06112b;
+  --cli-muted: #64748b;
+  --cli-border: rgba(148,163,184,.26);
+  --cli-bg: rgba(248,250,252,.82);
+  --cli-card: rgba(255,255,255,.94);
+  --cli-shadow: 0 14px 38px rgba(15,23,42,.07);
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto minmax(0,1fr);
+  gap: 14px;
+  height: calc(100vh - 138px);
+  min-height: 560px;
+  overflow: hidden;
+  padding: 2px 2px 10px;
+}
+#page-clientes::before{
+  content:'👥 Clientes e Fornecedores';
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:24px;
+  line-height:1;
+  font-weight:900;
+  color:var(--cli-ink);
+  letter-spacing:-.04em;
+  margin:0 0 2px;
+}
+#page-clientes .toolbar{
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display:grid !important;
+  grid-template-columns:minmax(260px,1.4fr) minmax(150px,.55fr) minmax(190px,.75fr) auto;
+  gap:10px;
+  align-items:center;
+  margin:0 !important;
+  padding:13px 14px;
+  border:1px solid var(--cli-border);
+  border-radius:18px;
+  background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(248,250,252,.92));
+  box-shadow:var(--cli-shadow);
+  backdrop-filter: blur(8px);
+}
+#page-clientes .toolbar input,
+#page-clientes .toolbar select{
+  width:100% !important;
+  min-width:0 !important;
+  height:42px !important;
+  border:1px solid rgba(148,163,184,.32) !important;
+  border-radius:12px !important;
+  background:#fff !important;
+  padding:0 14px !important;
+  color:var(--cli-ink) !important;
+  font-weight:650 !important;
+  font-size:13px !important;
+  outline:none !important;
+  box-shadow:0 1px 0 rgba(15,23,42,.03) inset !important;
+  transition:border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+#page-clientes .toolbar input:focus,
+#page-clientes .toolbar select:focus{
+  border-color:var(--cli-primary) !important;
+  box-shadow:0 0 0 4px color-mix(in srgb, var(--cli-primary) 14%, transparent) !important;
+}
+#page-clientes .toolbar .btn,
+#page-clientes .toolbar button{
+  height:42px !important;
+  white-space:nowrap;
+  border-radius:12px !important;
+  padding:0 18px !important;
+  font-weight:850 !important;
+  box-shadow:0 12px 28px color-mix(in srgb, var(--cli-primary) 22%, transparent) !important;
+  background:linear-gradient(135deg,var(--cli-primary),var(--cli-primary-2)) !important;
+  color:#fff !important;
+  border:0 !important;
+  transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+#page-clientes .toolbar .btn:hover,
+#page-clientes .toolbar button:hover{
+  transform:translateY(-1px);
+  filter:saturate(1.05);
+  box-shadow:0 16px 34px color-mix(in srgb, var(--cli-primary) 30%, transparent) !important;
+}
+#aniv-banner{
+  margin:0 !important;
+  border-radius:16px !important;
+  padding:10px 14px !important;
+  border:1px solid rgba(245,158,11,.28) !important;
+  background:linear-gradient(135deg,#fff7ed,#fffbeb) !important;
+  box-shadow:0 10px 24px rgba(245,158,11,.10) !important;
+}
+#page-clientes #cards-clientes.cards{
+  display:grid !important;
+  grid-template-columns:repeat(4,minmax(150px,1fr));
+  gap:10px !important;
+  margin:0 !important;
+}
+#page-clientes #cards-clientes .card{
+  min-width:0 !important;
+  padding:13px 14px !important;
+  border-radius:16px !important;
+  border:1px solid var(--cli-border) !important;
+  background:linear-gradient(135deg,#fff,#f8fafc) !important;
+  box-shadow:0 12px 28px rgba(15,23,42,.06) !important;
+  overflow:hidden;
+  position:relative;
+}
+#page-clientes #cards-clientes .card::after{
+  content:'';
+  position:absolute;
+  width:70px;height:70px;
+  right:-24px;top:-24px;
+  border-radius:999px;
+  background:color-mix(in srgb, var(--cli-primary) 10%, transparent);
+}
+#page-clientes #cards-clientes .card-label,
+#page-clientes #cards-clientes [class*="label"]{
+  color:var(--cli-muted) !important;
+  font-size:10px !important;
+  letter-spacing:.08em !important;
+  text-transform:uppercase !important;
+  font-weight:850 !important;
+}
+#page-clientes #cards-clientes .card-value,
+#page-clientes #cards-clientes [class*="value"]{
+  color:var(--cli-ink) !important;
+  font-size:22px !important;
+  line-height:1.05 !important;
+  font-weight:950 !important;
+  letter-spacing:-.04em !important;
+}
+#page-clientes .table-wrap{
+  min-height:0;
+  height:100%;
+  overflow:auto !important;
+  border:1px solid var(--cli-border) !important;
+  border-radius:18px !important;
+  background:var(--cli-card) !important;
+  box-shadow:var(--cli-shadow) !important;
+}
+#page-clientes .table-wrap table{
+  width:100% !important;
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  font-size:13px !important;
+}
+#page-clientes thead th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  height:42px !important;
+  padding:10px 14px !important;
+  background:linear-gradient(180deg,#fff,#f8fafc) !important;
+  color:#50627f !important;
+  font-size:10px !important;
+  text-transform:uppercase !important;
+  letter-spacing:.08em !important;
+  font-weight:900 !important;
+  border-bottom:1px solid var(--cli-border) !important;
+  white-space:nowrap;
+}
+#page-clientes tbody td{
+  padding:12px 14px !important;
+  border-bottom:1px solid rgba(226,232,240,.84) !important;
+  vertical-align:middle !important;
+  color:#24324b !important;
+  background:rgba(255,255,255,.82);
+}
+#page-clientes tbody tr{
+  transition:background .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+#page-clientes tbody tr:hover td{
+  background:linear-gradient(90deg, color-mix(in srgb, var(--cli-primary) 5%, #fff), #fff) !important;
+}
+#page-clientes tbody td:nth-child(2){
+  color:var(--cli-ink) !important;
+  font-weight:900 !important;
+  letter-spacing:-.015em;
+}
+#page-clientes tbody td:nth-child(3){
+  color:#047857 !important;
+  font-weight:800 !important;
+}
+#page-clientes tbody td:nth-child(4){
+  max-width:340px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  color:#64748b !important;
+}
+#page-clientes tbody td:nth-child(5),
+#page-clientes tbody td:nth-child(6){
+  white-space:nowrap;
+  color:#475569 !important;
+  font-weight:700 !important;
+}
+#page-clientes tbody td:last-child{
+  text-align:right;
+  white-space:nowrap;
+}
+#page-clientes tbody td:last-child button,
+#page-clientes tbody td:last-child .btn,
+#page-clientes tbody td:last-child a{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:32px;
+  border-radius:10px !important;
+  border:1px solid rgba(148,163,184,.28) !important;
+  background:#fff !important;
+  color:#334155 !important;
+  font-weight:800 !important;
+  padding:6px 10px !important;
+  margin-left:4px;
+  box-shadow:0 4px 10px rgba(15,23,42,.04);
+}
+#page-clientes tbody td:last-child button:hover,
+#page-clientes tbody td:last-child .btn:hover,
+#page-clientes tbody td:last-child a:hover{
+  border-color:var(--cli-primary) !important;
+  color:var(--cli-primary) !important;
+  transform:translateY(-1px);
+}
+#page-clientes .empty{
+  padding:34px !important;
+  color:#64748b !important;
+  font-weight:700;
+}
+@media (max-width: 1100px){
+  #page-clientes{height:auto;overflow:visible;min-height:0;}
+  #page-clientes .toolbar{grid-template-columns:1fr 1fr;}
+  #page-clientes .toolbar .btn,#page-clientes .toolbar button{grid-column:1/-1;}
+  #page-clientes #cards-clientes.cards{grid-template-columns:repeat(2,minmax(0,1fr));}
+  #page-clientes .table-wrap{max-height:60vh;}
+}
+@media (max-width: 720px){
+  #page-clientes::before{font-size:20px;margin-left:2px;}
+  #page-clientes .toolbar{grid-template-columns:1fr;padding:12px;}
+  #page-clientes #cards-clientes.cards{grid-template-columns:1fr;}
+  #page-clientes .table-wrap{border-radius:14px !important;}
+  #page-clientes .table-wrap table{min-width:760px;}
+}
+</style>
+
 </head>
 <body>
 
