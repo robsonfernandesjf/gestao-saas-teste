@@ -580,6 +580,553 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js" defer></script>
+
+
+<!-- =========================================================
+     LEGADO ERP UI 2.0 · TEMA CLEAN COLORIDO
+     Aplicação visual segura: não altera IDs nem funções JS.
+     ========================================================= -->
+<style id="legado-ui-clean-colorido-v2">
+  /* Fonte moderna com fallback seguro */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  :root {
+    /* Mantém compatibilidade com o painel multi-tenant usando as variáveis existentes */
+    --bg: #F8FAFC;
+    --surface: #FFFFFF;
+    --surface-2: #F1F5F9;
+    --border: #E2E8F0;
+    --border-soft: #EEF2F7;
+    --text: #0F172A;
+    --muted: #64748B;
+
+    --accent: #C2185B;
+    --accent-light: #FCE7F3;
+    --accent-soft: #FFF1F7;
+    --accent2: #7C3AED;
+    --accent2-light: #F3E8FF;
+
+    --success: #16A34A;
+    --success-light: #DCFCE7;
+    --danger: #DC2626;
+    --danger-light: #FEE2E2;
+    --warn: #F59E0B;
+    --warn-light: #FEF3C7;
+    --info: #2563EB;
+    --info-light: #DBEAFE;
+
+    --radius: 16px;
+    --radius-sm: 10px;
+    --radius-lg: 22px;
+    --shadow: 0 10px 30px rgba(15, 23, 42, .07);
+    --shadow-soft: 0 4px 16px rgba(15, 23, 42, .05);
+    --shadow-card: 0 12px 34px rgba(15, 23, 42, .075);
+    --sidebar-w: 276px;
+    --topbar-h: 78px;
+  }
+
+  * { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
+  html, body { width: 100%; min-height: 100%; background: var(--bg) !important; }
+  body {
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+    color: var(--text) !important;
+    letter-spacing: -.01em;
+  }
+
+  /* ===== TOPO ===== */
+  body > header {
+    position: fixed !important;
+    top: 0; left: var(--sidebar-w); right: 0;
+    height: var(--topbar-h) !important;
+    padding: 0 28px !important;
+    z-index: 120 !important;
+    background: rgba(255,255,255,.92) !important;
+    backdrop-filter: blur(18px);
+    color: var(--text) !important;
+    border-bottom: 1px solid var(--border) !important;
+    box-shadow: none !important;
+  }
+  body > header h1,
+  body > header img { display: none !important; }
+  body > header > div:first-child::before {
+    content: '☰';
+    width: 42px; height: 42px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 14px;
+    background: var(--surface);
+    color: var(--muted); font-size: 20px;
+    box-shadow: var(--shadow-soft);
+  }
+  body > header > div:first-child::after {
+    content: 'Pesquisar (Ctrl + K)';
+    min-width: 380px; height: 44px;
+    margin-left: 22px; padding: 0 18px 0 46px;
+    display: inline-flex; align-items: center;
+    border: 1px solid var(--border); border-radius: 15px;
+    background: linear-gradient(180deg, #FFFFFF, #F8FAFC);
+    color: #94A3B8; font-size: 14px; font-weight: 500;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+    position: relative;
+  }
+  body > header > div:first-child { position: relative; display:flex; align-items:center; }
+  body > header > div:first-child span { display:none; }
+  body > header > div:first-child::before { flex: 0 0 auto; }
+  body > header > div:last-child {
+    display: flex !important; align-items: center; gap: 14px !important;
+    margin-left: auto;
+  }
+  #header-user-nome {
+    color: var(--text) !important; font-size: 14px !important; font-weight: 700 !important;
+  }
+  #header-user-role {
+    background: var(--accent2-light); color: var(--accent2) !important;
+    border-radius: 999px; padding: 3px 8px; font-size: 10px !important;
+    font-weight: 800 !important; text-transform: uppercase;
+  }
+  #data-hora { color: var(--muted) !important; font-size: 12px !important; }
+  .btn-logout {
+    border: 1px solid var(--border) !important; background: #fff !important;
+    color: var(--danger) !important; border-radius: 12px !important;
+    height: 38px; padding: 0 13px !important; font-weight: 700 !important;
+  }
+
+  /* ===== SIDEBAR ===== */
+  #main-nav {
+    position: fixed !important;
+    top: 0; left: 0; bottom: 0;
+    width: var(--sidebar-w) !important;
+    z-index: 130 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    padding: 98px 18px 22px !important;
+    background: rgba(255,255,255,.96) !important;
+    border-right: 1px solid var(--border) !important;
+    border-bottom: none !important;
+    box-shadow: 8px 0 30px rgba(15,23,42,.03) !important;
+    overflow-y: auto;
+  }
+  #main-nav::before {
+    content: 'VL\A Vitrine Legado\A Gestão Empresarial';
+    white-space: pre;
+    position: fixed;
+    left: 20px; top: 18px;
+    width: 230px; height: 54px;
+    display: grid;
+    grid-template-columns: 50px 1fr;
+    grid-template-rows: 28px 18px;
+    column-gap: 12px;
+    align-items: center;
+    font-weight: 900;
+    color: var(--text);
+    line-height: 1.1;
+    pointer-events: none;
+  }
+  #main-nav::after {
+    content: 'Recolher menu';
+    margin-top: auto;
+    height: 48px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 14px;
+    color: var(--muted); font-weight: 700; font-size: 13px;
+    background: #fff;
+  }
+  #main-nav button {
+    width: 100% !important;
+    min-height: 48px !important;
+    padding: 0 16px !important;
+    border: none !important;
+    border-radius: 14px !important;
+    background: transparent !important;
+    color: #334155 !important;
+    font-size: 14px !important;
+    font-weight: 650 !important;
+    display: flex !important; align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    text-align: left !important;
+    transition: .18s ease !important;
+    border-bottom: none !important;
+  }
+  #main-nav button:hover {
+    background: #F1F5F9 !important;
+    transform: translateX(2px);
+  }
+  #main-nav button.active {
+    background: linear-gradient(135deg, var(--accent-light), #F8E7FF) !important;
+    color: var(--accent) !important;
+    box-shadow: inset 4px 0 0 var(--accent), 0 8px 20px rgba(194,24,91,.08) !important;
+  }
+
+  /* marca visual quadrada na sidebar */
+  #main-nav + #nav-overlay::before {
+    content: 'VL';
+    position: fixed;
+    top: 18px; left: 20px;
+    width: 50px; height: 50px;
+    z-index: 140;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--accent), #9F1239);
+    color: #fff; font-size: 20px; font-weight: 900;
+    border-radius: 14px;
+    box-shadow: 0 10px 25px rgba(194,24,91,.22);
+    pointer-events: none;
+  }
+
+  /* ===== CONTEÚDO ===== */
+  #banner-licenca-vencendo {
+    position: fixed !important;
+    top: var(--topbar-h); left: var(--sidebar-w); right: 0;
+    z-index: 100 !important;
+    background: linear-gradient(135deg, #F59E0B, #D97706) !important;
+    border: none !important;
+  }
+  main, #app-main {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: calc(var(--topbar-h) + 34px) 32px 58px calc(var(--sidebar-w) + 32px) !important;
+    background: radial-gradient(circle at top left, rgba(194,24,91,.04), transparent 38%), var(--bg) !important;
+    min-height: 100vh;
+  }
+  .page { animation: legadoFadeIn .18s ease; }
+  @keyframes legadoFadeIn { from { opacity:0; transform: translateY(4px); } to { opacity:1; transform:none; } }
+
+  .section-title {
+    font-size: 28px !important;
+    line-height: 1.15;
+    color: var(--text) !important;
+    font-weight: 900 !important;
+    letter-spacing: -.04em !important;
+    text-transform: none !important;
+    border: none !important;
+    margin: 0 0 22px !important;
+    padding: 0 !important;
+  }
+  .section-title::after {
+    content: 'Organize, acompanhe e finalize suas operações com agilidade.';
+    display: block;
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  /* ===== COMPONENTES GERAIS ===== */
+  .card, .stat-card, .chart-card, .panel, .modal-box,
+  .toolbar, .table-wrap, .pdv-busca-card, .pdv-col-direita,
+  .pdv-carrinho-card, .pdv-carrinho-tabela,
+  #caixa-widget-aberto, #caixa-widget-fechado {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    background: rgba(255,255,255,.94) !important;
+    box-shadow: var(--shadow-card) !important;
+  }
+  .card, .stat-card { padding: 20px !important; }
+  .card-label { color: var(--muted) !important; font-weight: 800 !important; letter-spacing: .05em !important; }
+  .card-value { color: var(--text) !important; font-weight: 900 !important; }
+
+  .btn, button.btn, .btn-primary, .btn-secondary, .btn-outline,
+  input[type='button'], input[type='submit'] {
+    border-radius: 13px !important;
+    min-height: 40px;
+    font-weight: 800 !important;
+    transition: .18s ease !important;
+  }
+  .btn:hover, button:hover { transform: translateY(-1px); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #E11D74) !important;
+    border-color: transparent !important; color: #fff !important;
+    box-shadow: 0 10px 22px rgba(194,24,91,.18) !important;
+  }
+  .btn-secondary {
+    background: linear-gradient(135deg, #0F172A, #334155) !important;
+    color: #fff !important; border-color: transparent !important;
+  }
+  .btn-outline {
+    background: #fff !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+  }
+
+  input, select, textarea {
+    border: 1px solid var(--border) !important;
+    border-radius: 13px !important;
+    background: #fff !important;
+    color: var(--text) !important;
+    min-height: 42px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.9) !important;
+    transition: border-color .15s ease, box-shadow .15s ease !important;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none !important;
+    border-color: color-mix(in srgb, var(--accent) 48%, #fff) !important;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-light) 74%, transparent) !important;
+  }
+  label { color: #334155 !important; font-weight: 750 !important; }
+
+  table { border-collapse: separate !important; border-spacing: 0 !important; }
+  th {
+    background: #F8FAFC !important;
+    color: #64748B !important;
+    font-size: 11px !important;
+    letter-spacing: .05em !important;
+    font-weight: 900 !important;
+    border-bottom: 1px solid var(--border) !important;
+  }
+  td { border-bottom: 1px solid var(--border-soft) !important; }
+  tr:hover td { background: #FBFDFF !important; }
+
+  /* ===== REGISTRAR VENDA: CLEAN COLORIDO ===== */
+  #page-vendas .section-title::after { content: 'Adicione produtos ao carrinho e finalize a venda.'; }
+
+  #caixa-widget-aberto {
+    display: flex !important;
+    min-height: 76px;
+    padding: 16px 22px !important;
+    background: linear-gradient(135deg, #F0FDF4, #FFFFFF) !important;
+    border-color: #BBF7D0 !important;
+    color: var(--text) !important;
+  }
+  #caixa-widget-aberto > span:first-child {
+    background: var(--success-light);
+    color: #15803D !important;
+    border-radius: 999px;
+    padding: 10px 16px;
+    font-weight: 900 !important;
+  }
+  #caixa-widget-info { color: #475569 !important; font-weight: 550; }
+  #caixa-widget-aberto .btn-outline { min-width: 132px; }
+  #caixa-widget-aberto .btn-secondary {
+    background: #FFF1F2 !important;
+    color: var(--danger) !important;
+    border: 1px solid #FECDD3 !important;
+    box-shadow: none !important;
+  }
+
+  .pdv-layout {
+    display: grid !important;
+    grid-template-columns: minmax(560px, 1fr) minmax(360px, 390px) minmax(250px, 310px) !important;
+    gap: 18px !important;
+    align-items: start !important;
+  }
+  .pdv-col-esquerda {
+    max-height: none !important;
+    overflow: visible !important;
+    padding-right: 0 !important;
+    min-width: 0 !important;
+  }
+  .pdv-col-direita {
+    position: sticky !important;
+    top: calc(var(--topbar-h) + 18px) !important;
+    padding: 22px !important;
+    max-height: calc(100vh - var(--topbar-h) - 38px) !important;
+    overflow-y: auto !important;
+  }
+  .pdv-layout::after {
+    content: 'TOTAL DA VENDA\A R$ 0,00\A\A A RECEBER    R$ 0,00\A\A TROCO          R$ 0,00\A\A🛒  Finalizar Venda\A F5 - Finalizar venda';
+    white-space: pre;
+    display: block;
+    min-height: 560px;
+    padding: 190px 22px 22px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: rgba(255,255,255,.94);
+    box-shadow: var(--shadow-card);
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.55;
+    font-weight: 800;
+    position: sticky;
+    top: calc(var(--topbar-h) + 18px);
+    align-self: start;
+  }
+  /* quando o resumo real existir, ele já continua na coluna de pagamento; o card extra é vitrine visual sem interferir na lógica */
+  .pdv-layout::after { color: #64748B; }
+
+  .pdv-busca-card {
+    padding: 24px !important;
+    margin-bottom: 16px !important;
+  }
+  .pdv-busca-card label {
+    display: block !important;
+    color: var(--text) !important;
+    font-size: 13px !important;
+    text-transform: uppercase !important;
+    letter-spacing: .04em !important;
+    margin-bottom: 12px !important;
+    font-weight: 900 !important;
+  }
+  #busca-venda {
+    width: 100% !important;
+    min-height: 60px !important;
+    padding: 0 56px 0 54px !important;
+    font-size: 16px !important;
+    border-radius: 15px !important;
+    border-color: #CBD5E1 !important;
+    background: linear-gradient(180deg, #fff, #FAFBFF) !important;
+  }
+  .pdv-busca-card::after {
+    content: 'Todos   Roupas   Calçados   Acessórios   Outros';
+    display: block;
+    margin-top: 16px;
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 850;
+    word-spacing: 18px;
+  }
+
+  .pdv-empty-state {
+    min-height: 185px !important;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: var(--muted) !important;
+    margin: 0 0 16px !important;
+  }
+  .pdv-empty-state .icon {
+    width: 76px; height: 76px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-light), #F3E8FF);
+    color: var(--accent);
+    opacity: 1 !important;
+    font-size: 34px !important;
+  }
+  .pdv-carrinho-tabela {
+    min-height: 250px;
+    margin-top: 14px !important;
+  }
+  .pdv-carrinho-tabela-head {
+    background: #F8FAFC !important;
+    padding: 16px 18px !important;
+    color: #64748B !important;
+  }
+  .pdv-carrinho-vazio {
+    min-height: 165px;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+  }
+  .pdv-carrinho-vazio::before {
+    content: '🛍';
+    width: 62px; height: 62px;
+    margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: #EFF6FF;
+    color: var(--info);
+    font-size: 28px;
+  }
+
+  .pdv-col-direita .form-row { margin-bottom: 15px !important; }
+  .pdv-col-direita input, .pdv-col-direita select { min-height: 48px !important; }
+  .pdv-pagamento-label {
+    color: var(--text) !important;
+    font-weight: 900 !important;
+    margin-top: 18px !important;
+  }
+  .pdv-pagamento-grid { gap: 10px !important; }
+  .pdv-pag-btn {
+    min-height: 58px !important;
+    border-radius: 14px !important;
+    background: #fff !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+    font-weight: 850 !important;
+    box-shadow: 0 2px 8px rgba(15,23,42,.03) !important;
+  }
+  .pdv-pag-btn:nth-child(1) { background: #ECFDF5 !important; color:#047857 !important; border-color:#BBF7D0 !important; }
+  .pdv-pag-btn:nth-child(2) { background: #F0FDFA !important; color:#0F766E !important; border-color:#CCFBF1 !important; }
+  .pdv-pag-btn:nth-child(3) { background: #EFF6FF !important; color:#1D4ED8 !important; border-color:#BFDBFE !important; }
+  .pdv-pag-btn:nth-child(4) { background: #F5F3FF !important; color:#6D28D9 !important; border-color:#DDD6FE !important; }
+  .pdv-pag-btn:nth-child(5) { background: #F3E8FF !important; color:#7E22CE !important; border-color:#E9D5FF !important; }
+  .pdv-pag-btn:nth-child(6) { background: #FFF7ED !important; color:#C2410C !important; border-color:#FED7AA !important; }
+  .pdv-pag-btn.ativo {
+    background: linear-gradient(135deg, var(--success), #22C55E) !important;
+    color: #fff !important;
+    border-color: transparent !important;
+    box-shadow: 0 10px 22px rgba(34,197,94,.22) !important;
+  }
+  .pdv-forma-selecionada {
+    background: #F8FAFC !important;
+    border-radius: 14px !important;
+    padding: 14px 16px !important;
+  }
+  .pdv-forma-selecionada strong { color: var(--text) !important; }
+  .pdv-resumo-lateral {
+    background: linear-gradient(135deg, #ECFDF5, #EFF6FF) !important;
+    border: 1px solid #D1FAE5 !important;
+    border-radius: 16px !important;
+  }
+  .pdv-resumo-lateral .linha .valor-total {
+    color: var(--success) !important;
+    font-size: 30px !important;
+  }
+  .pdv-btn-finalizar {
+    background: linear-gradient(135deg, var(--success), #22C55E) !important;
+    border-radius: 15px !important;
+    min-height: 64px !important;
+    box-shadow: 0 15px 30px rgba(22,163,74,.25) !important;
+  }
+  .pdv-btn-limpar {
+    background: #FFF1F2 !important;
+    color: var(--danger) !important;
+    border-color: #FECDD3 !important;
+    border-radius: 14px !important;
+    min-height: 54px !important;
+  }
+
+  /* cores agradáveis para abas e chips */
+  .cat-tabs, .tabs, .toolbar { gap: 10px !important; }
+  .cat-tab, .tab-btn {
+    border-radius: 999px !important;
+    border: 1px solid var(--border) !important;
+    background: #fff !important;
+    color: var(--muted) !important;
+    font-weight: 800 !important;
+  }
+  .cat-tab.active, .tab-btn.active {
+    background: var(--accent-light) !important;
+    color: var(--accent) !important;
+    border-color: transparent !important;
+  }
+
+  /* ===== FINANCEIRO / DASHBOARD ===== */
+  #page-financeiro .card:nth-child(1), #page-dashboard .card:nth-child(1) { background: linear-gradient(135deg,#FFFFFF,#FDF2F8) !important; }
+  #page-financeiro .card:nth-child(2), #page-dashboard .card:nth-child(2) { background: linear-gradient(135deg,#FFFFFF,#ECFDF5) !important; }
+  #page-financeiro .card:nth-child(3), #page-dashboard .card:nth-child(3) { background: linear-gradient(135deg,#FFFFFF,#EFF6FF) !important; }
+  #page-financeiro .card:nth-child(4), #page-dashboard .card:nth-child(4) { background: linear-gradient(135deg,#FFFFFF,#FFF7ED) !important; }
+
+  /* ===== RESPONSIVO ===== */
+  @media (max-width: 1420px) {
+    .pdv-layout { grid-template-columns: minmax(520px,1fr) 380px !important; }
+    .pdv-layout::after { display: none !important; }
+  }
+  @media (max-width: 1120px) {
+    :root { --sidebar-w: 92px; }
+    #main-nav { width: var(--sidebar-w) !important; padding: 96px 10px 20px !important; }
+    #main-nav button { justify-content: center !important; font-size: 0 !important; padding: 0 !important; }
+    #main-nav button::first-letter { font-size: 18px; }
+    #main-nav::before { content: 'VL'; width: 52px; overflow:hidden; }
+    #main-nav::after { content: '‹'; font-size: 20px; }
+    #main-nav + #nav-overlay::before { left: 20px; }
+    body > header { left: var(--sidebar-w); }
+    body > header > div:first-child::after { min-width: 260px; }
+    .pdv-layout { grid-template-columns: 1fr !important; }
+    .pdv-col-direita { position: static !important; max-height: none !important; }
+  }
+  @media (max-width: 760px) {
+    :root { --sidebar-w: 0px; --topbar-h: 64px; }
+    #main-nav { transform: translateX(-105%); }
+    body > header { left: 0; padding: 0 14px !important; }
+    body > header > div:first-child::after { display:none; }
+    main, #app-main { padding: calc(var(--topbar-h) + 20px) 14px 50px !important; }
+    .section-title { font-size: 24px !important; }
+  }
+
+  @media print {
+    body > header, #main-nav, #banner-licenca-vencendo { display:none !important; }
+    main, #app-main { padding: 0 !important; }
+  }
+</style>
+
 </head>
 <body>
 
