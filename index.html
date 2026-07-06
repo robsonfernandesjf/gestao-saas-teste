@@ -8596,8 +8596,17 @@ function validarCest(valor) {
 
 // ===== SUB-ABAS DA PÁGINA ESTOQUE (Lista de Produtos / Lançamento de Nota) =====
 function mostrarSubEstoque(sub) {
-  document.getElementById('subestoque-lista').style.display = sub === 'lista' ? 'block' : 'none';
-  document.getElementById('subestoque-lancamento').style.display = sub === 'lancamento' ? 'block' : 'none';
+  // Usa setProperty com 'important' para garantir que sobrescreve
+  // o display:grid!important que o CSS aplica no subestoque-lista
+  const elLista = document.getElementById('subestoque-lista');
+  const elLanc  = document.getElementById('subestoque-lancamento');
+  if (sub === 'lista') {
+    elLista.style.setProperty('display', 'grid', 'important');
+    elLanc.style.setProperty('display', 'none', 'important');
+  } else {
+    elLista.style.setProperty('display', 'none', 'important');
+    elLanc.style.setProperty('display', 'block', 'important');
+  }
   document.querySelectorAll('#estoque-subtabs .cat-tab').forEach(t => t.classList.remove('active'));
   const idx = ['lista','lancamento'].indexOf(sub);
   const tabs = document.querySelectorAll('#estoque-subtabs .cat-tab');
