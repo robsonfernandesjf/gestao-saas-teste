@@ -1001,6 +1001,7 @@
     #header-user-nome,#data-hora{display:none!important;}
     #header-user-role{font-size:9px!important;padding:3px 7px!important;}
     .btn-logout{display:none!important;}
+    .btn-logout-mobile{display:block!important;}
     .btn-menu-mobile{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:42px!important;height:42px!important;border-radius:14px!important;border:1px solid var(--vl-border)!important;background:#fff!important;color:var(--vl-text)!important;box-shadow:var(--vl-soft-shadow)!important;}
     #main-nav{top:var(--vl-topbar-h)!important;left:0!important;bottom:0!important;width:286px!important;transform:translateX(-106%)!important;transition:transform .22s ease!important;z-index:1000!important;padding:16px!important;box-shadow:18px 0 46px rgba(15,23,42,.20)!important;}
     #main-nav.open{transform:translateX(0)!important;}
@@ -1265,6 +1266,7 @@
     body #header-user-nome,body #data-hora{display:none!important;}
     body #header-user-role{font-size:9px!important;padding:3px 7px!important;}
     body .btn-logout{display:none!important;}
+    body .btn-logout-mobile{display:block!important;}
     body .btn-menu-mobile{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:42px!important;height:42px!important;border-radius:12px!important;border:1px solid var(--ui23-border)!important;background:#fff!important;color:var(--ui23-text)!important;font-size:20px!important;}
     body #main-nav{
       top:var(--ui23-topbar-h)!important;
@@ -2026,8 +2028,8 @@
 #page-vendas .pdv-resumo-lateral{
   flex: 1 1 auto !important;
   min-height: 92px !important;
-  max-height: 190px !important;
-  overflow: auto !important;
+  max-height: 260px !important;
+  overflow: hidden !important;
   padding: 12px !important;
   border-radius: 18px !important;
   background: linear-gradient(135deg, rgba(255,247,237,.92), rgba(253,242,248,.92)) !important;
@@ -4039,6 +4041,7 @@ button.selected,
   <button onclick="showPage('financeiro')">💰 Financeiro</button>
   <button onclick="showPage('trocas')">🔄 Trocas</button>
   <button id="nav-empresa" onclick="showPage('empresa'); carregarDadosEmpresa();" style="display:none;">⚙️ Config. Empresa</button>
+  <button class="btn-logout-mobile" onclick="fazerLogout()" style="display:none;margin-top:auto;color:var(--danger);border-color:var(--danger);">🚪 Sair</button>
 </nav>
 <div id="nav-overlay" onclick="toggleMenuMobile()"></div>
 
@@ -9146,7 +9149,6 @@ function renderCarrinho() {
   document.getElementById('carrinho-resumo').innerHTML = `
     <div class="linha"><span>Subtotal</span><span>${R(totalFat)}</span></div>
     ${desconto > 0 ? `<div class="linha"><span>Desconto</span><span style="color:var(--danger)">- ${R(desconto)}</span></div>` : ''}
-    <div class="linha lucro col-custo"><span>💰 Lucro previsto</span><span>${R(totalLucro)} (${pct(margemGeral)})</span></div>
     <div class="linha"><span>Total</span><span class="valor-total">${R(totalComDesconto)}</span></div>
   `;
 
