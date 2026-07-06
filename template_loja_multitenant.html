@@ -3437,7 +3437,7 @@ button.selected,
    LEGADO ERP — CLIENTES/FORNECEDORES PREMIUM V15
    Ajuste visual isolado, sem alterar IDs/funções JS.
    ========================================================= */
-#page-clientes{
+#page-clientes.active{
   --cli-primary: var(--accent, #d4145a);
   --cli-primary-2: #8b5cf6;
   --cli-ink: #06112b;
@@ -3448,7 +3448,7 @@ button.selected,
   --cli-shadow: 0 14px 38px rgba(15,23,42,.07);
   position: relative;
   display: grid;
-  grid-template-rows: auto auto minmax(0,1fr);
+  grid-template-rows: auto auto auto minmax(0,1fr);
   gap: 14px;
   height: calc(100vh - 138px);
   min-height: 560px;
