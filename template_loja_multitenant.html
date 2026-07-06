@@ -3031,7 +3031,14 @@ button.selected,
   position:relative;
 }
 #page-financeiro #cards-fin-unif .card::after{
-  content:none!important;
+  content:"";
+  position:absolute;
+  width:74px;
+  height:74px;
+  border-radius:999px;
+  right:-22px;
+  top:-22px;
+  background:linear-gradient(135deg,rgba(214,20,107,.11),rgba(147,51,234,.08));
 }
 #page-financeiro #cards-fin-unif .card-label{
   font-size:11px !important;
@@ -3539,7 +3546,12 @@ button.selected,
   position:relative;
 }
 #page-clientes #cards-clientes .card::after{
-  content:none!important;
+  content:'';
+  position:absolute;
+  width:70px;height:70px;
+  right:-24px;top:-24px;
+  border-radius:999px;
+  background:color-mix(in srgb, var(--cli-primary) 10%, transparent);
 }
 #page-clientes #cards-clientes .card-label,
 #page-clientes #cards-clientes [class*="label"]{
@@ -3797,7 +3809,12 @@ button.selected,
 
   #page-dashboard .exec-mini-card:after,
   #page-dashboard #cards-dashboard .card:after{
-    content:none!important;
+    content:'';
+    position:absolute;
+    right:-18px;top:-18px;
+    width:58px;height:58px;
+    border-radius:999px;
+    background:linear-gradient(135deg,rgba(236,72,153,.12),rgba(147,51,234,.08));
   }
 
   #page-dashboard .exec-mini-label,
@@ -7394,8 +7411,8 @@ function renderDashExecutivo() {
   const pctOrcamento = despesasAtuaisMes > 0 && fatAtual > 0 ? (despesasAtuaisMes/fatAtual*100) : 0;
 
   document.getElementById('exec-cards-row2').innerHTML = `
-    <div class="exec-mini-card"><div class="exec-mini-label">Quick Ratio</div><div class="exec-mini-value">${quickRatio.toFixed(2)}</div></div>
-    <div class="exec-mini-card"><div class="exec-mini-label">Current Ratio</div><div class="exec-mini-value">${currentRatio.toFixed(2)}</div></div>
+    <div class="exec-mini-card"><div class="exec-mini-label">Liquidez Seca</div><div class="exec-mini-value">${quickRatio.toFixed(2)}</div></div>
+    <div class="exec-mini-card"><div class="exec-mini-label">Liquidez Corrente</div><div class="exec-mini-value">${currentRatio.toFixed(2)}</div></div>
     <div class="exec-mini-card"><div class="exec-mini-label">% Despesa s/ Receita</div><div class="exec-mini-value" style="color:${pctOrcamento>50?'var(--danger)':'var(--success)'}">${pct(pctOrcamento)}</div></div>
     <div class="exec-mini-card"><div class="exec-mini-label">Peças em Estoque</div><div class="exec-mini-value">${totalEstoquePecas}</div></div>
     <div class="exec-mini-card"><div class="exec-mini-label">Valor em Estoque</div><div class="exec-mini-value" style="color:var(--accent2)">${R(valorEstoque)}</div></div>`;
