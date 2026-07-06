@@ -2659,43 +2659,59 @@ button.selected,
 
 <style id="modo-pdv-exclusivo-css">
 /* ===== MODO PDV EXCLUSIVO — usuário com acesso somente a Vendas ===== */
+
+/* Zera sidebar nas 3 camadas de CSS para o padding do main funcionar */
+body.modo-pdv-exclusivo {
+  --sidebar-w: 0px !important;
+  --vl-sidebar-w: 0px !important;
+  --ui23-sidebar-w: 0px !important;
+}
+
+/* Oculta nav lateral, hamburger e overlay */
 body.modo-pdv-exclusivo #main-nav { display: none !important; }
-body.modo-pdv-exclusivo #app-header .btn-menu-mobile { display: none !important; }
+body.modo-pdv-exclusivo .btn-menu-mobile { display: none !important; }
 body.modo-pdv-exclusivo #nav-overlay { display: none !important; }
+
+/* Oculta elementos desnecessários do header */
 body.modo-pdv-exclusivo #app-header h1 { display: none !important; }
 body.modo-pdv-exclusivo #app-header > div:first-child img { display: none !important; }
 body.modo-pdv-exclusivo #header-user-nome { display: none !important; }
 body.modo-pdv-exclusivo #data-hora { display: none !important; }
-/* Header vira uma barra fina só com nome do usuário, cargo e botão Sair */
+
+/* Oculta splash de pendência financeira — vendedor não tem acesso a financeiro */
+body.modo-pdv-exclusivo #modal-splash-contas { display: none !important; }
+
+/* Header compacto: só cargo + botão Sair */
 body.modo-pdv-exclusivo #app-header {
-  min-height: 48px !important;
-  padding: 0 16px !important;
+  left: 0 !important;
+  width: 100% !important;
+}
+body.modo-pdv-exclusivo #app-header > div:first-child {
+  display: none !important;
 }
 body.modo-pdv-exclusivo #app-header .header-user {
-  margin-left: auto !important;
+  margin-left: 0 !important;
+  width: 100% !important;
+  justify-content: flex-end !important;
 }
-/* Conteúdo principal sem margem do nav */
+
+/* Banner de licença: também reposicionar */
+body.modo-pdv-exclusivo #banner-licenca-vencendo {
+  left: 0 !important;
+}
+
+/* Conteúdo principal ocupa toda a largura */
 body.modo-pdv-exclusivo #app-main,
 body.modo-pdv-exclusivo main {
-  margin-left: 0 !important;
-  padding-left: 16px !important;
-  padding-right: 16px !important;
-}
-/* No modo PDV exclusivo, título da loja aparece no header como identificação */
-body.modo-pdv-exclusivo #app-header::before {
-  content: 'PDV';
-  font-size: 14px;
-  font-weight: 900;
-  color: var(--accent);
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  padding-left: 20px !important;
+  padding-right: 20px !important;
 }
 </style>
 
 <style id="cadastro-produto-compacto-real-v9">
 /* ===== CADASTRO DE PRODUTO — LAYOUT FULL-WIDTH 3 COLUNAS ===== */
 
-/* Wrapper externo: sem max-width, usa toda a largura disponível */
+/* Wrapper externo */
 #page-cadastro .cadastro-produto-layout {
   width: 100%;
   display: flex;
@@ -2745,120 +2761,97 @@ body.modo-pdv-exclusivo #app-header::before {
   margin: 0 !important;
 }
 
-/* Formulário principal: grid de 3 colunas no desktop */
+/* ---- Card principal: 3 colunas ---- */
 #page-cadastro .cadastro-produto-card {
   width: 100% !important;
-  padding: 20px 24px !important;
+  padding: 0 !important;
   border-radius: 18px !important;
   display: grid !important;
-  grid-template-columns: 1fr 1fr 1fr !important;
-  gap: 12px 20px !important;
-  align-items: start !important;
+  grid-template-columns: 1.1fr 1fr 0.9fr !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+  overflow: hidden !important;
 }
 
-/* Reset margens dos filhos diretos */
-#page-cadastro .cadastro-produto-card > *,
-#page-cadastro .cadastro-produto-card .form-row { margin-bottom: 0 !important; }
-#page-cadastro .cadastro-produto-card > .form-grid { gap: 12px !important; margin: 0 !important; }
+/* Colunas individuais */
+#page-cadastro .cad-col {
+  padding: 20px 22px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  border-right: 1px solid var(--border) !important;
+}
+#page-cadastro .cad-col:last-child {
+  border-right: none !important;
+}
 
-/* Campos menores */
-#page-cadastro .cadastro-produto-card label {
+/* Header de cada coluna */
+#page-cadastro .cad-col-header {
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .08em !important;
+  color: var(--accent) !important;
+  padding-bottom: 10px !important;
+  border-bottom: 2px solid var(--accent-light) !important;
+  margin-bottom: 2px !important;
+}
+
+/* Seções opcionais: largura total */
+#page-cadastro .cadastro-produto-card > #secao-catalogo-produto,
+#page-cadastro .cadastro-produto-card > #secao-grade-produto,
+#page-cadastro .cadastro-produto-card > #secao-fiscal-produto {
+  grid-column: 1 / -1 !important;
+  padding: 18px 22px !important;
+  border-top: 1px solid var(--border) !important;
+}
+
+/* Campos dentro das colunas */
+#page-cadastro .cad-col label {
   font-size: 11px !important;
   font-weight: 700 !important;
   letter-spacing: .05em !important;
-  margin-bottom: 5px !important;
+  margin-bottom: 4px !important;
   color: var(--muted) !important;
   text-transform: uppercase !important;
 }
-#page-cadastro .cadastro-produto-card input,
-#page-cadastro .cadastro-produto-card select {
+#page-cadastro .cad-col input,
+#page-cadastro .cad-col select {
   min-height: 40px !important;
   height: 40px !important;
   padding: 8px 12px !important;
   border-radius: 12px !important;
   font-size: 14px !important;
 }
-#page-cadastro .cadastro-produto-card textarea {
+#page-cadastro .cad-col textarea {
   height: 64px !important;
   min-height: 64px !important;
   border-radius: 12px !important;
   font-size: 14px !important;
 }
+#page-cadastro .cad-col .form-row { margin-bottom: 0 !important; }
+#page-cadastro .cad-col .form-grid { gap: 10px !important; margin: 0 !important; }
 
-/* ---- Posicionamento explícito das células ---- */
-/* Col 1 (esquerda): Identificação */
-#page-cadastro .cadastro-produto-card > .form-grid:nth-child(1) { /* Ref + EAN */
-  grid-column: 1 !important; grid-row: 1 !important;
-}
-#page-cadastro .cadastro-produto-card > .form-grid:nth-child(2) { /* Categoria (full span col 1) */
-  grid-column: 1 !important; grid-row: 2 !important;
-}
-#page-cadastro .cadastro-produto-card > .form-row:nth-child(3) { /* Nome do produto */
-  grid-column: 1 !important; grid-row: 3 !important;
-}
-#page-cadastro .cadastro-produto-card > .form-grid:nth-child(8) { /* Qtd comprada + Estoque inicial */
-  grid-column: 1 !important; grid-row: 4 !important;
-}
-#page-cadastro .cadastro-produto-card > .form-row:nth-child(10) { /* Fornecedor */
-  grid-column: 1 !important; grid-row: 5 !important;
+/* Calculadora de parcela */
+#page-cadastro .cad-calc-parcela {
+  flex-shrink: 0 !important;
 }
 
-/* Col 2 (centro): Precificação */
-#page-cadastro .cadastro-produto-card > .form-row:nth-child(4) { /* Custo */
-  grid-column: 2 !important; grid-row: 1 !important;
+/* Área de ação (coluna 3) */
+#page-cadastro .cad-acao-wrap {
+  margin-top: auto !important;
+  padding-top: 14px !important;
+  border-top: 1px solid var(--border) !important;
 }
-#page-cadastro .cadastro-produto-card > div:nth-child(5) { /* Calculadora parcela */
-  grid-column: 2 !important; grid-row: 2 / span 2 !important;
-  padding: 14px !important;
+#page-cadastro .cad-btn-salvar {
+  width: 100% !important;
+  padding: 13px !important;
+  font-size: 14px !important;
   border-radius: 14px !important;
-  background: linear-gradient(135deg,#fff0f7,#f7efff) !important;
-  border-color: #f3bfd7 !important;
-}
-#page-cadastro .cadastro-produto-card > div:nth-child(5) > div:nth-child(2) {
-  gap: 10px !important; margin-bottom: 0 !important;
-}
-#page-cadastro .cadastro-produto-card > .form-row:nth-child(6) { /* Preço de venda */
-  grid-column: 2 !important; grid-row: 4 !important;
-}
-#page-cadastro .cadastro-produto-card > #cad-margem-preview { /* Preview margem */
-  grid-column: 2 !important; grid-row: 5 !important;
-  margin: 0 !important;
 }
 
-/* Col 3 (direita): Estoque mínimo + ações */
-#page-cadastro .cadastro-produto-card > .form-row:nth-child(9) { /* Estoque mínimo */
-  grid-column: 3 !important; grid-row: 1 !important;
-}
-
-/* Botão salvar e mensagem: coluna 3 */
-#page-cadastro .cadastro-produto-card > button[onclick*="salvarCadastro"] {
-  grid-column: 3 !important; grid-row: 2 !important;
-  align-self: start !important;
-  margin-top: 4px !important;
-}
-#page-cadastro .cadastro-produto-card > #cad-msg {
-  grid-column: 3 !important; grid-row: 3 !important;
-}
-#page-cadastro .cadastro-produto-card > #btn-cad-etiqueta {
-  grid-column: 3 !important; grid-row: 4 !important;
-}
-
-/* Seções opcionais (catálogo, grade, fiscal): full width */
-#page-cadastro .cadastro-produto-card > #secao-catalogo-produto,
-#page-cadastro .cadastro-produto-card > #secao-grade-produto,
-#page-cadastro .cadastro-produto-card > #secao-fiscal-produto {
-  grid-column: 1 / -1 !important;
-  margin-top: 6px !important;
-  padding-top: 12px !important;
-}
-
-/* Fiscal interno: 3 colunas também */
-#page-cadastro #secao-fiscal-produto .form-grid {
-  grid-template-columns: 1fr 1fr !important;
-}
-
-/* Botões menores nos cards */
-#page-cadastro .cadastro-produto-card .btn,
+/* Botões nos cards */
+#page-cadastro .cad-col .btn,
 #page-cadastro .cadastro-import-card .btn {
   min-height: 40px !important;
   padding: 9px 16px !important;
@@ -2867,29 +2860,38 @@ body.modo-pdv-exclusivo #app-header::before {
   white-space: nowrap !important;
 }
 
-/* Tablet: 2 colunas */
+/* Fiscal interno */
+#page-cadastro #secao-fiscal-produto .form-grid {
+  grid-template-columns: 1fr 1fr !important;
+}
+
+/* Tablet: 2 colunas + col estoque embaixo */
 @media (max-width: 1023px) and (min-width: 640px) {
   #page-cadastro .cadastro-produto-card {
     grid-template-columns: 1fr 1fr !important;
   }
-  #page-cadastro .cadastro-produto-card > .form-row:nth-child(9),
-  #page-cadastro .cadastro-produto-card > button[onclick*="salvarCadastro"],
-  #page-cadastro .cadastro-produto-card > #cad-msg,
-  #page-cadastro .cadastro-produto-card > #btn-cad-etiqueta {
+  #page-cadastro .cad-col-estoque {
     grid-column: 1 / -1 !important;
-    grid-row: auto !important;
+    border-right: none !important;
+    border-top: 1px solid var(--border) !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 16px !important;
   }
+  #page-cadastro .cad-col-estoque > * { flex: 1 1 200px; }
+  #page-cadastro .cad-acao-wrap { flex: 0 0 100%; margin-top: 0; }
 }
 
-/* Mobile: 1 coluna, tudo sequencial */
+/* Mobile: 1 coluna */
 @media (max-width: 639px) {
   #page-cadastro .cadastro-produto-card {
     grid-template-columns: 1fr !important;
   }
-  #page-cadastro .cadastro-produto-card > * {
-    grid-column: 1 !important;
-    grid-row: auto !important;
+  #page-cadastro .cad-col {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
   }
+  #page-cadastro .cad-col:last-child { border-bottom: none !important; }
   #page-cadastro .cadastro-import-card {
     flex-direction: column !important;
     align-items: flex-start !important;
@@ -4660,79 +4662,87 @@ body.modo-pdv-exclusivo #app-header::before {
 
     <div class="section-title cadastro-form-title">Cadastrar novo produto</div>
     <div class="table-wrap cadastro-produto-card" style="padding:24px;">
-      <div class="form-grid">
-        <div class="form-row">
-          <label>Referência</label>
-          <input type="text" id="cad-ref" placeholder="Ex: EB97">
+
+      <!-- ===== COLUNA 1: IDENTIFICAÇÃO ===== -->
+      <div class="cad-col cad-col-ident">
+        <div class="cad-col-header">🏷️ Identificação</div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Referência</label>
+            <input type="text" id="cad-ref" placeholder="Ex: EB97">
+          </div>
+          <div class="form-row">
+            <label>Código de Barras (EAN-13)</label>
+            <input type="text" id="cad-ean13" placeholder="Ex: 7891234567895" inputmode="numeric" maxlength="13" oninput="this.value=this.value.replace(/\D/g,'')">
+          </div>
         </div>
         <div class="form-row">
-          <label>Código de Barras (EAN-13)</label>
-          <input type="text" id="cad-ean13" placeholder="Ex: 7891234567895" inputmode="numeric" maxlength="13" oninput="this.value=this.value.replace(/\D/g,'')">
-        </div>
-      </div>
-      <div class="form-grid">
-        <div class="form-row" style="grid-column:1 / -1;">
           <label>Categoria</label>
           <select id="cad-cat"></select>
         </div>
-      </div>
-      <div class="form-row">
-        <label>Nome do produto</label>
-        <input type="text" id="cad-nome" placeholder="Ex: Blusa modal básica Allory">
-      </div>
-
-      <!-- CUSTO -->
-      <div class="form-row">
-        <label>Custo (R$)</label>
-        <input type="text" inputmode="numeric" id="cad-custo" placeholder="0,00" oninput="mascaraMoeda(this);calcCadPreco()">
-      </div>
-
-      <!-- CALCULADORA DE PREÇO POR PARCELA -->
-      <div style="background:var(--accent-light);border:1px solid #D4C0B5;border-radius:var(--radius);padding:16px;margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--accent);margin-bottom:12px;">💡 Calcular preço por parcela</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;">
-          <div class="form-row" style="margin-bottom:0;">
-            <label>Valor da parcela (R$)</label>
-            <input type="text" inputmode="numeric" id="cad-parcela" placeholder="0,00" oninput="mascaraMoeda(this);calcCadPreco()">
-          </div>
-          <div class="form-row" style="margin-bottom:0;">
-            <label>Nº de parcelas</label>
-            <input type="number" id="cad-nparcelas" min="1" max="99" placeholder="Ex: 3" oninput="calcCadPreco()">
-          </div>
-        </div>
-        <div id="cad-parcela-preview" style="display:none;padding:10px 14px;background:var(--surface);border-radius:var(--radius);font-size:13px;border:1px solid #D4C0B5;"></div>
-      </div>
-
-      <!-- PREÇO DE VENDA (preenchido auto ou manual) -->
-      <div class="form-row">
-        <label>Preço de venda (R$) <span style="font-size:10px;color:var(--muted);font-weight:400;">— preenchido automaticamente ou edite manualmente</span></label>
-        <input type="text" inputmode="numeric" id="cad-preco" placeholder="0,00" oninput="mascaraMoeda(this);calcCadMargem()">
-      </div>
-
-      <!-- PREVIEW MARGEM -->
-      <div id="cad-margem-preview" style="display:none;padding:10px 14px;border-radius:var(--radius);font-size:13px;margin-bottom:14px;"></div>
-
-      <div class="form-grid">
         <div class="form-row">
-          <label>Qtd. comprada</label>
-          <input type="number" id="cad-cp" placeholder="0" oninput="autoPreencherEstoque()">
+          <label>Nome do produto</label>
+          <input type="text" id="cad-nome" placeholder="Ex: Blusa modal básica Allory">
         </div>
         <div class="form-row">
-          <label>Estoque inicial (opcional)</label>
-          <input type="number" id="cad-est" placeholder="0 — deixe em branco e lance a entrada depois em Estoque > Lançamento de Nota" oninput="_estoqueEditadoManualmente=true">
+          <label>Fornecedor (opcional)</label>
+          <select id="cad-fornecedor">
+            <option value="">— Nenhum —</option>
+          </select>
         </div>
       </div>
 
-      <div class="form-row">
-        <label>Estoque mínimo (alerta de reposição)</label>
-        <input type="number" id="cad-est-min" placeholder="0" min="0">
+      <!-- ===== COLUNA 2: PRECIFICAÇÃO ===== -->
+      <div class="cad-col cad-col-preco">
+        <div class="cad-col-header">💰 Precificação</div>
+        <div class="form-row">
+          <label>Custo (R$)</label>
+          <input type="text" inputmode="numeric" id="cad-custo" placeholder="0,00" oninput="mascaraMoeda(this);calcCadPreco()">
+        </div>
+        <!-- CALCULADORA DE PREÇO POR PARCELA -->
+        <div class="cad-calc-parcela" style="background:var(--accent-light);border:1px solid #D4C0B5;border-radius:var(--radius);padding:14px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--accent);margin-bottom:10px;">💡 Calcular por parcela</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">
+            <div class="form-row" style="margin-bottom:0;">
+              <label>Parcela (R$)</label>
+              <input type="text" inputmode="numeric" id="cad-parcela" placeholder="0,00" oninput="mascaraMoeda(this);calcCadPreco()">
+            </div>
+            <div class="form-row" style="margin-bottom:0;">
+              <label>Nº parcelas</label>
+              <input type="number" id="cad-nparcelas" min="1" max="99" placeholder="Ex: 3" oninput="calcCadPreco()">
+            </div>
+          </div>
+          <div id="cad-parcela-preview" style="display:none;padding:8px 12px;background:var(--surface);border-radius:var(--radius);font-size:13px;border:1px solid #D4C0B5;"></div>
+        </div>
+        <div class="form-row">
+          <label>Preço de venda (R$) <span style="font-size:10px;color:var(--muted);font-weight:400;">— auto ou manual</span></label>
+          <input type="text" inputmode="numeric" id="cad-preco" placeholder="0,00" oninput="mascaraMoeda(this);calcCadMargem()">
+        </div>
+        <div id="cad-margem-preview" style="display:none;padding:10px 14px;border-radius:var(--radius);font-size:13px;"></div>
       </div>
 
-      <div class="form-row">
-        <label>Fornecedor (opcional)</label>
-        <select id="cad-fornecedor">
-          <option value="">— Nenhum —</option>
-        </select>
+      <!-- ===== COLUNA 3: ESTOQUE + AÇÃO ===== -->
+      <div class="cad-col cad-col-estoque">
+        <div class="cad-col-header">📦 Estoque</div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Qtd. comprada</label>
+            <input type="number" id="cad-cp" placeholder="0" oninput="autoPreencherEstoque()">
+          </div>
+          <div class="form-row">
+            <label>Estoque inicial</label>
+            <input type="number" id="cad-est" placeholder="0" oninput="_estoqueEditadoManualmente=true">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Estoque mínimo (alerta de reposição)</label>
+          <input type="number" id="cad-est-min" placeholder="0" min="0">
+        </div>
+        <div class="cad-acao-wrap">
+          <button class="btn btn-primary cad-btn-salvar" onclick="salvarCadastro()">+ Adicionar ao Estoque</button>
+          <p id="cad-msg" style="margin-top:8px;font-size:13px;"></p>
+          <button id="btn-cad-etiqueta" style="display:none;margin-top:8px;" class="btn btn-outline btn-sm" onclick="abrirImpressaoEtiquetaDireta([_ultimoProdutoCadastradoRef])">🏷️ Imprimir Etiqueta</button>
+        </div>
       </div>
 
       <!-- SEÇÃO CATÁLOGO PÚBLICO — só aparece se loja.usa_catalogo = true -->
@@ -4873,9 +4883,7 @@ body.modo-pdv-exclusivo #app-header::before {
         </div>
       </div>
 
-      <button class="btn btn-primary" style="width:100%;padding:12px;" onclick="salvarCadastro()">+ Adicionar ao Estoque</button>
-      <p id="cad-msg" style="margin-top:10px;font-size:13px;"></p>
-      <button id="btn-cad-etiqueta" style="display:none;margin-top:8px;" class="btn btn-outline btn-sm" onclick="abrirImpressaoEtiquetaDireta([_ultimoProdutoCadastradoRef])">🏷️ Imprimir Etiqueta deste Produto</button>
+
     </div>
   </div>
 </div>
@@ -13246,6 +13254,12 @@ let _cpEditing = null;
 
 // ===== SPLASH: Contas a pagar vencidas OU vencendo hoje (avisa logo após o login) =====
 function verificarContasVencendoHoje() {
+  // Não exibir para usuários sem acesso ao módulo financeiro
+  const _usr = usuarioAtual();
+  if (_usr && _usr.perfil !== 'admin') {
+    const _mods = Array.isArray(_usr.modulos) ? _usr.modulos : (typeof _usr.modulos === 'string' ? JSON.parse(_usr.modulos||'[]') : []);
+    if (!_mods.includes('financeiro')) return;
+  }
   const hoje = new Date().toISOString().slice(0, 10);
   // Antes só pegava vencimento === hoje (perdia contas já vencidas). Agora pega tudo até hoje.
   const contas = getContasPagar()
