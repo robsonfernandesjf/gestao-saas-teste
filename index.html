@@ -6985,12 +6985,23 @@ function aplicarPermissoes(usuario) {
   const isAdmin  = usuario.perfil === 'admin';
   const modulos = Array.isArray(usuario.modulos) ? usuario.modulos : (typeof usuario.modulos === 'string' ? JSON.parse(usuario.modulos||'[]') : []);
 
-  // Modo PDV exclusivo: usuário 'user' com acesso somente a 'vendas'
-  const soVendas = !isMaster && !isAdmin && modulos.length === 1 && modulos[0] === 'vendas';
+  // Modo PDV exclusivo: usuário 'user' que tem 'vendas' e NÃO tem módulos gerenciais
+  const MODULOS_GERENCIAIS = ['dashboard','estoque','relatorios','financeiro','vendedores','cadastro','clientes'];
+  const soVendas = !isMaster && !isAdmin
+    && modulos.includes('vendas')
+    && !MODULOS_GERENCIAIS.some(m => modulos.includes(m));
+  const nav = document.getElementById('main-nav');
   if (soVendas) {
     document.body.classList.add('modo-pdv-exclusivo');
+    // Garantia via JS — forçar ocultação independente do CSS cascade
+    if (nav) nav.style.setProperty('display', 'none', 'important');
+    const navOverlay = document.getElementById('nav-overlay');
+    if (navOverlay) navOverlay.style.setProperty('display', 'none', 'important');
+    const btnHamb = document.querySelector('.btn-menu-mobile');
+    if (btnHamb) btnHamb.style.setProperty('display', 'none', 'important');
   } else {
     document.body.classList.remove('modo-pdv-exclusivo');
+    if (nav) nav.style.removeProperty('display');
   }
 
   // Aba usuários: só master e admin veem
