@@ -3915,6 +3915,33 @@ button.selected,
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js" defer></script>
+<style id="legado-logo-fix-final">
+  /* Correção final de posição do logo — reposiciona no topo da sidebar,
+     acima do "Dashboard", de forma definitiva (vence qualquer conflito
+     das camadas de CSS anteriores). */
+  @media (min-width: 769px) {
+    html body #app-header#app-header > div:first-child{
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 276px !important;
+      height: 122px !important;
+      z-index: 250 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      justify-content: center !important;
+      padding: 16px 18px !important;
+      background: #fff !important;
+      border-right: 1px solid var(--border) !important;
+      border-bottom: 1px solid var(--border) !important;
+      box-sizing: border-box !important;
+      margin: 0 !important;
+      overflow: hidden !important;
+    }
+    html body #main-nav#main-nav{ top: 122px !important; }
+  }
+</style>
 </head>
 <body>
 
@@ -6945,9 +6972,13 @@ function diasParaVencerLicenca(validade) {
 
 function checarAvisoVencimentoLicenca(lic) {
   const banner = document.getElementById('banner-licenca-vencendo');
-  if (!banner || !lic || !lic.validade) return;
-  const dias = diasParaVencerLicenca(lic.validade);
-  if (dias === null || dias < 0 || dias > 5) return; // já bloqueado (vencido) ou longe do vencimento
+  if (!banner) return;
+  const dias = lic && lic.validade ? diasParaVencerLicenca(lic.validade) : null;
+  // Fora da janela de aviso (sem validade, vencida/já bloqueada, ou longe do
+  // vencimento) — esconde explicitamente, não só deixa de mostrar. Sem isso,
+  // um banner mostrado numa sessão anterior (ex: durante teste) continuava
+  // preso na tela mesmo depois da licença voltar a ter uma data distante.
+  if (dias === null || dias < 0 || dias > 5) { banner.style.display = 'none'; return; }
   document.getElementById('banner-licenca-texto').textContent = dias === 0
     ? '⚠️ Sua assinatura vence hoje. Entre em contato para renovar e continuar usando o sistema sem interrupção.'
     : `⚠️ Sua assinatura vence em ${dias} dia${dias === 1 ? '' : 's'}. Entre em contato para renovar e continuar usando o sistema sem interrupção.`;
@@ -7105,13 +7136,13 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pagEl = document.getElementById('page-' + id);
   if (pagEl) pagEl.classList.add('active');
-  document.querySelectorAll('nav button').forEach((b,i) => {
-    b.classList.remove('active');
-    if (['dashboard','estoque','vendas','historico','cadastro','relatorios','clientes','financeiro','usuarios'][i] === id) b.classList.add('active');
-  });
-  // Match by onclick instead
+  // Marca o botão certo pelo onclick de verdade (não por posição na lista —
+  // uma lista fixa por índice quebra toda vez que um item novo é adicionado
+  // ao menu, como aconteceu quando "Vendedores" entrou e deslocou os
+  // seguintes, fazendo dois botões ficarem marcados ao mesmo tempo).
   if (id === 'cadastro') { aplicarFeatureFlagsUI(); }
   document.querySelectorAll('nav button').forEach(b => {
+    b.classList.remove('active');
     const m = (b.getAttribute('onclick')||'').match(/showPage\('(\w+)'\)/);
     if (m && m[1] === id) b.classList.add('active');
   });
@@ -15165,5 +15196,45 @@ atualizarHora();
   </div>
 </div>
 
+<script>
+  // Correção definitiva de posição do logo (vence qualquer conflito de CSS
+  // das camadas visuais anteriores, aplicando via JS com prioridade máxima).
+  function fixarPosicaoLogo() {
+    const el = document.querySelector('#app-header > div:first-child');
+    if (!el) return;
+    // Move o elemento de verdade pro final do <body> — ele estava preso
+    // dentro de um container flex (#app-header) que, por algum motivo,
+    // não deixa "position:fixed" funcionar direito nesse filho específico
+    // (o CSS computado dizia left:0, mas a caixa continuava renderizando
+    // deslocada). Tirando ele de dentro do flex, o fixed passa a funcionar
+    // normalmente, igual qualquer elemento solto no body.
+    if (el.parentElement && el.parentElement.id === 'app-header') {
+      document.body.insertBefore(el, document.body.firstChild);
+    }
+    if (window.innerWidth < 769) { el.style.cssText = ''; return; }
+    el.style.setProperty('position', 'fixed', 'important');
+    el.style.setProperty('top', '0', 'important');
+    el.style.setProperty('left', '0', 'important');
+    el.style.setProperty('width', '276px', 'important');
+    el.style.setProperty('height', '122px', 'important');
+    el.style.setProperty('z-index', '250', 'important');
+    el.style.setProperty('display', 'flex', 'important');
+    el.style.setProperty('flex-direction', 'column', 'important');
+    el.style.setProperty('align-items', 'flex-start', 'important');
+    el.style.setProperty('justify-content', 'center', 'important');
+    el.style.setProperty('padding', '16px 18px', 'important');
+    el.style.setProperty('background', '#fff', 'important');
+    el.style.setProperty('border-right', '1px solid var(--border)', 'important');
+    el.style.setProperty('border-bottom', '1px solid var(--border)', 'important');
+    el.style.setProperty('box-sizing', 'border-box', 'important');
+    el.style.setProperty('margin', '0', 'important');
+    el.style.setProperty('overflow', 'hidden', 'important');
+    const nav = document.getElementById('main-nav');
+    if (nav) nav.style.setProperty('top', '122px', 'important');
+  }
+  fixarPosicaoLogo();
+  window.addEventListener('resize', fixarPosicaoLogo);
+  document.addEventListener('DOMContentLoaded', fixarPosicaoLogo);
+</script>
 </body>
 </html>
