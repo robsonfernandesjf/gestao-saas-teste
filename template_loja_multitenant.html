@@ -2657,6 +2657,22 @@ button.selected,
 }
 </style>
 
+<style id="lancamento-nota-v2-css">
+/* ===== LANÇAMENTO DE NOTA V2 ===== */
+
+/* Mobile: empilhar colunas */
+@media (max-width: 900px) {
+  #lanc-aba-novo > div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+  #lanc-aba-novo > div > div:last-child {
+    position: static !important;
+  }
+  #subestoque-lancamento > div[style*="grid-template-columns:120px"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
 <style id="modo-pdv-exclusivo-css">
 /* ===== MODO PDV EXCLUSIVO — usuário com acesso somente a Vendas ===== */
 
@@ -4358,79 +4374,153 @@ body.modo-pdv-exclusivo main {
 
   <!-- SUB: LANÇAMENTO DE NOTA (XML + manual) -->
   <div id="subestoque-lancamento" style="display:none;">
-    <div style="max-width:680px;">
 
-      <!-- IMPORTAR XML NF-e (entrada de mercadoria) -->
-      <div id="secao-import-xml">
-        <div class="section-title" style="margin-bottom:8px;">🧾 Lançar Nota Fiscal (XML)</div>
-        <div class="table-wrap" style="padding:20px;margin-bottom:24px;">
-          <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
-            Importe o XML da NF-e recebida do fornecedor. O sistema lê os itens, dá entrada no estoque
-            (atualizando produtos existentes pela referência/EAN ou criando novos) e vincula a compra ao fornecedor.
-          </p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-            <input type="file" id="import-xml-input" accept=".xml" style="display:none;" onchange="handleImportXmlNFe(event)">
-            <button class="btn btn-primary" onclick="document.getElementById('import-xml-input').click()">📂 Escolher arquivo XML</button>
+    <!-- ABAS: Novo Lançamento | Histórico -->
+    <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0;">
+      <button id="lanc-tab-novo" onclick="trocarAbaLancamento('novo')"
+        style="padding:9px 20px;font-size:13px;font-weight:700;background:none;border:none;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent);margin-bottom:-2px;">
+        🧾 Novo Lançamento
+      </button>
+      <button id="lanc-tab-hist" onclick="trocarAbaLancamento('historico')"
+        style="padding:9px 20px;font-size:13px;font-weight:700;background:none;border:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;">
+        📋 Histórico de Notas
+      </button>
+    </div>
+
+    <!-- ===== ABA: NOVO LANÇAMENTO ===== -->
+    <div id="lanc-aba-novo">
+      <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;">
+
+        <!-- COLUNA ESQUERDA: cabeçalho + grade de itens -->
+        <div>
+
+          <!-- Cabeçalho da nota -->
+          <div class="table-wrap" style="padding:16px 20px;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);">📋 Cabeçalho da Nota</span>
+              <div style="display:flex;gap:8px;">
+                <input type="file" id="import-xml-input" accept=".xml" style="display:none;" onchange="handleImportXmlNFe(event)">
+                <button class="btn btn-sm" onclick="document.getElementById('import-xml-input').click()" title="Importar NF-e XML">
+                  📄 Importar XML
+                </button>
+              </div>
+            </div>
+            <div id="import-xml-status" style="font-size:13px;margin-bottom:10px;"></div>
+            <div id="import-xml-preview" style="margin-bottom:10px;"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+              <div class="form-row" style="margin:0;">
+                <label>Fornecedor</label>
+                <select id="man-fornecedor" style="height:38px;">
+                  <option value="">— Sem fornecedor —</option>
+                </select>
+              </div>
+              <div class="form-row" style="margin:0;">
+                <label>Nº da nota</label>
+                <input type="text" id="man-numero-nota" placeholder="Ex: 1234" style="height:38px;">
+              </div>
+              <div class="form-row" style="margin:0;">
+                <label>Data de entrada</label>
+                <input type="date" id="man-data-entrada" style="height:38px;">
+              </div>
+            </div>
           </div>
-          <div id="import-xml-status" style="margin-top:12px;font-size:13px;"></div>
-          <div id="import-xml-preview" style="margin-top:14px;"></div>
+
+          <!-- Grade de itens -->
+          <div class="table-wrap" style="padding:16px 20px;">
+            <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:12px;">📦 Itens da Nota</div>
+
+            <!-- Linha de adição rápida -->
+            <div style="display:grid;grid-template-columns:120px 1fr 80px 110px auto;gap:8px;align-items:end;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+              <div class="form-row" style="margin:0;">
+                <label style="font-size:10px;">Referência</label>
+                <input type="text" id="man-item-ref" placeholder="Ex: EB97" style="height:36px;font-size:13px;"
+                  oninput="autopreencherItemNotaManual()"
+                  onkeydown="if(event.key==='Enter'){document.getElementById('man-item-nome').focus();}">
+              </div>
+              <div class="form-row" style="margin:0;">
+                <label style="font-size:10px;">Produto</label>
+                <input type="text" id="man-item-nome" placeholder="Nome do produto" style="height:36px;font-size:13px;"
+                  onkeydown="if(event.key==='Enter'){document.getElementById('man-item-qtd').focus();}">
+              </div>
+              <div class="form-row" style="margin:0;">
+                <label style="font-size:10px;">Qtd.</label>
+                <input type="number" id="man-item-qtd" placeholder="0" min="1" style="height:36px;font-size:13px;"
+                  oninput="atualizarSubtotalItemNota()"
+                  onkeydown="if(event.key==='Enter'){document.getElementById('man-item-custo').focus();}">
+              </div>
+              <div class="form-row" style="margin:0;">
+                <label style="font-size:10px;">Custo unit. (R$)</label>
+                <input type="text" inputmode="numeric" id="man-item-custo" placeholder="0,00" style="height:36px;font-size:13px;"
+                  oninput="mascaraMoeda(this);atualizarSubtotalItemNota();"
+                  onkeydown="if(event.key==='Enter'){adicionarItemNotaManual();}">
+              </div>
+              <button type="button" class="btn btn-primary" style="height:36px;padding:0 14px;white-space:nowrap;align-self:end;"
+                onclick="adicionarItemNotaManual()">+ Adicionar</button>
+            </div>
+            <p id="man-item-ref-info" style="font-size:11px;color:var(--success);margin:-4px 0 8px;min-height:16px;"></p>
+            <p id="man-item-subtotal" style="font-size:11px;color:var(--muted);margin:-4px 0 8px;min-height:16px;"></p>
+
+            <!-- Tabela de itens adicionados -->
+            <div id="man-itens-lista"></div>
+          </div>
         </div>
-      </div>
 
-      <!-- LANÇAMENTO MANUAL DE NOTA (sem XML) -->
-      <div class="section-title" style="margin-bottom:8px;">✍️ Lançar Nota Manualmente</div>
-      <div class="table-wrap" style="padding:20px;margin-bottom:24px;">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
-          Não tem o XML em mãos? Lance a entrada de mercadoria manualmente, item por item. Fornecedor é opcional —
-          sem ele, fica registrado como lançamento genérico. Toda nota lançada aqui já gera automaticamente
-          a conta a pagar correspondente, pra alimentar o financeiro sem precisar cadastrar de novo em outra tela.
-        </p>
-        <div class="form-grid">
-          <div class="form-row">
-            <label>Fornecedor (opcional)</label>
-            <select id="man-fornecedor">
-              <option value="">— Lançamento genérico, sem fornecedor —</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <label>Nº da nota (opcional)</label>
-            <input type="text" id="man-numero-nota" placeholder="Ex: 1234">
+        <!-- COLUNA DIREITA: painel resumo fixo -->
+        <div style="position:sticky;top:80px;">
+          <div class="table-wrap" style="padding:18px;">
+            <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:14px;">📊 Resumo</div>
+
+            <div id="lanc-resumo-itens" style="margin-bottom:12px;font-size:13px;color:var(--muted);">
+              Nenhum item adicionado ainda.
+            </div>
+
+            <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:16px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-size:12px;color:var(--muted);">Itens</span>
+                <span id="lanc-resumo-qtd-itens" style="font-size:13px;font-weight:700;">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-size:12px;color:var(--muted);">Peças</span>
+                <span id="lanc-resumo-qtd-pecas" style="font-size:13px;font-weight:700;">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:14px;font-weight:700;">Total</span>
+                <span id="lanc-resumo-total" style="font-size:20px;font-weight:900;color:var(--accent);">R$ 0,00</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%;padding:13px;font-size:14px;border-radius:14px;"
+              onclick="abrirModalFinalizarNota()">✅ Lançar Nota</button>
+            <p id="man-nota-msg" style="margin-top:10px;font-size:12px;text-align:center;"></p>
           </div>
         </div>
 
-        <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:14px;">
-          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--accent);margin-bottom:10px;">Adicionar item</p>
-          <div class="form-grid">
-            <div class="form-row">
-              <label>Referência</label>
-              <input type="text" id="man-item-ref" placeholder="Ex: EB97" oninput="autopreencherItemNotaManual()">
-            </div>
-            <div class="form-row">
-              <label>Produto</label>
-              <input type="text" id="man-item-nome" placeholder="Ex: Blusa modal básica">
-            </div>
-          </div>
-          <p id="man-item-ref-info" style="font-size:11px;color:var(--success);margin:-6px 0 8px;"></p>
-          <div class="form-grid">
-            <div class="form-row">
-              <label>Quantidade</label>
-              <input type="number" id="man-item-qtd" placeholder="0" min="1" oninput="atualizarSubtotalItemNota()">
-            </div>
-            <div class="form-row">
-              <label>Custo unitário (R$)</label>
-              <input type="text" inputmode="numeric" id="man-item-custo" placeholder="0,00" oninput="mascaraMoeda(this);atualizarSubtotalItemNota();">
-            </div>
-          </div>
-          <p id="man-item-subtotal" style="font-size:12px;color:var(--muted);margin:-6px 0 10px;"></p>
-          <button type="button" class="btn" style="width:100%;" onclick="adicionarItemNotaManual()">+ Adicionar item à nota</button>
-        </div>
-
-        <div id="man-itens-lista" style="margin-top:14px;"></div>
-
-        <button class="btn btn-primary" style="width:100%;padding:12px;margin-top:14px;" onclick="abrirModalFinalizarNota()">✅ Lançar Nota</button>
-        <p id="man-nota-msg" style="margin-top:10px;font-size:13px;"></p>
       </div>
     </div>
+
+    <!-- ===== ABA: HISTÓRICO DE NOTAS ===== -->
+    <div id="lanc-aba-historico" style="display:none;">
+      <div class="table-wrap" style="padding:16px 20px;">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+          <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);">📋 Notas Lançadas</span>
+          <div style="flex:1;min-width:160px;">
+            <input type="text" id="hist-busca" placeholder="Buscar por fornecedor ou nº da nota..."
+              style="width:100%;height:36px;font-size:13px;" oninput="renderHistoricoNotas()">
+          </div>
+          <select id="hist-periodo" style="height:36px;font-size:13px;" onchange="renderHistoricoNotas()">
+            <option value="30">Últimos 30 dias</option>
+            <option value="60">Últimos 60 dias</option>
+            <option value="90">Últimos 90 dias</option>
+            <option value="0">Todos</option>
+          </select>
+          <button class="btn btn-sm" onclick="carregarHistoricoNotas()">↻ Atualizar</button>
+        </div>
+        <div id="hist-notas-lista">
+          <p style="font-size:13px;color:var(--muted);">Clique em "Atualizar" para carregar o histórico.</p>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -8537,6 +8627,12 @@ function mostrarSubEstoque(sub) {
   } else {
     elLista.style.setProperty('display', 'none', 'important');
     elLanc.style.setProperty('display', 'block', 'important');
+    // Garantir aba "Novo Lançamento" ativa e data preenchida
+    setTimeout(() => {
+      trocarAbaLancamento('novo');
+      inicializarDataEntrada();
+      renderItensNotaManual();
+    }, 50);
   }
   document.querySelectorAll('#estoque-subtabs .cat-tab').forEach(t => t.classList.remove('active'));
   const idx = ['lista','lancamento'].indexOf(sub);
@@ -8564,6 +8660,114 @@ async function popularSelectFornecedoresManual() {
 // produto sozinho — evita digitar tudo de novo e erro de digitação no nome.
 // Mostra na hora quanto vale o item que está sendo digitado, antes mesmo
 // de clicar em "Adicionar item" — sem precisar esperar pra ver o valor.
+// ===== LANÇAMENTO DE NOTAS — NOVO LAYOUT =====
+
+function trocarAbaLancamento(aba) {
+  const tabNovo = document.getElementById('lanc-tab-novo');
+  const tabHist = document.getElementById('lanc-tab-hist');
+  const abaNovo = document.getElementById('lanc-aba-novo');
+  const abaHist = document.getElementById('lanc-aba-historico');
+  if (!tabNovo) return;
+
+  if (aba === 'novo') {
+    abaNovo.style.setProperty('display','block','important');
+    abaHist.style.setProperty('display','none','important');
+    tabNovo.style.color = 'var(--accent)';
+    tabNovo.style.borderBottomColor = 'var(--accent)';
+    tabHist.style.color = 'var(--muted)';
+    tabHist.style.borderBottomColor = 'transparent';
+  } else {
+    abaNovo.style.setProperty('display','none','important');
+    abaHist.style.setProperty('display','block','important');
+    tabNovo.style.color = 'var(--muted)';
+    tabNovo.style.borderBottomColor = 'transparent';
+    tabHist.style.color = 'var(--accent)';
+    tabHist.style.borderBottomColor = 'var(--accent)';
+    carregarHistoricoNotas();
+  }
+}
+
+let _historicoNotas = [];
+
+async function carregarHistoricoNotas() {
+  const el = document.getElementById('hist-notas-lista');
+  if (!el) return;
+  el.innerHTML = '<p style="font-size:13px;color:var(--muted);">Carregando...</p>';
+  try {
+    const contas = await sbGet('contas_pagar', 'cat=eq.Mercadoria&order=criado_em.desc&limit=200');
+    _historicoNotas = contas || [];
+    renderHistoricoNotas();
+  } catch(e) {
+    el.innerHTML = `<p style="font-size:13px;color:var(--danger);">Erro ao carregar: ${e.message}</p>`;
+  }
+}
+
+function renderHistoricoNotas() {
+  const el = document.getElementById('hist-notas-lista');
+  if (!el) return;
+
+  const busca = (document.getElementById('hist-busca')?.value || '').toLowerCase();
+  const dias = parseInt(document.getElementById('hist-periodo')?.value || '30');
+
+  let lista = _historicoNotas.filter(c => c.cat === 'Mercadoria');
+
+  if (dias > 0) {
+    const corte = new Date();
+    corte.setDate(corte.getDate() - dias);
+    const corteISO = corte.toISOString().slice(0, 10);
+    lista = lista.filter(c => (c.vencimento || c.criado_em || '') >= corteISO);
+  }
+
+  if (busca) {
+    lista = lista.filter(c =>
+      (c.descricao||'').toLowerCase().includes(busca) ||
+      (c.fornecedor||'').toLowerCase().includes(busca)
+    );
+  }
+
+  if (!lista.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--muted);padding:20px 0;">Nenhuma nota encontrada neste período.</p>';
+    return;
+  }
+
+  el.innerHTML = `
+    <table style="width:100%;font-size:13px;border-collapse:collapse;">
+      <thead>
+        <tr style="background:var(--bg);">
+          <th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;">Data</th>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;">Descrição</th>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;">Fornecedor</th>
+          <th style="text-align:right;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;">Valor</th>
+          <th style="text-align:center;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${lista.map(c => {
+          const [ay,am,ad] = (c.vencimento||'').split('-');
+          const dataFmt = ay ? `${ad}/${am}/${ay}` : '—';
+          const pago = c.pago;
+          const badge = pago
+            ? '<span style="background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;">Pago</span>'
+            : '<span style="background:#fff3e0;color:#e65100;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;">Em aberto</span>';
+          return `<tr style="border-top:1px solid var(--border);">
+            <td style="padding:10px 12px;color:var(--muted);white-space:nowrap;">${dataFmt}</td>
+            <td style="padding:10px 12px;">${c.descricao||'—'}</td>
+            <td style="padding:10px 12px;color:var(--muted);">${c.fornecedor||'—'}</td>
+            <td style="padding:10px 12px;text-align:right;font-weight:700;">${R(c.valor||0)}</td>
+            <td style="padding:10px 12px;text-align:center;">${badge}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px;">${lista.length} registro(s) encontrado(s)</p>
+  `;
+}
+
+function inicializarDataEntrada() {
+  const el = document.getElementById('man-data-entrada');
+  if (el && !el.value) el.value = new Date().toISOString().slice(0, 10);
+}
+
 function atualizarSubtotalItemNota() {
   const qtd = parseInt(document.getElementById('man-item-qtd').value) || 0;
   const custo = valorMoeda('man-item-custo');
@@ -8607,19 +8811,70 @@ function removerItemNotaManual(idx) {
 
 function renderItensNotaManual() {
   const el = document.getElementById('man-itens-lista');
-  if (!_itensNotaManual.length) { el.innerHTML = '<p style="font-size:12px;color:var(--muted);">Nenhum item adicionado ainda.</p>'; return; }
-  const total = _itensNotaManual.reduce((s,i)=>s+i.qtd*i.custo,0);
+  const resumoItens = document.getElementById('lanc-resumo-itens');
+  const resumoTotal = document.getElementById('lanc-resumo-total');
+  const resumoQtdItens = document.getElementById('lanc-resumo-qtd-itens');
+  const resumoQtdPecas = document.getElementById('lanc-resumo-qtd-pecas');
+
+  if (!_itensNotaManual.length) {
+    el.innerHTML = '<p style="font-size:12px;color:var(--muted);padding:10px 0;">Nenhum item adicionado ainda. Use o formulário acima para adicionar.</p>';
+    if (resumoItens) resumoItens.innerHTML = 'Nenhum item adicionado ainda.';
+    if (resumoTotal) resumoTotal.textContent = 'R$ 0,00';
+    if (resumoQtdItens) resumoQtdItens.textContent = '0';
+    if (resumoQtdPecas) resumoQtdPecas.textContent = '0';
+    return;
+  }
+
+  const total = _itensNotaManual.reduce((s,i)=>s+i.qtd*i.custo, 0);
+  const totalPecas = _itensNotaManual.reduce((s,i)=>s+i.qtd, 0);
+
   el.innerHTML = `
-    <table style="width:100%;font-size:13px;">
-      <thead><tr><th style="text-align:left;">Ref.</th><th style="text-align:left;">Produto</th><th style="text-align:right;">Qtd.</th><th style="text-align:right;">Custo</th><th></th></tr></thead>
-      <tbody>${_itensNotaManual.map((i,idx)=>`
-        <tr>
-          <td><code>${i.ref}</code></td><td>${i.nome}</td><td style="text-align:right;">${i.qtd}</td><td style="text-align:right;">${R(i.custo)}</td>
-          <td style="text-align:right;"><button type="button" class="btn" style="padding:2px 8px;font-size:11px;" onclick="removerItemNotaManual(${idx})">✕</button></td>
-        </tr>`).join('')}</tbody>
+    <table style="width:100%;font-size:13px;border-collapse:collapse;">
+      <thead>
+        <tr style="background:var(--bg);">
+          <th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;">Ref.</th>
+          <th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;">Produto</th>
+          <th style="text-align:center;padding:8px 10px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;">Qtd.</th>
+          <th style="text-align:right;padding:8px 10px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;">Custo unit.</th>
+          <th style="text-align:right;padding:8px 10px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;">Subtotal</th>
+          <th style="width:36px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${_itensNotaManual.map((i,idx)=>`
+          <tr style="border-top:1px solid var(--border);">
+            <td style="padding:9px 10px;"><code style="font-size:12px;background:var(--bg);padding:2px 6px;border-radius:4px;">${i.ref}</code></td>
+            <td style="padding:9px 10px;font-size:13px;">${i.nome}</td>
+            <td style="padding:9px 10px;text-align:center;font-weight:700;">${i.qtd}</td>
+            <td style="padding:9px 10px;text-align:right;">${R(i.custo)}</td>
+            <td style="padding:9px 10px;text-align:right;font-weight:700;color:var(--accent);">${R(i.qtd*i.custo)}</td>
+            <td style="padding:9px 10px;text-align:right;">
+              <button type="button" onclick="removerItemNotaManual(${idx})"
+                style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:16px;padding:2px 6px;" title="Remover">✕</button>
+            </td>
+          </tr>`).join('')}
+        <tr style="border-top:2px solid var(--border);background:var(--bg);">
+          <td colspan="2" style="padding:10px;font-size:12px;color:var(--muted);">${_itensNotaManual.length} item(ns) · ${totalPecas} peça(s)</td>
+          <td style="padding:10px;text-align:center;font-weight:700;">${totalPecas}</td>
+          <td colspan="2" style="padding:10px;text-align:right;font-size:16px;font-weight:900;color:var(--accent);">${R(total)}</td>
+          <td></td>
+        </tr>
+      </tbody>
     </table>
-    <p style="font-size:12px;color:var(--muted);margin-top:6px;">Total da nota: <strong>${R(total)}</strong> · ${_itensNotaManual.length} item(ns)</p>
   `;
+
+  // Atualizar painel de resumo lateral
+  if (resumoTotal) resumoTotal.textContent = R(total);
+  if (resumoQtdItens) resumoQtdItens.textContent = _itensNotaManual.length;
+  if (resumoQtdPecas) resumoQtdPecas.textContent = totalPecas;
+  if (resumoItens) {
+    resumoItens.innerHTML = _itensNotaManual.slice(-3).reverse().map(i =>
+      `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;">
+        <span style="color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;">${i.ref} · ${i.nome}</span>
+        <span style="font-weight:700;margin-left:8px;white-space:nowrap;">${i.qtd}x ${R(i.custo)}</span>
+      </div>`
+    ).join('') + (_itensNotaManual.length > 3 ? `<p style="font-size:11px;color:var(--muted);margin-top:4px;">+ ${_itensNotaManual.length - 3} item(ns) anterior(es)</p>` : '');
+  }
 }
 
 // ===== MODAL DE FINALIZAÇÃO DA NOTA (dinheiro x prazo/parcelado) =====
