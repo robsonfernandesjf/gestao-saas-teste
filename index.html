@@ -2657,6 +2657,28 @@ button.selected,
 }
 </style>
 
+<style id="modo-vitrine-publica-css">
+/* ===== VITRINE PÚBLICA — ocultar sistema completamente ===== */
+body.modo-vitrine-publica #app-header,
+body.modo-vitrine-publica #main-nav,
+body.modo-vitrine-publica #app-main,
+body.modo-vitrine-publica #login-screen,
+body.modo-vitrine-publica #blocked-screen,
+body.modo-vitrine-publica #nav-overlay,
+body.modo-vitrine-publica #banner-licenca-vencendo {
+  display: none !important;
+}
+body.modo-vitrine-publica {
+  background: var(--bg) !important;
+  --sidebar-w: 0px !important;
+  --vl-sidebar-w: 0px !important;
+  --ui23-sidebar-w: 0px !important;
+}
+body.modo-vitrine-publica #catalogo-publico {
+  display: block !important;
+}
+</style>
+
 <style id="lancamento-nota-v2-css">
 /* ===== LANÇAMENTO DE NOTA V2 ===== */
 
@@ -9302,28 +9324,42 @@ async function confirmarLancamentoManual() {
     const [hy, hm, hd] = hojeISO.split('-');
 
     if (_pagamentoNotaSelecionado === 'dinheiro') {
-      // Pago na hora — já entra quitada, sem ficar pendurada em A Pagar.
-      try {
-        await sbPost('contas_pagar', {
-          descricao: `${baseDescricao} (${_itensNotaManual.length} item${_itensNotaManual.length > 1 ? 's' : ''})`,
-          fornecedor: fornecedorNome, cat: 'Mercadoria', valor: totalNota,
-          vencimento: hojeISO, pago: true, data_pagamento: hd + '/' + hm + '/' + hy,
-          forma_pagamento: 'Dinheiro'
-        });
-        invalidarCache('contasPagar');
-      } catch (e) { console.warn('Conta a pagar da nota não pôde ser criada:', e.message); }
+      // Pago na hora — entra quitada em Contas a Pagar
+      const payload = {
+        descricao: `${baseDescricao} (${_itensNotaManual.length} item${_itensNotaManual.length > 1 ? 's' : ''})`,
+        fornecedor: fornecedorNome,
+        cat: 'Mercadoria',
+        valor: parseFloat(totalNota.toFixed(2)),
+        vencimento: hojeISO,
+        pago: true,
+        data_pagamento: `${hd}/${hm}/${hy}`,
+        forma_pagamento: 'Dinheiro'
+      };
+      const criado = await sbPost('contas_pagar', payload);
+      const registroConta = Array.isArray(criado) ? criado[0] : criado;
+      // Atualiza cache local imediatamente
+      const contasLocal = getContasPagar();
+      contasLocal.unshift(registroConta || { ...payload, id: 'cp_' + Date.now() });
+      saveContasPagar(contasLocal);
+      invalidarCache('contasPagar');
     } else {
       // A prazo — uma conta a pagar por parcela, cada uma com seu vencimento.
-      const vencs = Array.from(document.querySelectorAll('.nota-parcela-venc')).map(el => el.value);
+      const vencs   = Array.from(document.querySelectorAll('.nota-parcela-venc')).map(el => el.value);
       const valores = Array.from(document.querySelectorAll('.nota-parcela-valor')).map(el => valorMoeda(el));
       for (let i = 0; i < vencs.length; i++) {
-        try {
-          await sbPost('contas_pagar', {
-            descricao: `${baseDescricao} — parcela ${i + 1}/${vencs.length}`,
-            fornecedor: fornecedorNome, cat: 'Mercadoria', valor: valores[i] || 0,
-            vencimento: vencs[i] || hojeISO, pago: false
-          });
-        } catch (e) { console.warn(`Conta a pagar da parcela ${i + 1} não pôde ser criada:`, e.message); }
+        const payloadParcela = {
+          descricao: `${baseDescricao} — parcela ${i + 1}/${vencs.length}`,
+          fornecedor: fornecedorNome,
+          cat: 'Mercadoria',
+          valor: parseFloat((valores[i] || 0).toFixed(2)),
+          vencimento: vencs[i] || hojeISO,
+          pago: false
+        };
+        const criado = await sbPost('contas_pagar', payloadParcela);
+        const registroParcela = Array.isArray(criado) ? criado[0] : criado;
+        const contasLocal = getContasPagar();
+        contasLocal.unshift(registroParcela || { ...payloadParcela, id: 'cp_' + Date.now() });
+        saveContasPagar(contasLocal);
       }
       invalidarCache('contasPagar');
     }
@@ -14920,17 +14956,13 @@ function ehRotaCatalogoPublico() {
 }
 
 async function renderizarCatalogoPublico() {
-  document.getElementById('login-screen').style.display = 'none';
-  const blockedEl = document.getElementById('blocked-screen');
-  if (blockedEl) blockedEl.style.display = 'none';
-  const headerEl = document.getElementById('app-header');
-  if (headerEl) headerEl.style.display = 'none';
-  const navEl = document.getElementById('main-nav');
-  if (navEl) navEl.style.display = 'none';
-  const mainEl = document.getElementById('app-main');
-  if (mainEl) mainEl.style.display = 'none';
-  const overlayEl = document.getElementById('nav-overlay');
-  if (overlayEl) overlayEl.style.display = 'none';
+  // Ocultar TUDO do sistema com setProperty+important para vencer CSS cascade
+  ['login-screen','blocked-screen','app-header','main-nav','app-main','nav-overlay','banner-licenca-vencendo']
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.setProperty('display', 'none', 'important');
+    });
+  document.body.classList.add('modo-vitrine-publica');
 
   const cont = document.getElementById('catalogo-publico');
   cont.style.display = 'block';
@@ -14938,11 +14970,14 @@ async function renderizarCatalogoPublico() {
 
   try {
     // Busca dados da loja (nome, whatsapp do catálogo, banner, cores já aplicadas por aplicarConfigLoja)
-    const respLoja = await fetch(`${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,catalogo_whatsapp,catalogo_banner_url`, { headers: SB_HEADS });
+    const respLoja = await fetch(`${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,catalogo_whatsapp,catalogo_banner_url,catalogo_mostrar_preco`, { headers: SB_HEADS });
     const lojas = await respLoja.json();
     const nomeLoja = (lojas[0] && lojas[0].nome) || CONFIG_LOJA.nomeLoja;
     const whats = (lojas[0] && lojas[0].catalogo_whatsapp) || '';
     const bannerUrl = (lojas[0] && lojas[0].catalogo_banner_url) || '';
+    // Se null/undefined, padrão é TRUE (mostra preço)
+    const mostrarPreco = lojas[0] ? lojas[0].catalogo_mostrar_preco !== false : true;
+    window._catalogoPubMostrarPreco = mostrarPreco;
 
     // Busca produtos visíveis no catálogo
     const respProd = await fetch(`${SB_URL}/rest/v1/produtos?loja_id=eq.${encodeURIComponent(LOJA_ID)}&visivel_catalogo=eq.true&select=ref,produto,preco_venda,estoque,foto_url,categoria&order=produto.asc`, { headers: SB_HEADS });
@@ -14968,6 +15003,7 @@ async function renderizarCatalogoPublico() {
 
     window._catalogoPubProdutos = produtos;
     window._catalogoPubWhats = whats;
+    window._catalogoPubMostrarPreco = mostrarPreco;
     renderGridCatalogoPub(produtos);
   } catch (e) {
     console.error('Erro ao carregar catálogo público:', e);
@@ -14989,25 +15025,34 @@ function renderGridCatalogoPub(produtos) {
     return;
   }
   const whats = (window._catalogoPubWhats || '').replace(/\D/g,'');
+  const mostrarPreco = window._catalogoPubMostrarPreco !== false;
+
   grid.innerHTML = produtos.map(p => {
     const esgotado = (p.estoque || 0) <= 0;
-    const msg = encodeURIComponent(`Olá! Tenho interesse na peça "${p.produto}" - Ref ${p.ref} - ${R(p.preco_venda)}`);
+    const precoTexto = mostrarPreco ? R(p.preco_venda) : '';
+    const msg = encodeURIComponent(`Olá! Tenho interesse na peça "${p.produto}" (Ref. ${p.ref})${mostrarPreco ? ' - ' + R(p.preco_venda) : ''}. Poderia me dar mais informações?`);
     const linkWhats = whats ? `https://wa.me/55${whats}?text=${msg}` : null;
     return `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 2px 8px rgba(0,0,0,.06);transition:box-shadow .2s;" onmouseenter="this.style.boxShadow='0 6px 20px rgba(0,0,0,.12)'" onmouseleave="this.style.boxShadow='0 2px 8px rgba(0,0,0,.06)'">
         <div style="width:100%;aspect-ratio:1;background:var(--bg);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">
           ${p.foto_url
-            ? `<img src="${p.foto_url}" loading="lazy" style="width:100%;height:100%;object-fit:cover;${esgotado?'opacity:0.5;':''}">`
-            : `<span style="font-size:36px;opacity:0.25;">🖼️</span>`}
-          ${esgotado ? `<span style="position:absolute;top:8px;right:8px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;">ESGOTADO</span>` : ''}
+            ? `<img src="${p.foto_url}" loading="lazy" style="width:100%;height:100%;object-fit:cover;${esgotado?'filter:grayscale(60%);opacity:0.7;':''}">`
+            : `<span style="font-size:48px;opacity:0.15;">👗</span>`}
+          ${esgotado ? `<span style="position:absolute;top:8px;right:8px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.04em;">ESGOTADO</span>` : ''}
         </div>
-        <div style="padding:12px;flex:1;display:flex;flex-direction:column;gap:4px;">
-          <strong style="font-size:13px;line-height:1.3;">${p.produto}</strong>
+        <div style="padding:12px 14px;flex:1;display:flex;flex-direction:column;gap:3px;">
+          <strong style="font-size:13px;line-height:1.3;color:var(--text);">${p.produto}</strong>
           <span style="font-size:11px;color:var(--muted);">Ref. ${p.ref}</span>
-          <span style="font-size:16px;font-weight:700;color:var(--accent);margin-top:4px;">${R(p.preco_venda)}</span>
-          ${linkWhats && !esgotado
-            ? `<a href="${linkWhats}" target="_blank" class="btn btn-primary" style="margin-top:8px;text-align:center;text-decoration:none;font-size:12px;padding:8px;">💬 Quero esse</a>`
-            : esgotado ? `<span style="margin-top:8px;text-align:center;font-size:11px;color:var(--muted);">Indisponível</span>` : ''}
+          ${mostrarPreco ? `<span style="font-size:17px;font-weight:800;color:var(--accent);margin-top:4px;">${precoTexto}</span>` : '<div style="margin-top:4px;"></div>'}
+          ${!esgotado && linkWhats
+            ? `<a href="${linkWhats}" target="_blank" style="margin-top:auto;padding-top:10px;display:flex;align-items:center;justify-content:center;gap:6px;background:#25D366;color:#fff;border-radius:10px;text-decoration:none;font-size:13px;font-weight:700;padding:9px 12px;transition:opacity .2s;" onmouseenter="this.style.opacity='.85'" onmouseleave="this.style.opacity='1'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2.22 21.5a.75.75 0 0 0 .916.916l4.332-1.218A9.953 9.953 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" fill-rule="evenodd" clip-rule="evenodd"/></svg>
+                Quero esse
+              </a>`
+            : esgotado
+              ? `<span style="margin-top:auto;padding-top:10px;text-align:center;font-size:12px;color:var(--muted);font-style:italic;">Indisponível no momento</span>`
+              : `<span style="margin-top:auto;padding-top:10px;text-align:center;font-size:12px;color:var(--muted);">Entre em contato</span>`
+          }
         </div>
       </div>
     `;
@@ -15420,6 +15465,55 @@ async function salvarDadosEmpresa() {
   }catch(e){msg.style.color='var(--danger)';msg.textContent='❌ Erro: '+e.message;}
   setTimeout(function(){msg.textContent='';},4000);
 }
+// ===== CONFIGURAÇÕES DA VITRINE PÚBLICA =====
+let _vitrineConfigCarregada = false;
+
+async function carregarConfigVitrine() {
+  if (_vitrineConfigCarregada) return;
+  try {
+    const resp = await fetch(
+      `${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=catalogo_whatsapp,catalogo_banner_url,catalogo_mostrar_preco`,
+      { headers: SB_HEADS }
+    );
+    const lojas = await resp.json();
+    if (lojas && lojas[0]) {
+      const l = lojas[0];
+      const elW = document.getElementById('vit-whatsapp');
+      const elB = document.getElementById('vit-banner');
+      const elP = document.getElementById('vit-mostrar-preco');
+      if (elW) elW.value = l.catalogo_whatsapp || '';
+      if (elB) elB.value = l.catalogo_banner_url || '';
+      if (elP) elP.checked = l.catalogo_mostrar_preco !== false; // default true
+      _vitrineConfigCarregada = true;
+    }
+  } catch(e) { console.warn('Erro ao carregar config vitrine:', e); }
+}
+
+async function salvarConfigVitrine() {
+  const msgEl = document.getElementById('vit-msg');
+  const whatsapp = (document.getElementById('vit-whatsapp')?.value || '').replace(/\D/g, '');
+  const banner = document.getElementById('vit-banner')?.value.trim() || null;
+  const mostrarPreco = document.getElementById('vit-mostrar-preco')?.checked !== false;
+
+  if (msgEl) { msgEl.style.color = 'var(--muted)'; msgEl.textContent = 'Salvando...'; }
+
+  try {
+    // Usa a service role via swift-worker pois lojas tem RLS mais restritiva
+    await sbPatch('lojas', LOJA_ID, {
+      catalogo_whatsapp: whatsapp || null,
+      catalogo_banner_url: banner,
+      catalogo_mostrar_preco: mostrarPreco
+    });
+    // Atualizar variável local imediatamente
+    window._catalogoPubWhats = whatsapp;
+    window._catalogoPubMostrarPreco = mostrarPreco;
+    if (msgEl) { msgEl.style.color = 'var(--success)'; msgEl.textContent = '✅ Salvo!'; }
+    setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 3000);
+  } catch(e) {
+    if (msgEl) { msgEl.style.color = 'var(--danger)'; msgEl.textContent = '❌ Erro: ' + e.message; }
+  }
+}
+
 setInterval(atualizarHora, 1000);
 atualizarHora();
 </script>
@@ -15692,6 +15786,40 @@ atualizarHora();
         <div style="margin-top:20px;display:flex;gap:10px;">
           <button class="btn btn-primary" onclick="salvarConfigEtiqueta()">💾 Salvar layout</button>
           <span id="etq-msg" style="font-size:12px;align-self:center;"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO: Configurações da Vitrine Pública -->
+    <div class="config-secao col-custo" id="secao-vitrine" style="margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <button onclick="toggleConfigSecao('vitrine'); carregarConfigVitrine();" style="width:100%;text-align:left;padding:16px 18px;background:var(--surface);border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;color:var(--text);">
+        <span>🛍️ Vitrine Pública</span>
+        <span id="seta-config-vitrine" class="config-secao-seta" style="font-size:12px;color:var(--muted);">▸</span>
+      </button>
+      <div id="config-body-vitrine" class="config-secao-body" style="display:none;padding:18px;border-top:1px solid var(--border);">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
+          Configurações da vitrine pública acessível em <strong>app.legadoerp.com.br/{{slug}}/loja</strong>
+        </p>
+        <div class="form-grid" style="margin-bottom:14px;">
+          <div class="form-row" style="margin:0;">
+            <label>WhatsApp da vitrine (somente números)</label>
+            <input type="text" id="vit-whatsapp" inputmode="numeric" placeholder="Ex: 32988191555" maxlength="13">
+          </div>
+          <div class="form-row" style="margin:0;">
+            <label>URL do banner (imagem de topo)</label>
+            <input type="text" id="vit-banner" placeholder="https://...">
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border-radius:10px;margin-bottom:14px;">
+          <input type="checkbox" id="vit-mostrar-preco" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;">
+          <div>
+            <label for="vit-mostrar-preco" style="font-size:13px;font-weight:600;cursor:pointer;">Exibir preço de venda na vitrine</label>
+            <p style="font-size:11px;color:var(--muted);margin:2px 0 0;">Quando desmarcado, o preço fica oculto e o cliente entra em contato para saber o valor.</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button class="btn btn-primary" onclick="salvarConfigVitrine()">💾 Salvar configurações da vitrine</button>
+          <p id="vit-msg" style="font-size:13px;margin:0;"></p>
         </div>
       </div>
     </div>
