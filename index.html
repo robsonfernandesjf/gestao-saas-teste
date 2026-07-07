@@ -4521,12 +4521,18 @@ body.modo-pdv-exclusivo main {
             <input type="text" id="hist-busca" placeholder="Buscar por fornecedor ou nº da nota..."
               style="width:100%;height:36px;font-size:13px;" oninput="renderHistoricoNotas()">
           </div>
-          <select id="hist-periodo" style="height:36px;font-size:13px;" onchange="renderHistoricoNotas()">
+          <select id="hist-periodo" style="height:36px;font-size:13px;" onchange="toggleFiltroCustomHist()">
             <option value="30">Últimos 30 dias</option>
             <option value="60">Últimos 60 dias</option>
             <option value="90">Últimos 90 dias</option>
             <option value="0">Todos</option>
+            <option value="custom">Período personalizado</option>
           </select>
+          <div id="hist-datas-custom" style="display:none;gap:8px;align-items:center;">
+            <input type="date" id="hist-data-ini" style="height:36px;font-size:13px;" onchange="renderHistoricoNotas()">
+            <span style="font-size:12px;color:var(--muted);">até</span>
+            <input type="date" id="hist-data-fim" style="height:36px;font-size:13px;" onchange="renderHistoricoNotas()">
+          </div>
           <button class="btn btn-sm" onclick="carregarHistoricoNotas()">↻ Atualizar</button>
         </div>
         <div id="hist-notas-lista">
@@ -8896,7 +8902,8 @@ async function carregarHistoricoNotas() {
   if (!el) return;
   el.innerHTML = '<p style="font-size:13px;color:var(--muted);">Carregando...</p>';
   try {
-    const contas = await sbGet('contas_pagar', 'cat=eq.Mercadoria&order=criado_em.desc&limit=200');
+    // Usa vencimento para ordenar (criado_em não existe na tabela)
+    const contas = await sbGet('contas_pagar', 'cat=eq.Mercadoria&order=vencimento.desc&limit=500');
     _historicoNotas = contas || [];
     renderHistoricoNotas();
   } catch(e) {
@@ -8908,16 +8915,24 @@ function renderHistoricoNotas() {
   const el = document.getElementById('hist-notas-lista');
   if (!el) return;
 
-  const busca = (document.getElementById('hist-busca')?.value || '').toLowerCase();
-  const dias = parseInt(document.getElementById('hist-periodo')?.value || '30');
+  const busca   = (document.getElementById('hist-busca')?.value || '').toLowerCase();
+  const periodo = document.getElementById('hist-periodo')?.value || '30';
+  const dataIni = document.getElementById('hist-data-ini')?.value || '';
+  const dataFim = document.getElementById('hist-data-fim')?.value || '';
 
   let lista = _historicoNotas.filter(c => c.cat === 'Mercadoria');
 
-  if (dias > 0) {
+  // Filtro por período predefinido
+  if (periodo !== 'custom' && parseInt(periodo) > 0) {
     const corte = new Date();
-    corte.setDate(corte.getDate() - dias);
+    corte.setDate(corte.getDate() - parseInt(periodo));
     const corteISO = corte.toISOString().slice(0, 10);
-    lista = lista.filter(c => (c.vencimento || c.criado_em || '') >= corteISO);
+    lista = lista.filter(c => (c.vencimento || '') >= corteISO);
+  }
+  // Filtro por data personalizada
+  if (periodo === 'custom') {
+    if (dataIni) lista = lista.filter(c => (c.vencimento || '') >= dataIni);
+    if (dataFim) lista = lista.filter(c => (c.vencimento || '') <= dataFim);
   }
 
   if (busca) {
@@ -8926,6 +8941,8 @@ function renderHistoricoNotas() {
       (c.fornecedor||'').toLowerCase().includes(busca)
     );
   }
+
+  const totalGeral = lista.reduce((s, c) => s + (c.valor || 0), 0);
 
   if (!lista.length) {
     el.innerHTML = '<p style="font-size:13px;color:var(--muted);padding:20px 0;">Nenhuma nota encontrada neste período.</p>';
@@ -8947,8 +8964,7 @@ function renderHistoricoNotas() {
         ${lista.map(c => {
           const [ay,am,ad] = (c.vencimento||'').split('-');
           const dataFmt = ay ? `${ad}/${am}/${ay}` : '—';
-          const pago = c.pago;
-          const badge = pago
+          const badge = c.pago
             ? '<span style="background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;">Pago</span>'
             : '<span style="background:#fff3e0;color:#e65100;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;">Em aberto</span>';
           return `<tr style="border-top:1px solid var(--border);">
@@ -8960,9 +8976,22 @@ function renderHistoricoNotas() {
           </tr>`;
         }).join('')}
       </tbody>
+      <tfoot>
+        <tr style="background:var(--bg);border-top:2px solid var(--border);">
+          <td colspan="3" style="padding:10px 12px;font-size:12px;color:var(--muted);">${lista.length} registro(s)</td>
+          <td style="padding:10px 12px;text-align:right;font-size:15px;font-weight:900;color:var(--accent);">${R(totalGeral)}</td>
+          <td></td>
+        </tr>
+      </tfoot>
     </table>
-    <p style="font-size:12px;color:var(--muted);margin-top:8px;">${lista.length} registro(s) encontrado(s)</p>
   `;
+}
+
+function toggleFiltroCustomHist() {
+  const periodo = document.getElementById('hist-periodo')?.value;
+  const wrap = document.getElementById('hist-datas-custom');
+  if (wrap) wrap.style.display = periodo === 'custom' ? 'flex' : 'none';
+  renderHistoricoNotas();
 }
 
 function inicializarDataEntrada() {
@@ -9170,7 +9199,7 @@ function abrirModalFinalizarNota() {
   document.getElementById('nota-prazo-fields').style.display = 'none';
   document.getElementById('nota-parcelas-qtd').value = '1';
   _pagamentoNotaSelecionado = null;
-  document.getElementById('modal-finalizar-nota').classList.add('open');
+  document.getElementById('modal-finalizar-nota').classList.add('show');
 }
 
 let _pagamentoNotaSelecionado = null;

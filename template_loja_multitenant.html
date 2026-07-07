@@ -4433,9 +4433,13 @@ body.modo-pdv-exclusivo main {
             <div style="display:grid;grid-template-columns:120px 1fr 80px 110px auto;gap:8px;align-items:end;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border);">
               <div class="form-row" style="margin:0;">
                 <label style="font-size:10px;">Referência</label>
-                <input type="text" id="man-item-ref" placeholder="Ex: EB97" style="height:36px;font-size:13px;"
+                <div style="position:relative;">
+                <input type="text" id="man-item-ref" placeholder="Ex: EB97" style="height:36px;font-size:13px;width:100%;"
                   oninput="autopreencherItemNotaManual()"
-                  onkeydown="if(event.key==='Enter'){document.getElementById('man-item-nome').focus();}">
+                  onkeydown="tratarTeclaNota(event)"
+                  autocomplete="off">
+                <div id="man-item-ref-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);overflow:hidden;max-height:280px;overflow-y:auto;margin-top:3px;"></div>
+              </div>
               </div>
               <div class="form-row" style="margin:0;">
                 <label style="font-size:10px;">Produto</label>
@@ -4507,12 +4511,18 @@ body.modo-pdv-exclusivo main {
             <input type="text" id="hist-busca" placeholder="Buscar por fornecedor ou nº da nota..."
               style="width:100%;height:36px;font-size:13px;" oninput="renderHistoricoNotas()">
           </div>
-          <select id="hist-periodo" style="height:36px;font-size:13px;" onchange="renderHistoricoNotas()">
+          <select id="hist-periodo" style="height:36px;font-size:13px;" onchange="toggleFiltroCustomHist()">
             <option value="30">Últimos 30 dias</option>
             <option value="60">Últimos 60 dias</option>
             <option value="90">Últimos 90 dias</option>
             <option value="0">Todos</option>
+            <option value="custom">Período personalizado</option>
           </select>
+          <div id="hist-datas-custom" style="display:none;gap:8px;align-items:center;">
+            <input type="date" id="hist-data-ini" style="height:36px;font-size:13px;" onchange="renderHistoricoNotas()">
+            <span style="font-size:12px;color:var(--muted);">até</span>
+            <input type="date" id="hist-data-fim" style="height:36px;font-size:13px;" onchange="renderHistoricoNotas()">
+          </div>
           <button class="btn btn-sm" onclick="carregarHistoricoNotas()">↻ Atualizar</button>
         </div>
         <div id="hist-notas-lista">
@@ -8694,7 +8704,8 @@ async function carregarHistoricoNotas() {
   if (!el) return;
   el.innerHTML = '<p style="font-size:13px;color:var(--muted);">Carregando...</p>';
   try {
-    const contas = await sbGet('contas_pagar', 'cat=eq.Mercadoria&order=criado_em.desc&limit=200');
+    // Usa vencimento para ordenar (criado_em não existe na tabela)
+    const contas = await sbGet('contas_pagar', 'cat=eq.Mercadoria&order=vencimento.desc&limit=500');
     _historicoNotas = contas || [];
     renderHistoricoNotas();
   } catch(e) {
@@ -8706,16 +8717,24 @@ function renderHistoricoNotas() {
   const el = document.getElementById('hist-notas-lista');
   if (!el) return;
 
-  const busca = (document.getElementById('hist-busca')?.value || '').toLowerCase();
-  const dias = parseInt(document.getElementById('hist-periodo')?.value || '30');
+  const busca   = (document.getElementById('hist-busca')?.value || '').toLowerCase();
+  const periodo = document.getElementById('hist-periodo')?.value || '30';
+  const dataIni = document.getElementById('hist-data-ini')?.value || '';
+  const dataFim = document.getElementById('hist-data-fim')?.value || '';
 
   let lista = _historicoNotas.filter(c => c.cat === 'Mercadoria');
 
-  if (dias > 0) {
+  // Filtro por período predefinido
+  if (periodo !== 'custom' && parseInt(periodo) > 0) {
     const corte = new Date();
-    corte.setDate(corte.getDate() - dias);
+    corte.setDate(corte.getDate() - parseInt(periodo));
     const corteISO = corte.toISOString().slice(0, 10);
-    lista = lista.filter(c => (c.vencimento || c.criado_em || '') >= corteISO);
+    lista = lista.filter(c => (c.vencimento || '') >= corteISO);
+  }
+  // Filtro por data personalizada
+  if (periodo === 'custom') {
+    if (dataIni) lista = lista.filter(c => (c.vencimento || '') >= dataIni);
+    if (dataFim) lista = lista.filter(c => (c.vencimento || '') <= dataFim);
   }
 
   if (busca) {
@@ -8724,6 +8743,8 @@ function renderHistoricoNotas() {
       (c.fornecedor||'').toLowerCase().includes(busca)
     );
   }
+
+  const totalGeral = lista.reduce((s, c) => s + (c.valor || 0), 0);
 
   if (!lista.length) {
     el.innerHTML = '<p style="font-size:13px;color:var(--muted);padding:20px 0;">Nenhuma nota encontrada neste período.</p>';
@@ -8745,8 +8766,7 @@ function renderHistoricoNotas() {
         ${lista.map(c => {
           const [ay,am,ad] = (c.vencimento||'').split('-');
           const dataFmt = ay ? `${ad}/${am}/${ay}` : '—';
-          const pago = c.pago;
-          const badge = pago
+          const badge = c.pago
             ? '<span style="background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;">Pago</span>'
             : '<span style="background:#fff3e0;color:#e65100;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;">Em aberto</span>';
           return `<tr style="border-top:1px solid var(--border);">
@@ -8758,9 +8778,22 @@ function renderHistoricoNotas() {
           </tr>`;
         }).join('')}
       </tbody>
+      <tfoot>
+        <tr style="background:var(--bg);border-top:2px solid var(--border);">
+          <td colspan="3" style="padding:10px 12px;font-size:12px;color:var(--muted);">${lista.length} registro(s)</td>
+          <td style="padding:10px 12px;text-align:right;font-size:15px;font-weight:900;color:var(--accent);">${R(totalGeral)}</td>
+          <td></td>
+        </tr>
+      </tfoot>
     </table>
-    <p style="font-size:12px;color:var(--muted);margin-top:8px;">${lista.length} registro(s) encontrado(s)</p>
   `;
+}
+
+function toggleFiltroCustomHist() {
+  const periodo = document.getElementById('hist-periodo')?.value;
+  const wrap = document.getElementById('hist-datas-custom');
+  if (wrap) wrap.style.display = periodo === 'custom' ? 'flex' : 'none';
+  renderHistoricoNotas();
 }
 
 function inicializarDataEntrada() {
@@ -8776,34 +8809,96 @@ function atualizarSubtotalItemNota() {
 }
 
 function autopreencherItemNotaManual() {
-  const ref = document.getElementById('man-item-ref').value.trim().toUpperCase();
+  const val  = document.getElementById('man-item-ref').value.trim();
+  const ref  = val.toUpperCase();
   const info = document.getElementById('man-item-ref-info');
-  if (!ref) { info.textContent = ''; document.getElementById('man-item-nome').value = ''; return; }
+  const drop = document.getElementById('man-item-ref-dropdown');
+  if (!val) {
+    info.textContent = '';
+    document.getElementById('man-item-nome').value = '';
+    if (drop) drop.style.display = 'none';
+    return;
+  }
 
-  // Busca exata primeiro (case-insensitive), depois parcial
-  const todos = getProdutos();
+  const todos = getProdutos().filter(p => p.produto && p.produto !== 'nan');
+
+  // Busca: ref começa com o digitado OU nome contém OU EAN começa com
+  const matches = todos.filter(p =>
+    (p.ref||'').toUpperCase().startsWith(ref) ||
+    (p.produto||'').toLowerCase().includes(val.toLowerCase()) ||
+    (p.ean13||'').startsWith(val)
+  ).slice(0, 10);
+
   const exato = todos.find(p => (p.ref||'').toUpperCase() === ref);
-  const parcial = !exato ? todos.filter(p => (p.ref||'').toUpperCase().startsWith(ref)) : [];
 
+  // Mostrar dropdown se tiver múltiplos resultados
+  if (drop) {
+    if (matches.length > 0 && !exato) {
+      drop.style.display = 'block';
+      drop.innerHTML = matches.map(p => `
+        <div onclick="selecionarItemNota('${p.ref}')"
+          style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;transition:background .1s;"
+          onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='#fff'">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.produto}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${p.ref} · ${p.categoria||'—'} · ${p.estoque||0} em estoque</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;font-size:12px;color:var(--muted);">${R(p.custo||0)}<br><span style="font-size:10px;">custo</span></div>
+        </div>`).join('');
+    } else {
+      drop.style.display = 'none';
+    }
+  }
+
+  // Se exato, preencher campos
   if (exato) {
     document.getElementById('man-item-nome').value = exato.produto;
     if (!valorMoeda('man-item-custo')) setValorMoeda('man-item-custo', exato.custo || 0);
     info.style.color = 'var(--success)';
     info.textContent = `✓ ${exato.produto} — estoque atual: ${exato.estoque || 0} un.`;
-  } else if (parcial.length === 1) {
-    // Se só um resultado parcial, preenche automaticamente
-    document.getElementById('man-item-nome').value = parcial[0].produto;
-    if (!valorMoeda('man-item-custo')) setValorMoeda('man-item-custo', parcial[0].custo || 0);
-    info.style.color = 'var(--muted)';
-    info.textContent = `Sugestão: ${parcial[0].ref} — ${parcial[0].produto}`;
-  } else if (parcial.length > 1) {
-    info.style.color = 'var(--muted)';
-    info.textContent = `${parcial.length} produto(s) encontrado(s) com essa referência. Continue digitando.`;
-  } else {
+    if (drop) drop.style.display = 'none';
+  } else if (matches.length === 0) {
     info.style.color = 'var(--muted)';
     info.textContent = 'Referência nova — será criado um produto novo com esses dados.';
+  } else {
+    info.style.color = 'var(--muted)';
+    info.textContent = '';
   }
 }
+
+function selecionarItemNota(ref) {
+  const p = getProdutos().find(x => (x.ref||'').toUpperCase() === ref.toUpperCase());
+  if (!p) return;
+  document.getElementById('man-item-ref').value = p.ref;
+  document.getElementById('man-item-nome').value = p.produto;
+  setValorMoeda('man-item-custo', p.custo || 0);
+  const info = document.getElementById('man-item-ref-info');
+  info.style.color = 'var(--success)';
+  info.textContent = `✓ ${p.produto} — estoque atual: ${p.estoque || 0} un.`;
+  const drop = document.getElementById('man-item-ref-dropdown');
+  if (drop) drop.style.display = 'none';
+  document.getElementById('man-item-qtd').focus();
+}
+
+function tratarTeclaNota(e) {
+  const drop = document.getElementById('man-item-ref-dropdown');
+  if (e.key === 'Escape' && drop) { drop.style.display = 'none'; return; }
+  if (e.key === 'Enter') {
+    if (drop && drop.style.display !== 'none') {
+      const primeiro = drop.querySelector('[onclick]');
+      if (primeiro) { primeiro.click(); return; }
+    }
+    document.getElementById('man-item-nome').focus();
+  }
+}
+
+// Fechar dropdown ao clicar fora
+document.addEventListener('click', function(e) {
+  const drop = document.getElementById('man-item-ref-dropdown');
+  if (drop && !drop.contains(e.target) && e.target.id !== 'man-item-ref') {
+    drop.style.display = 'none';
+  }
+});
 
 function adicionarItemNotaManual() {
   const ref = document.getElementById('man-item-ref').value.trim().toUpperCase();
@@ -8906,7 +9001,7 @@ function abrirModalFinalizarNota() {
   document.getElementById('nota-prazo-fields').style.display = 'none';
   document.getElementById('nota-parcelas-qtd').value = '1';
   _pagamentoNotaSelecionado = null;
-  document.getElementById('modal-finalizar-nota').classList.add('open');
+  document.getElementById('modal-finalizar-nota').classList.add('show');
 }
 
 let _pagamentoNotaSelecionado = null;
