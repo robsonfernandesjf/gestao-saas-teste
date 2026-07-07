@@ -7147,15 +7147,30 @@ function checarAvisoVencimentoLicenca(lic) {
   const banner = document.getElementById('banner-licenca-vencendo');
   if (!banner) return;
   const dias = lic && lic.validade ? diasParaVencerLicenca(lic.validade) : null;
-  // Fora da janela de aviso (sem validade, vencida/já bloqueada, ou longe do
-  // vencimento) — esconde explicitamente, não só deixa de mostrar. Sem isso,
-  // um banner mostrado numa sessão anterior (ex: durante teste) continuava
-  // preso na tela mesmo depois da licença voltar a ter uma data distante.
-  if (dias === null || dias < 0 || dias > 5) { banner.style.display = 'none'; return; }
-  document.getElementById('banner-licenca-texto').textContent = dias === 0
-    ? '⚠️ Sua assinatura vence hoje. Entre em contato para renovar e continuar usando o sistema sem interrupção.'
-    : `⚠️ Sua assinatura vence em ${dias} dia${dias === 1 ? '' : 's'}. Entre em contato para renovar e continuar usando o sistema sem interrupção.`;
-  banner.style.display = 'flex';
+
+  if (dias === null || dias > 7) { banner.style.display = 'none'; return; }
+
+  let msg = '';
+  let cor = 'var(--warn)';
+
+  if (dias > 0) {
+    msg = dias === 1
+      ? '⚠️ Sua assinatura vence amanhã. Entre em contato para renovar e continuar usando o sistema.'
+      : `⚠️ Sua assinatura vence em ${dias} dia${dias === 1 ? '' : 's'}. Renove para não ter interrupção.`;
+  } else if (dias === 0) {
+    msg = '⚠️ Sua assinatura vence hoje. Entre em contato para renovar agora.';
+    cor = '#e53e3e';
+  } else {
+    const diasVencida = Math.abs(dias);
+    const diasRestantes = 14 - diasVencida;
+    if (diasRestantes <= 0) { banner.style.display = 'none'; return; }
+    msg = `🚨 Assinatura vencida há ${diasVencida} dia${diasVencida === 1 ? '' : 's'}. O sistema será bloqueado em ${diasRestantes} dia${diasRestantes === 1 ? '' : 's'}. Renove agora: (32) 98819-1555.`;
+    cor = '#e53e3e';
+  }
+
+  banner.style.background = cor;
+  document.getElementById('banner-licenca-texto').textContent = msg;
+  banner.style.setProperty('display', 'flex', 'important');
 }
 
 function atualizarStatusLicenca(lic) {
