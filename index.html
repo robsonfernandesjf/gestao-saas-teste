@@ -2671,12 +2671,23 @@ body.modo-vitrine-publica #banner-licenca-vencendo {
 /* Vencer o legado-logo-fix-final que tem html body #app-header#app-header > div:first-child */
 html body.modo-vitrine-publica #app-header#app-header > div:first-child {
   display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 html body.modo-vitrine-publica #app-header#app-header {
   display: none !important;
+  visibility: hidden !important;
 }
 html body.modo-vitrine-publica #main-nav#main-nav {
   display: none !important;
+  visibility: hidden !important;
+}
+/* Sobrescrever @media (min-width:769px) do legado-logo-fix-final */
+@media (min-width: 769px) {
+  html body.modo-vitrine-publica #app-header#app-header > div:first-child {
+    display: none !important;
+    visibility: hidden !important;
+  }
 }
 body.modo-vitrine-publica {
   background: var(--bg) !important;
@@ -14992,16 +15003,18 @@ async function renderizarCatalogoPublico() {
   try {
     // Busca dados da loja incluindo campos da vitrine
     // Usa tabela lojas diretamente com anon key (RLS garante acesso público ao slug)
+    // Tenta lojas_publico (view pública sem RLS)
+    // Se o campo catalogo_mostrar_preco não existir na view ainda, cai no fallback
     const respLoja = await fetch(
-      `${SB_URL}/rest/v1/lojas?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,catalogo_whatsapp,catalogo_banner_url,catalogo_mostrar_preco`,
+      `${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,catalogo_whatsapp,catalogo_banner_url,catalogo_mostrar_preco`,
       { headers: SB_HEADS }
     );
     const lojas = await respLoja.json();
     const nomeLoja = (lojas[0] && lojas[0].nome) || CONFIG_LOJA.nomeLoja;
-    // WhatsApp: usa da tabela, fallback para o que já foi carregado pelo aplicarConfigLoja
     const whats = (lojas[0] && lojas[0].catalogo_whatsapp) || LOJA_CATALOGO_WHATSAPP || '';
     const bannerUrl = (lojas[0] && lojas[0].catalogo_banner_url) || '';
-    const mostrarPreco = lojas[0] ? lojas[0].catalogo_mostrar_preco !== false : true;
+    // catalogo_mostrar_preco: null = campo não existe na view → mostra; false = explicitamente oculto
+    const mostrarPreco = (lojas[0] && lojas[0].catalogo_mostrar_preco === false) ? false : true;
     window._catalogoPubMostrarPreco = mostrarPreco;
 
     // Busca produtos visíveis no catálogo
@@ -15508,28 +15521,68 @@ async function carregarConfigVitrine() {
       const elP = document.getElementById('vit-mostrar-preco');
       if (elW) elW.value = l.catalogo_whatsapp || '';
       if (elB) elB.value = l.catalogo_banner_url || '';
+      if (l.catalogo_banner_url) {
+        const prev = document.getElementById('vit-banner-preview');
+        const img  = document.getElementById('vit-banner-preview-img');
+        const nome = document.getElementById('vit-banner-nome');
+        if (img) img.src = l.catalogo_banner_url;
+        if (prev) prev.style.display = 'block';
+        if (nome) nome.textContent = 'Banner atual salvo';
+      }
       if (elP) elP.checked = l.catalogo_mostrar_preco !== false; // default true
       _vitrineConfigCarregada = true;
     }
   } catch(e) { console.warn('Erro ao carregar config vitrine:', e); }
 }
 
+function previewBannerVitrine(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  document.getElementById('vit-banner-nome').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const prev = document.getElementById('vit-banner-preview');
+    const img  = document.getElementById('vit-banner-preview-img');
+    img.src = e.target.result;
+    prev.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
 async function salvarConfigVitrine() {
   const msgEl = document.getElementById('vit-msg');
   const whatsapp = (document.getElementById('vit-whatsapp')?.value || '').replace(/\D/g, '');
-  const banner = document.getElementById('vit-banner')?.value.trim() || null;
   const mostrarPreco = document.getElementById('vit-mostrar-preco')?.checked !== false;
+  let bannerUrl = document.getElementById('vit-banner')?.value || null;
 
   if (msgEl) { msgEl.style.color = 'var(--muted)'; msgEl.textContent = 'Salvando...'; }
 
   try {
-    // Usa a service role via swift-worker pois lojas tem RLS mais restritiva
+    // Upload do banner se um arquivo foi selecionado
+    const fileInput = document.getElementById('vit-banner-file');
+    const file = fileInput?.files[0];
+    if (file) {
+      if (msgEl) msgEl.textContent = 'Enviando banner...';
+      const ext = file.name.split('.').pop();
+      const nomeArquivo = `${LOJA_ID}/banner-vitrine.${ext}`;
+      const uploadResp = await fetch(`${SB_URL}/storage/v1/object/produtos/${nomeArquivo}`, {
+        method: 'POST',
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': file.type, 'x-upsert': 'true' },
+        body: file
+      });
+      if (!uploadResp.ok) {
+        const err = await uploadResp.json().catch(() => ({}));
+        throw new Error('Upload falhou: ' + (err.message || uploadResp.status));
+      }
+      bannerUrl = `${SB_URL}/storage/v1/object/public/produtos/${nomeArquivo}?t=${Date.now()}`;
+      document.getElementById('vit-banner').value = bannerUrl;
+    }
+
     await sbPatch('lojas', LOJA_ID, {
       catalogo_whatsapp: whatsapp || null,
-      catalogo_banner_url: banner,
+      catalogo_banner_url: bannerUrl,
       catalogo_mostrar_preco: mostrarPreco
     });
-    // Atualizar variável local imediatamente
     window._catalogoPubWhats = whatsapp;
     window._catalogoPubMostrarPreco = mostrarPreco;
     if (msgEl) { msgEl.style.color = 'var(--success)'; msgEl.textContent = '✅ Salvo!'; }
@@ -15830,9 +15883,17 @@ atualizarHora();
             <label>WhatsApp da vitrine (somente números)</label>
             <input type="text" id="vit-whatsapp" inputmode="numeric" placeholder="Ex: 32988191555" maxlength="13">
           </div>
-          <div class="form-row" style="margin:0;">
-            <label>URL do banner (imagem de topo)</label>
-            <input type="text" id="vit-banner" placeholder="https://...">
+          <div class="form-row" style="margin:0;grid-column:1/-1;">
+            <label>Banner da vitrine (imagem de topo)</label>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <input type="file" id="vit-banner-file" accept="image/*" style="display:none;" onchange="previewBannerVitrine(event)">
+              <button type="button" class="btn btn-sm" onclick="document.getElementById('vit-banner-file').click()">📁 Escolher imagem</button>
+              <span id="vit-banner-nome" style="font-size:12px;color:var(--muted);">Nenhum arquivo selecionado</span>
+            </div>
+            <div id="vit-banner-preview" style="margin-top:8px;display:none;">
+              <img id="vit-banner-preview-img" style="max-height:80px;border-radius:8px;border:1px solid var(--border);">
+            </div>
+            <input type="hidden" id="vit-banner">
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border-radius:10px;margin-bottom:14px;">
