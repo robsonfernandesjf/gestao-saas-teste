@@ -16139,7 +16139,7 @@ atualizarHora();
   // Correção definitiva de posição do logo (vence qualquer conflito de CSS
   // das camadas visuais anteriores, aplicando via JS com prioridade máxima).
   function fixarPosicaoLogo() {
-    const el = document.querySelector('#app-header > div:first-child');
+    const el = document.querySelector('#app-header > div:first-child:not(.header-user)');
     if (!el) return;
     // Move o elemento de verdade pro final do <body> — ele estava preso
     // dentro de um container flex (#app-header) que, por algum motivo,
