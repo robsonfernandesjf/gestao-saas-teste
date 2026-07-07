@@ -92,7 +92,7 @@
   .badge-out { background: var(--danger-light); color: var(--danger); }
 
   /* MODAL */
-  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; display: none; align-items: center; justify-content: center; padding: 16px; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1500; display: none; align-items: center; justify-content: center; padding: 16px; }
   .modal-bg.open { display: flex; }
   .modal { background: var(--surface); border-radius: 12px; width: 100%; max-width: 520px; box-shadow: 0 8px 32px rgba(0,0,0,.2); overflow: hidden; }
   .modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
@@ -8991,8 +8991,12 @@ function renderItensNotaManual() {
 // ===== MODAL DE FINALIZAÇÃO DA NOTA (dinheiro x prazo/parcelado) =====
 function abrirModalFinalizarNota() {
   const msgEl = document.getElementById('man-nota-msg');
-  if (!_itensNotaManual.length) { msgEl.style.color = 'var(--danger)'; msgEl.textContent = '⚠ Adicione ao menos um item à nota.'; return; }
-  msgEl.textContent = '';
+  if (!_itensNotaManual.length) {
+    if (msgEl) { msgEl.style.color = 'var(--danger)'; msgEl.textContent = '⚠ Adicione ao menos um item à nota antes de lançar.'; }
+    else { alert('Adicione ao menos um item à nota antes de lançar.'); }
+    return;
+  }
+  if (msgEl) msgEl.textContent = '';
 
   const total = _itensNotaManual.reduce((s, i) => s + i.qtd * i.custo, 0);
   document.getElementById('nota-total-texto').textContent = R(total);
@@ -9001,7 +9005,7 @@ function abrirModalFinalizarNota() {
   document.getElementById('nota-prazo-fields').style.display = 'none';
   document.getElementById('nota-parcelas-qtd').value = '1';
   _pagamentoNotaSelecionado = null;
-  document.getElementById('modal-finalizar-nota').classList.add('show');
+  document.getElementById('modal-finalizar-nota').classList.add('open');
 }
 
 let _pagamentoNotaSelecionado = null;
