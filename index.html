@@ -7162,8 +7162,13 @@ function checarAvisoVencimentoLicenca(lic) {
     cor = '#e53e3e';
   }
 
-  banner.style.background = cor;
   document.getElementById('banner-licenca-texto').textContent = msg;
+  // Usa setProperty com !important para sobrescrever os background!important das camadas CSS
+  if (cor === '#e53e3e') {
+    banner.style.setProperty('background', 'linear-gradient(135deg,#e53e3e,#c53030)', 'important');
+  } else {
+    banner.style.removeProperty('background'); // deixa o CSS laranja padrão valer
+  }
   banner.style.setProperty('display', 'flex', 'important');
 }
 
