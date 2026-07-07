@@ -8976,14 +8976,30 @@ function atualizarSubtotalItemNota() {
 function autopreencherItemNotaManual() {
   const ref = document.getElementById('man-item-ref').value.trim().toUpperCase();
   const info = document.getElementById('man-item-ref-info');
-  if (!ref) { info.textContent = ''; return; }
-  const produto = getProdutos().find(p => p.ref === ref);
-  if (produto) {
-    document.getElementById('man-item-nome').value = produto.produto;
-    if (!valorMoeda('man-item-custo')) setValorMoeda('man-item-custo', produto.custo || 0);
-    info.textContent = `✓ Produto já cadastrado — estoque atual: ${produto.estoque || 0}`;
+  if (!ref) { info.textContent = ''; document.getElementById('man-item-nome').value = ''; return; }
+
+  // Busca exata primeiro (case-insensitive), depois parcial
+  const todos = getProdutos();
+  const exato = todos.find(p => (p.ref||'').toUpperCase() === ref);
+  const parcial = !exato ? todos.filter(p => (p.ref||'').toUpperCase().startsWith(ref)) : [];
+
+  if (exato) {
+    document.getElementById('man-item-nome').value = exato.produto;
+    if (!valorMoeda('man-item-custo')) setValorMoeda('man-item-custo', exato.custo || 0);
+    info.style.color = 'var(--success)';
+    info.textContent = `✓ ${exato.produto} — estoque atual: ${exato.estoque || 0} un.`;
+  } else if (parcial.length === 1) {
+    // Se só um resultado parcial, preenche automaticamente
+    document.getElementById('man-item-nome').value = parcial[0].produto;
+    if (!valorMoeda('man-item-custo')) setValorMoeda('man-item-custo', parcial[0].custo || 0);
+    info.style.color = 'var(--muted)';
+    info.textContent = `Sugestão: ${parcial[0].ref} — ${parcial[0].produto}`;
+  } else if (parcial.length > 1) {
+    info.style.color = 'var(--muted)';
+    info.textContent = `${parcial.length} produto(s) encontrado(s) com essa referência. Continue digitando.`;
   } else {
-    info.textContent = 'Referência nova — vai criar um produto novo com esses dados.';
+    info.style.color = 'var(--muted)';
+    info.textContent = 'Referência nova — será criado um produto novo com esses dados.';
   }
 }
 
