@@ -671,7 +671,8 @@
   #header-user-role{font-size:10px!important;font-weight:900!important;color:var(--accent)!important;background:var(--accent-light)!important;border-radius:999px!important;padding:4px 8px!important;}
   #data-hora{font-size:12px!important;color:var(--muted)!important;background:transparent!important;}
   .btn-logout{height:36px!important;padding:0 12px!important;border-radius:12px!important;border:1px solid var(--border)!important;background:#fff!important;color:var(--danger)!important;font-weight:800!important;}
-  .btn-menu-mobile{display:none!important;}
+  /* Hamburguer só some em desktop — em mobile (≤900px) fica visível */
+  @media (min-width:901px) { .btn-menu-mobile{display:none!important;} }
 
   /* Sidebar com botões reais do NAV */
   #main-nav{
@@ -1136,7 +1137,7 @@
   body #header-user-role{font-size:10px!important;font-weight:950!important;color:var(--ui23-brand)!important;background:#FCE7F3!important;border-radius:999px!important;padding:4px 9px!important;}
   body #data-hora{font-size:12px!important;color:var(--ui23-muted)!important;background:transparent!important;white-space:nowrap!important;}
   body .btn-logout{border:1px solid var(--ui23-border)!important;background:#fff!important;color:#64748B!important;border-radius:10px!important;padding:8px 12px!important;font-weight:800!important;}
-  body .btn-menu-mobile{display:none!important;}
+  @media (min-width:821px) { body .btn-menu-mobile{display:none!important;} }
 
   /* Sidebar abaixo da marca */
   body #main-nav{
@@ -15030,7 +15031,7 @@ async function renderizarCatalogoPublico() {
     const respProd = await fetch(`${SB_URL}/rest/v1/produtos?loja_id=eq.${encodeURIComponent(LOJA_ID)}&visivel_catalogo=eq.true&select=ref,produto,preco_venda,estoque,foto_url,categoria&order=produto.asc`, { headers: SB_HEADS });
     const produtos = await respProd.json();
 
-    const categorias = [...new Set(produtos.map(p => p.categoria).filter(Boolean))].sort();
+    const categorias = [...new Set(produtos.map(p => p.categoria).filter(c => c && c.trim() && c !== '---' && c !== '-' && c.trim().length > 0))].sort();
 
     cont.innerHTML = `
       ${bannerUrl ? `<div style="width:100%;max-height:280px;overflow:hidden;"><img src="${bannerUrl}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>` : ''}
