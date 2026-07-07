@@ -7597,23 +7597,14 @@ function showPage(id) {
 }
 
 function toggleMenuMobile() {
-  const nav = document.getElementById('main-nav');
-  const overlay = document.getElementById('nav-overlay');
-  if (!nav || !overlay) return;
-
-  nav.classList.toggle('open');
-  overlay.classList.toggle('open');
-
-  // Mantém compatibilidade com o CSS atual do mobile,
-  // que abre o menu usando body.menu-open.
-  document.body.classList.toggle('menu-open', nav.classList.contains('open'));
+  document.getElementById('main-nav').classList.toggle('open');
+  document.getElementById('nav-overlay').classList.toggle('open');
+  document.body.classList.toggle('menu-open');
 }
 
 function closeMenuMobile() {
-  const nav = document.getElementById('main-nav');
-  const overlay = document.getElementById('nav-overlay');
-  if (nav) nav.classList.remove('open');
-  if (overlay) overlay.classList.remove('open');
+  document.getElementById('main-nav').classList.remove('open');
+  document.getElementById('nav-overlay').classList.remove('open');
   document.body.classList.remove('menu-open');
 }
 
