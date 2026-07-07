@@ -7084,6 +7084,10 @@ async function renderUsuarios() {
   const btnNovo = document.getElementById('btn-novo-usuario');
   if (btnNovo) btnNovo.style.display = (isMaster || isAdmin) ? 'block' : 'none';
 
+  // Seção de assinatura: visível para todos (proprietário vê status, não edita)
+  const secaoAss = document.getElementById('secao-assinatura');
+  if (secaoAss) secaoAss.style.display = 'block';
+
   const container = document.getElementById('lista-usuarios');
   if (!container) return;
 
@@ -7198,6 +7202,95 @@ async function salvarLicenca() {
     mostrarNotificacao('✅ Licença salva com sucesso!');
   } catch(e) { alert('Erro ao salvar licença: ' + e.message); }
 }
+
+// ======= MINHA ASSINATURA =======
+async function carregarStatusAssinatura() {
+  const loading = document.getElementById('assinatura-loading');
+  const conteudo = document.getElementById('assinatura-conteudo');
+  if (!loading || !conteudo) return;
+  if (conteudo.style.display === 'block') return; // já carregado
+
+  loading.style.display = 'block';
+  conteudo.style.display = 'none';
+
+  try {
+    const lic = await getLicencaSB();
+    const hoje = new Date().toISOString().slice(0, 10);
+    const validade = lic && lic.validade;
+
+    // Calcular status
+    let statusLabel, statusCor, icone, validadeLabel;
+    if (!validade) {
+      statusLabel  = 'Ativa (sem restrição)';
+      statusCor    = 'var(--success)';
+      icone        = '✅';
+      validadeLabel = 'Sem data de vencimento configurada';
+    } else {
+      const dias = diasParaVencerLicenca(validade);
+      const [ano, m, d] = validade.split('-');
+      const dataFmt = `${d}/${m}/${ano}`;
+      if (dias > 7) {
+        statusLabel  = 'Ativa';
+        statusCor    = 'var(--success)';
+        icone        = '✅';
+        validadeLabel = `Válida até ${dataFmt}`;
+      } else if (dias >= 0) {
+        statusLabel  = dias === 0 ? 'Vence hoje!' : `Vence em ${dias} dia${dias === 1 ? '' : 's'}`;
+        statusCor    = '#F59E0B';
+        icone        = '⚠️';
+        validadeLabel = `Vencimento: ${dataFmt}`;
+      } else {
+        const diasVenc = Math.abs(dias);
+        const restantes = 14 - diasVenc;
+        statusLabel  = restantes > 0 ? `Vencida — ${restantes} dia${restantes===1?'':'s'} restantes` : 'Bloqueada';
+        statusCor    = 'var(--danger)';
+        icone        = '🚨';
+        validadeLabel = `Venceu em ${dataFmt}`;
+      }
+    }
+
+    // Preencher card de status
+    document.getElementById('assinatura-icone').textContent = icone;
+    document.getElementById('assinatura-status-label').textContent = statusLabel;
+    document.getElementById('assinatura-status-label').style.color = statusCor;
+    document.getElementById('assinatura-validade-label').textContent = validadeLabel;
+
+    // Próximo vencimento
+    if (validade) {
+      const [ano, m, d] = validade.split('-');
+      document.getElementById('assinatura-prox-vencimento').textContent = `${d}/${m}/${ano}`;
+    } else {
+      document.getElementById('assinatura-prox-vencimento').textContent = '—';
+    }
+
+    // Cor do card de status
+    const card = document.getElementById('assinatura-status-card');
+    card.style.background = statusCor === 'var(--success)'
+      ? 'linear-gradient(135deg,#f0fdf4,#dcfce7)'
+      : statusCor === '#F59E0B'
+        ? 'linear-gradient(135deg,#fffbeb,#fef3c7)'
+        : 'linear-gradient(135deg,#fff1f2,#ffe4e6)';
+    card.style.border = `1px solid ${statusCor === 'var(--success)' ? '#bbf7d0' : statusCor === '#F59E0B' ? '#fde68a' : '#fecaca'}`;
+
+    // Buscar última cobrança para mostrar link da fatura
+    try {
+      const cobr = await sbGet('cobrancas', `loja_id=eq.${LOJA_ID}&order=criado_em.desc&limit=1`);
+      if (cobr && cobr.length > 0) {
+        const ult = cobr[0];
+        const faturaDt = ult.vencimento ? ult.vencimento.split('-').reverse().join('/') : '—';
+        document.getElementById('assinatura-fatura-info').textContent =
+          `${ult.tipo === 'mensalidade' ? 'Mensalidade' : 'Implantação'} — R$ ${parseFloat(ult.valor).toFixed(2).replace('.',',')} — Venc. ${faturaDt} — ${ult.status}`;
+        document.getElementById('assinatura-fatura-wrap').style.display = 'flex';
+      }
+    } catch(_) { /* sem cobrança registrada ainda */ }
+
+    loading.style.display = 'none';
+    conteudo.style.display = 'block';
+  } catch(e) {
+    loading.textContent = 'Erro ao carregar: ' + e.message;
+  }
+}
+
 
 let _delUsrId = null;
 
@@ -15221,6 +15314,47 @@ atualizarHora();
         </div>
       </div>
     </div>
+
+    <!-- SEÇÃO: Minha Assinatura (só admin vê) -->
+    <div class="config-secao" id="secao-assinatura" style="margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <button onclick="toggleConfigSecao('assinatura'); carregarStatusAssinatura();" style="width:100%;text-align:left;padding:16px 18px;background:var(--surface);border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;color:var(--text);">
+        <span>💳 Minha Assinatura</span>
+        <span id="seta-config-assinatura" class="config-secao-seta" style="font-size:12px;color:var(--muted);">▸</span>
+      </button>
+      <div id="config-body-assinatura" class="config-secao-body" style="display:none;padding:18px;border-top:1px solid var(--border);">
+        <div id="assinatura-loading" style="color:var(--muted);font-size:13px;">Carregando...</div>
+        <div id="assinatura-conteudo" style="display:none;">
+          <!-- Status da licença -->
+          <div id="assinatura-status-card" style="border-radius:14px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;">
+            <div style="font-size:32px;" id="assinatura-icone">💳</div>
+            <div style="flex:1;">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px;">Status da assinatura</div>
+              <div style="font-size:18px;font-weight:900;" id="assinatura-status-label">—</div>
+              <div style="font-size:13px;color:var(--muted);margin-top:2px;" id="assinatura-validade-label">—</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px;">Próximo vencimento</div>
+              <div style="font-size:20px;font-weight:900;" id="assinatura-prox-vencimento">—</div>
+            </div>
+          </div>
+          <!-- Link da fatura -->
+          <div id="assinatura-fatura-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;">
+            <div style="font-size:24px;">🧾</div>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:700;margin-bottom:2px;">Fatura disponível</div>
+              <div style="font-size:12px;color:var(--muted);" id="assinatura-fatura-info">—</div>
+            </div>
+            <a id="assinatura-fatura-link" href="#" target="_blank" class="btn btn-primary btn-sm" style="white-space:nowrap;">Ver fatura →</a>
+          </div>
+          <!-- Contato para renovação -->
+          <div style="background:var(--accent-light);border-radius:12px;padding:14px 16px;font-size:13px;">
+            <span style="font-weight:700;">Dúvidas ou renovação?</span>
+            Entre em contato: <a href="https://wa.me/5532988191555" target="_blank" style="color:var(--accent);font-weight:700;">(32) 98819-1555</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
