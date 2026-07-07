@@ -411,7 +411,7 @@
     .header-user-name { display: none; }
     .header-user-role { font-size: 9px; padding: 1px 5px; }
     .btn-logout { font-size: 10px; padding: 3px 8px; white-space: nowrap; }
-    #data-hora { display: none; }
+    #data-hora { font-size: 11px; }
 
     /* HAMBURGER BUTTON - visível no mobile */
     .btn-menu-mobile { display: block; }
@@ -998,7 +998,7 @@
     #app-header > div:first-child img,#app-header img[alt="Logo"],#app-header img{width:42px!important;height:42px!important;min-width:42px!important;max-width:42px!important;border-radius:13px!important;}
     #app-header h1{font-size:14px!important;max-width:135px!important;line-height:1!important;white-space:normal!important;}
     #app-header h1::after{font-size:10px!important;margin-top:2px!important;}
-    #header-user-nome,#data-hora{display:none!important;}
+    #header-user-nome{display:none!important;} #data-hora{font-size:10px!important;}
     #header-user-role{font-size:9px!important;padding:3px 7px!important;}
     .btn-logout{display:none!important;}
     .btn-logout-mobile{display:block!important;}
@@ -1263,7 +1263,7 @@
     body #app-header > div:first-child img{width:38px!important;height:38px!important;min-width:38px!important;border-radius:12px!important;}
     body #app-header > div:first-child h1{font-size:13px!important;line-height:1.05!important;max-width:138px!important;}
     body #app-header > div:first-child h1::after{font-size:10px!important;margin-top:3px!important;}
-    body #header-user-nome,body #data-hora{display:none!important;}
+    body #header-user-nome{display:none!important;} body #data-hora{font-size:10px!important;white-space:nowrap!important;}
     body #header-user-role{font-size:9px!important;padding:3px 7px!important;}
     body .btn-logout{display:none!important;}
     body .btn-logout-mobile{display:block!important;}
@@ -2687,6 +2687,11 @@ html body.modo-vitrine-publica #main-nav#main-nav {
   html body.modo-vitrine-publica #app-header#app-header > div:first-child {
     display: none !important;
     visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    position: fixed !important;
+    left: -9999px !important;
   }
 }
 html body.modo-vitrine-publica #app-header#app-header {
@@ -7602,21 +7607,14 @@ function showPage(id) {
 function toggleMenuMobile() {
   const nav = document.getElementById('main-nav');
   const overlay = document.getElementById('nav-overlay');
-  if (!nav || !overlay) return;
-
   nav.classList.toggle('open');
   overlay.classList.toggle('open');
-
-  // Mantém compatibilidade com o CSS atual do mobile,
-  // que abre o menu usando body.menu-open.
-  document.body.classList.toggle('menu-open', nav.classList.contains('open'));
+  document.body.classList.toggle('menu-open');
 }
 
 function closeMenuMobile() {
-  const nav = document.getElementById('main-nav');
-  const overlay = document.getElementById('nav-overlay');
-  if (nav) nav.classList.remove('open');
-  if (overlay) overlay.classList.remove('open');
+  document.getElementById('main-nav').classList.remove('open');
+  document.getElementById('nav-overlay').classList.remove('open');
   document.body.classList.remove('menu-open');
 }
 
@@ -9833,15 +9831,15 @@ function renderCarrinho() {
   const wrap = document.getElementById('carrinho-wrap'); // mantido oculto, só para compatibilidade
 
   if (carrinho.length === 0) {
-    vazioMsg.style.display = 'block';
-    tabelaReal.style.display = 'none';
+    vazioMsg.style.setProperty('display', 'flex', 'important');
+    tabelaReal.style.setProperty('display', 'none', 'important');
     document.getElementById('carrinho-resumo').innerHTML = '';
-    if (wrap) wrap.style.display = 'none';
+    if (wrap) wrap.style.setProperty('display', 'none', 'important');
     return;
   }
-  vazioMsg.style.display = 'none';
-  tabelaReal.style.display = 'table';
-  if (wrap) wrap.style.display = 'block';
+  vazioMsg.style.setProperty('display', 'none', 'important');
+  tabelaReal.style.setProperty('display', 'table', 'important');
+  if (wrap) wrap.style.setProperty('display', 'block', 'important');
 
   const totalFat = carrinho.reduce((s,c) => s + c.valor_unit * c.qtd, 0);
   const totalLucro = carrinho.reduce((s,c) => s + (c.valor_unit - c.custo_unit) * c.qtd, 0);
