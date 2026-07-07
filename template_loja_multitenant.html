@@ -6942,7 +6942,10 @@ async function fazerLogin() {
     const lic = await getLicencaSB().catch(() => ({ validade: null }));
     if (lic.validade) {
       const hojeISO = new Date().toISOString().slice(0, 10);
-      if (hojeISO > lic.validade) {
+      const dataCarencia = new Date(lic.validade);
+      dataCarencia.setDate(dataCarencia.getDate() + 14);
+      const carenciaISO = dataCarencia.toISOString().slice(0, 10);
+      if (hojeISO > carenciaISO) {
         blkEl.style.display = 'block';
         return;
       }
@@ -14553,7 +14556,10 @@ if (_sessaoAtual) {
       const lic = await getLicencaSB().catch(() => ({ validade: null }));
       if (lic && lic.validade) {
         const hojeISO = new Date().toISOString().slice(0, 10);
-        if (hojeISO > lic.validade) {
+        const dataCarencia = new Date(lic.validade);
+        dataCarencia.setDate(dataCarencia.getDate() + 14);
+        const carenciaISO = dataCarencia.toISOString().slice(0, 10);
+        if (hojeISO > carenciaISO) {
           document.getElementById('blocked-screen').classList.add('show');
           return;
         }
