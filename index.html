@@ -743,7 +743,7 @@
     #app-header{left:0!important;height:var(--topbar-h)!important;justify-content:space-between!important;}
     #app-header > div:first-child{position:static!important;width:auto!important;height:auto!important;padding:0!important;border:0!important;background:transparent!important;}
     #app-header img{width:40px!important;height:40px!important;}
-    #app-header h1{font-size:15px!important;max-width:140px!important;}
+    #app-header h1{font-size:14px!important;max-width:130px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
     .btn-menu-mobile{display:inline-flex!important;align-items:center!important;justify-content:center!important;}
     #main-nav{top:var(--topbar-h)!important;transform:translateX(-105%)!important;transition:.2s ease!important;width:260px!important;}
     #main-nav.open{transform:translateX(0)!important;}
@@ -1262,7 +1262,7 @@
       min-width:0!important;
     }
     body #app-header > div:first-child img{width:38px!important;height:38px!important;min-width:38px!important;border-radius:12px!important;}
-    body #app-header > div:first-child h1{font-size:13px!important;line-height:1.05!important;max-width:138px!important;}
+    body #app-header > div:first-child h1{font-size:13px!important;line-height:1.05!important;max-width:120px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
     body #app-header > div:first-child h1::after{font-size:10px!important;margin-top:3px!important;}
     body #header-user-nome{display:none!important;} body #data-hora{font-size:10px!important;white-space:nowrap!important;}
     body #header-user-role{font-size:9px!important;padding:3px 7px!important;}
@@ -2706,6 +2706,16 @@ body.modo-vitrine-publica {
 body.modo-vitrine-publica #catalogo-publico {
   display: block !important;
   padding: 0 !important;
+}
+/* Mobile: #app-header é position:static, o legado-logo-fix-final não se aplica.
+   Ocultar via classe body + seletor direto para todos os breakpoints */
+body.modo-vitrine-publica #app-header {
+  display: none !important;
+  visibility: hidden !important;
+}
+body.modo-vitrine-publica #main-nav {
+  display: none !important;
+  visibility: hidden !important;
 }
 </style>
 
@@ -14990,21 +15000,28 @@ function ehRotaCatalogoPublico() {
 }
 
 async function renderizarCatalogoPublico() {
-  // Ocultar TUDO do sistema com setProperty+important para vencer CSS cascade
+  // Ocultar TUDO do sistema — CSS + JS com setProperty important
+  document.body.classList.add('modo-vitrine-publica');
+  // Ocultar por ID
   ['login-screen','blocked-screen','app-header','main-nav','app-main','nav-overlay',
-   'banner-licenca-vencendo','header-brand','app-nav','topbar','sidebar']
+   'banner-licenca-vencendo','btn-menu-mobile']
     .forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.style.setProperty('display', 'none', 'important');
-        // Ocultar também todos os filhos diretos (logo-fix usa > div:first-child)
-        Array.from(el.children).forEach(child => child.style.setProperty('display', 'none', 'important'));
+        el.style.setProperty('visibility', 'hidden', 'important');
+        Array.from(el.children).forEach(ch => {
+          ch.style.setProperty('display', 'none', 'important');
+          ch.style.setProperty('visibility', 'hidden', 'important');
+        });
       }
     });
-  // Ocultar qualquer header/nav remanescente
-  document.querySelectorAll('header, nav, [class*="topbar"], [class*="sidebar"], [class*="header"]')
-    .forEach(el => { if (el.id !== 'catalogo-publico') el.style.setProperty('display', 'none', 'important'); });
-  document.body.classList.add('modo-vitrine-publica');
+  // Ocultar pelo seletor estrutural (vence position:static mobile)
+  document.querySelectorAll('header, nav, [id="app-header"]')
+    .forEach(el => {
+      el.style.setProperty('display', 'none', 'important');
+      el.style.setProperty('visibility', 'hidden', 'important');
+    });
 
   const cont = document.getElementById('catalogo-publico');
   cont.style.display = 'block';
