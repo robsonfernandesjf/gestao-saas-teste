@@ -4197,6 +4197,36 @@ body.modo-pdv-exclusivo main {
 </style>
 <style id="vitrine-preload"></style>
 <script>(function(){if(window.location.pathname.replace(/[/]+$/,"").endsWith("/loja")){document.getElementById("vitrine-preload").textContent="body>*{display:none!important}"+"#catalogo-publico{display:block!important}"+"body{padding:0!important;margin:0!important;background:#f8f8f6!important}";document.documentElement.classList.add("is-vitrine");}})();</script>
+
+
+<!-- FIX MOBILE: evita barra/overlay cobrindo o botão hambúrguer -->
+<style id="fix-mobile-hamburger-overlay">
+  @media (max-width: 900px) {
+    html body #app-header#app-header {
+      z-index: 3000 !important;
+      overflow: visible !important;
+    }
+
+    html body #btn-menu-mobile.btn-menu-mobile,
+    html body .btn-menu-mobile {
+      position: relative !important;
+      z-index: 3100 !important;
+      flex: 0 0 42px !important;
+      min-width: 42px !important;
+      pointer-events: auto !important;
+    }
+
+    html body #nav-overlay.open {
+      top: var(--vl-topbar-h, var(--topbar-h, 66px)) !important;
+      z-index: 900 !important;
+    }
+
+    html body #main-nav#main-nav {
+      z-index: 2000 !important;
+    }
+  }
+</style>
+
 </head>
 <body>
 
