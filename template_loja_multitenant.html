@@ -2706,6 +2706,13 @@ body.modo-vitrine-publica #catalogo-publico {
   display: block !important;
   padding: 0 !important;
 }
+/* Zerar espaços reservados para header/sidebar quando removidos do DOM */
+body.modo-vitrine-publica,
+body.modo-vitrine-publica main,
+body.modo-vitrine-publica #app-main {
+  padding: 0 !important;
+  margin: 0 !important;
+}
 /* Mobile: #app-header é position:static, o legado-logo-fix-final não se aplica.
    Ocultar via classe body + seletor direto para todos os breakpoints */
 body.modo-vitrine-publica #app-header {
@@ -14999,6 +15006,10 @@ async function renderizarCatalogoPublico() {
       const el = document.getElementById(id);
       if (el && el.parentNode) el.parentNode.removeChild(el);
     });
+  // Zerar padding/margin do body (reservado para header/sidebar)
+  document.body.style.setProperty('padding', '0', 'important');
+  document.body.style.setProperty('margin', '0', 'important');
+  document.body.style.setProperty('padding-top', '0', 'important');
 
   const cont = document.getElementById('catalogo-publico');
   cont.style.display = 'block';
