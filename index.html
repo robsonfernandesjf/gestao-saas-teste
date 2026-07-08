@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<script>
+(function(){
+  var path = window.location.pathname.replace(/\/+$/, '');
+  if (path.endsWith('/loja')) {
+    var r = document.documentElement.style;
+    r.setProperty('--topbar-h', '0px');
+    r.setProperty('--sidebar-w', '0px');
+    r.setProperty('--vl-sidebar-w', '0px');
+    r.setProperty('--ui23-sidebar-w', '0px');
+    r.setProperty('--ui23-topbar-h', '0px');
+    r.setProperty('--ui23-brand-h', '0px');
+    r.setProperty('--ui23-banner-h', '0px');
+  }
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Gestão de Estoque · Fátima Cigani 2026</title>
