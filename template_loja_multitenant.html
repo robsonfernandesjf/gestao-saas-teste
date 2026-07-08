@@ -1046,7 +1046,7 @@
     --ui23-sidebar-w:276px;
     --ui23-brand-h:122px;
     --ui23-topbar-h:72px;
-    --ui23-banner-h:0px;
+    --ui23-banner-h:40px;
     --ui23-bg:#F6F8FC;
     --ui23-surface:#FFFFFF;
     --ui23-border:#E6EBF3;
@@ -1256,7 +1256,7 @@
 
   /* PWA / celular */
   @media (max-width: 820px){
-    :root{--ui23-sidebar-w:0px;--ui23-brand-h:0px;--ui23-topbar-h:66px;}
+    :root{--ui23-sidebar-w:0px;--ui23-brand-h:0px;--ui23-topbar-h:66px;--ui23-banner-h:38px;}
     body #app-header{
       left:0!important;
       height:var(--ui23-topbar-h)!important;
@@ -4268,7 +4268,7 @@ body.modo-pdv-exclusivo main {
 
 <div id="banner-licenca-vencendo" style="display:none;background:var(--warn);color:#fff;padding:10px 20px;text-align:center;font-size:13px;font-weight:600;position:relative;">
   <span id="banner-licenca-texto"></span>
-  <button onclick="document.getElementById('banner-licenca-vencendo').style.display='none';document.documentElement.style.setProperty('--ui23-banner-h','0px','important')" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:none;border:none;color:#fff;font-size:16px;cursor:pointer;line-height:1;">×</button>
+  <button onclick="document.getElementById('banner-licenca-vencendo').style.display='none'" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:none;border:none;color:#fff;font-size:16px;cursor:pointer;line-height:1;">×</button>
 </div>
 
 <main id="app-main">
@@ -7337,7 +7337,7 @@ function checarAvisoVencimentoLicenca(lic) {
   if (!banner) return;
   const dias = lic && lic.validade ? diasParaVencerLicenca(lic.validade) : null;
 
-  if (dias === null || dias > 7) { banner.style.display = 'none'; document.documentElement.style.setProperty('--ui23-banner-h','0px','important'); return; }
+  if (dias === null || dias > 7) { banner.style.display = 'none'; return; }
 
   let msg = '';
   let cor = 'var(--warn)';
@@ -7352,7 +7352,7 @@ function checarAvisoVencimentoLicenca(lic) {
   } else {
     const diasVencida = Math.abs(dias);
     const diasRestantes = 14 - diasVencida;
-    if (diasRestantes <= 0) { banner.style.display = 'none'; document.documentElement.style.setProperty('--ui23-banner-h','0px','important'); return; }
+    if (diasRestantes <= 0) { banner.style.display = 'none'; return; }
     msg = `🚨 Assinatura vencida há ${diasVencida} dia${diasVencida === 1 ? '' : 's'}. O sistema será bloqueado em ${diasRestantes} dia${diasRestantes === 1 ? '' : 's'}. Renove agora: (32) 98819-1555.`;
     cor = '#e53e3e';
   }
@@ -7365,7 +7365,6 @@ function checarAvisoVencimentoLicenca(lic) {
     banner.style.removeProperty('background'); // deixa o CSS laranja padrão valer
   }
   banner.style.setProperty('display', 'flex', 'important');
-  document.documentElement.style.setProperty('--ui23-banner-h', window.innerWidth <= 820 ? '38px' : '40px', 'important');
 }
 
 function atualizarStatusLicenca(lic) {
