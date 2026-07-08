@@ -14990,29 +14990,14 @@ function ehRotaCatalogoPublico() {
 }
 
 async function renderizarCatalogoPublico() {
-  // Ocultar TUDO do sistema — CSS + JS com setProperty important
+  // Vitrine pública: REMOVER elementos do DOM completamente
+  // É a única forma de vencer o legado-logo-fix-final (display:flex !important)
   document.body.classList.add('modo-vitrine-publica');
-  // Ocultar por ID (inclui header e nav)
   ['login-screen','blocked-screen','app-header','main-nav','app-main','nav-overlay',
    'banner-licenca-vencendo','btn-menu-mobile']
     .forEach(id => {
       const el = document.getElementById(id);
-      if (el) {
-        el.setAttribute('hidden', '');
-        el.style.setProperty('display', 'none', 'important');
-        el.style.setProperty('visibility', 'hidden', 'important');
-        el.style.setProperty('width', '0', 'important');
-        el.style.setProperty('height', '0', 'important');
-        el.style.setProperty('overflow', 'hidden', 'important');
-        el.style.setProperty('position', 'absolute', 'important');
-        el.style.setProperty('left', '-9999px', 'important');
-      }
-    });
-  // Ocultar qualquer outro header/nav solto
-  document.querySelectorAll('header:not(#catalogo-publico), nav:not(#catalogo-publico)')
-    .forEach(el => {
-      el.setAttribute('hidden', '');
-      el.style.setProperty('display', 'none', 'important');
+      if (el && el.parentNode) el.parentNode.removeChild(el);
     });
 
   const cont = document.getElementById('catalogo-publico');
