@@ -4279,7 +4279,7 @@ body.modo-pdv-exclusivo main {
 
 <div id="banner-licenca-vencendo" style="display:none;background:var(--warn);color:#fff;padding:10px 20px;text-align:center;font-size:13px;font-weight:600;position:relative;">
   <span id="banner-licenca-texto"></span>
-  <button onclick="document.getElementById('banner-licenca-vencendo').style.display='none'" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:none;border:none;color:#fff;font-size:16px;cursor:pointer;line-height:1;">×</button>
+  <button onclick="document.getElementById('banner-licenca-vencendo').style.display='none';document.documentElement.style.setProperty('--ui23-banner-h','0px')" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:none;border:none;color:#fff;font-size:16px;cursor:pointer;line-height:1;">×</button>
 </div>
 
 <main id="app-main">
@@ -7340,7 +7340,7 @@ function checarAvisoVencimentoLicenca(lic) {
   const dias = lic && lic.validade ? diasParaVencerLicenca(lic.validade) : null;
 
   // Sem validade cadastrada ou longe do vencimento (mais de 7 dias): esconde
-  if (dias === null || dias > 7) { banner.style.display = 'none'; return; }
+  if (dias === null || dias > 7) { banner.style.display = 'none'; document.documentElement.style.setProperty('--ui23-banner-h','0px'); return; }
 
   let msg = '';
   let cor = 'var(--warn)'; // laranja/amarelo padrão
@@ -7357,7 +7357,7 @@ function checarAvisoVencimentoLicenca(lic) {
     // Vencida — dentro da carência de 14 dias (após isso o sistema bloqueia)
     const diasVencida = Math.abs(dias);
     const diasRestantes = 14 - diasVencida;
-    if (diasRestantes <= 0) { banner.style.display = 'none'; return; } // bloqueio já trata isso
+    if (diasRestantes <= 0) { banner.style.display = 'none'; document.documentElement.style.setProperty('--ui23-banner-h','0px'); return; } // bloqueio já trata isso
     msg = `🚨 Assinatura vencida há ${diasVencida} dia${diasVencida === 1 ? '' : 's'}. O sistema será bloqueado em ${diasRestantes} dia${diasRestantes === 1 ? '' : 's'}. Renove agora: (32) 98819-1555.`;
     cor = '#e53e3e';
   }
@@ -7370,6 +7370,7 @@ function checarAvisoVencimentoLicenca(lic) {
     banner.style.removeProperty('background'); // deixa o CSS laranja padrão valer
   }
   banner.style.setProperty('display', 'flex', 'important');
+  document.documentElement.style.setProperty('--ui23-banner-h','40px');
 }
 
 function atualizarStatusLicenca(lic) {
