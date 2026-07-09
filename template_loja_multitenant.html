@@ -4251,7 +4251,7 @@ body.modo-vitrine-publica{
 .vit-hero-inner{display:grid;grid-template-columns:minmax(260px,430px) 1fr minmax(230px,310px);gap:26px;align-items:center;min-height:385px;padding:32px 22px;}
 .vit-hero-img{height:385px;border-radius:0 0 34px 0;overflow:hidden;box-shadow:var(--vit-shadow);background:linear-gradient(135deg,#f7dbdc,#fff);}
 .vit-hero-img img{width:100%;height:100%;object-fit:cover;display:block;}
-.vit-menu-dot{position:absolute;top:66px;left:24px;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:2;}
+.vit-menu-dot{display:none!important;}
 .vit-brand{text-align:center;padding:12px 0;}
 .vit-logo{width:106px;height:106px;border-radius:50%;margin:0 auto 12px;background:#fff;border:1px solid var(--vit-border);box-shadow:0 12px 30px rgba(120,55,70,.11);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--accent);font-family:Georgia,serif;font-size:44px;letter-spacing:.04em;}
 .vit-logo img{width:100%;height:100%;object-fit:contain;padding:10px;}
@@ -15472,11 +15472,10 @@ async function renderizarCatalogoPublico() {
     cont.innerHTML = `
       <div class="vit-topbar">
         <div class="vit-wrap">
-          <span>📍 Loja online</span><span>🚚 Entregamos na região</span><span>💳 Consulte parcelamento</span><span>📲 Atendimento pelo WhatsApp</span>
+          <span>🚚 Entregamos na região</span><span>💳 Consulte parcelamento</span><span>📲 Atendimento pelo WhatsApp</span>
         </div>
       </div>
       <section class="vit-hero">
-        <div class="vit-menu-dot">☰</div>
         <div class="vit-wrap vit-hero-inner">
           <div class="vit-hero-img">${bannerHtml}</div>
           <div class="vit-brand">
@@ -15518,16 +15517,6 @@ async function renderizarCatalogoPublico() {
           <div class="vit-trust-item"><span>💬</span><div><b>Atendimento humano</b><small>Estamos aqui por você</small></div></div>
         </div>
       </main>
-
-      <footer class="vit-footer">
-        <div class="vit-wrap vit-footer-grid">
-          <div><div class="vit-logo" style="margin:0 0 10px;width:82px;height:82px;font-size:30px;">${logoHtml}</div><h3>${escCatalogoPub(nomeLoja)}</h3><p>Moda que combina com você!</p></div>
-          <div><h4>Institucional</h4><a>Sobre a loja</a><a>Política de trocas</a><a>Formas de pagamento</a><a>Entrega e prazos</a></div>
-          <div><h4>Fale conosco</h4><a>${whats ? 'WhatsApp: +' + String(whats).replace(/\D/g,'') : 'WhatsApp da loja'}</a><a>Instagram da loja</a><a>Atendimento online</a></div>
-          <div><h4>Receba novidades</h4><p>Chame no WhatsApp e veja lançamentos, promoções e peças disponíveis.</p><a class="vit-cta" href="${waHref}" target="_blank" rel="noopener" style="min-width:0;margin-top:12px;padding:12px 18px;font-size:13px;">Quero receber</a></div>
-        </div>
-        <div class="vit-copy">© ${new Date().getFullYear()} ${escCatalogoPub(nomeLoja)}. Desenvolvido por LegadoERP.</div>
-      </footer>
       ${whats ? `<a class="vit-wa-float" href="${waHref}" target="_blank" rel="noopener" title="Falar no WhatsApp">☘</a>` : ''}
     `;
 
