@@ -5977,7 +5977,7 @@ body::before{display:none!important;}
 
 <!-- MODAL TAXA DE CARTÃO -->
 <div class="modal-bg" id="modal-taxa">
-  <div class="modal" style="max-width:440px;">
+  <div class="modal" style="max-width:460px;">
     <div class="modal-header">
       <h2 id="modal-taxa-titulo">Nova Modalidade</h2>
       <button class="modal-close" onclick="fecharModal('modal-taxa')">×</button>
@@ -5993,7 +5993,7 @@ body::before{display:none!important;}
       </div>
       <div class="form-row" id="taxa-parcelas-wrap">
         <label>Parcelas</label>
-        <select id="taxa-parcelas">
+        <select id="taxa-parcelas" onchange="renderCamposVencimento()">
           <option value="1">1x (à vista)</option>
           <option value="2">2x</option>
           <option value="3">3x</option>
@@ -6012,11 +6012,11 @@ body::before{display:none!important;}
         <label>Taxa (%)</label>
         <input type="number" id="taxa-percentual" step="0.01" placeholder="Ex: 3.05">
       </div>
-      <div class="form-row">
-        <label>Condição de pagamento</label>
-        <input type="text" id="taxa-condicao" placeholder="Ex: D+1, D+30, D+1-D+30" style="text-transform:uppercase;">
-        <small style="color:var(--muted);font-size:11px;margin-top:4px;display:block;">
-          D+1 = vence no dia seguinte · D+30 = vence em 30 dias · D+1-D+30 = parcelas mensais a partir do dia seguinte
+      <div class="form-row" id="taxa-vencimentos-wrap">
+        <label>Vencimento das parcelas (em dias)</label>
+        <div id="taxa-vencimentos-campos" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;"></div>
+        <small style="color:var(--muted);font-size:11px;margin-top:6px;display:block;">
+          Informe em quantos dias cada parcela vence após a venda. Ex: 1x → 30 dias · 2x → 30 e 60 dias
         </small>
       </div>
     </div>
@@ -6890,28 +6890,21 @@ function buscarTaxaPercentual(tipo, parcelas) {
   return achou ? (parseFloat(achou.percentual) || 0) : 0;
 }
 
-// Retorna a condição de pagamento (D+N) para o tipo/parcelas do cartão
-function buscarCondicaoCartao(tipo, parcelas) {
+// Retorna array de dias de vencimento por parcela
+function buscarVencimentosCartao(tipo, parcelas) {
   const taxas = getTaxasCartao();
   const p = parseInt(parcelas) || 1;
   const alvo = _normalizarTipoTaxa(tipo);
   const taxa = taxas.find(t => _normalizarTipoTaxa(t.tipo) === alvo && parseInt(t.parcelas || 1) === p);
-  return taxa ? (taxa.condicao || '') : '';
+  if (taxa && taxa.vencimentos && taxa.vencimentos.length) return taxa.vencimentos;
+  return null;
 }
 
-function calcularVencimentoCondicao(dataBase, condicao, parcela) {
-  if (!condicao) return proximoDiaUtil(dataBase);
-  const upper = condicao.toUpperCase().trim();
-  const escalonado = upper.match(/^D[+](\d+)-D[+](\d+)$/);
-  if (escalonado) {
-    const inicio = parseInt(escalonado[1]);
-    const intervalo = parseInt(escalonado[2]) - inicio;
-    const p = (parseInt(parcela) || 1) - 1;
-    const dias = inicio + (p * intervalo);
-    return somarDias(dataBase, dias);
+function calcularVencimentoParcela(dataBase, tipo, parcelas, numeroParcela) {
+  const vencimentos = buscarVencimentosCartao(tipo, parcelas);
+  if (vencimentos && vencimentos.length >= numeroParcela) {
+    return somarDias(dataBase, vencimentos[numeroParcela - 1]);
   }
-  const simples = upper.match(/^D[+](\d+)$/);
-  if (simples) return somarDias(dataBase, parseInt(simples[1]));
   return proximoDiaUtil(dataBase);
 }
 
@@ -10361,8 +10354,7 @@ async function confirmarVenda() {
           invalidarCache('debitos');
         } catch (e) { console.warn('Cartão salvo localmente:', e.message); }
       } else {
-        const condicaoCartao = buscarCondicaoCartao(forma, parcelasLeg);
-        const proxUtil = calcularVencimentoCondicao(dataBase, condicaoCartao, 1);
+        const proxUtil = calcularVencimentoParcela(dataBase, forma, parcelasLeg, 1);
         const [pu_y, pu_m, pu_d] = proxUtil.split('-');
         const vencFmt = pu_d + '/' + pu_m + '/' + pu_y;
         const novoCartao = {
@@ -11734,6 +11726,24 @@ function toggleParcelasTaxa() {
   const tipo = document.getElementById('taxa-tipo').value;
   document.getElementById('taxa-parcelas-wrap').style.display = tipo === 'Cartão crédito' ? 'block' : 'none';
   if (tipo === 'Cartão débito') document.getElementById('taxa-parcelas').value = '1';
+  renderCamposVencimento();
+}
+
+function renderCamposVencimento(diasExistentes) {
+  const parcelas = parseInt(document.getElementById('taxa-parcelas').value) || 1;
+  const wrap = document.getElementById('taxa-vencimentos-campos');
+  if (!wrap) return;
+  const vals = diasExistentes || [];
+  wrap.innerHTML = Array.from({length: parcelas}, (_, i) => {
+    const parc = i + 1;
+    const def = vals[i] !== undefined ? vals[i] : (parc * 30);
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <span style="font-size:11px;color:var(--muted);font-weight:600;">${parc}ª parc.</span>
+      <input type="number" id="taxa-venc-${parc}" min="1" max="360" value="${def}"
+        style="width:64px;text-align:center;padding:8px 4px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-weight:700;background:var(--surface);">
+      <span style="font-size:11px;color:var(--muted);">dias</span>
+    </div>`;
+  }).join('');
 }
 
 function abrirModalTaxa() {
@@ -11742,7 +11752,6 @@ function abrirModalTaxa() {
   document.getElementById('taxa-parcelas').value = '1';
   document.getElementById('taxa-percentual').value = '';
   document.getElementById('modal-taxa-titulo').textContent = '+ Nova Modalidade';
-  document.getElementById('taxa-condicao').value = '';
   toggleParcelasTaxa();
   document.getElementById('modal-taxa').classList.add('open');
 }
@@ -11754,9 +11763,10 @@ function editarTaxaCartao(id) {
   document.getElementById('taxa-tipo').value = t.tipo;
   document.getElementById('taxa-parcelas').value = t.parcelas || 1;
   document.getElementById('taxa-percentual').value = t.percentual;
-  document.getElementById('taxa-condicao').value = t.condicao || '';
   document.getElementById('modal-taxa-titulo').textContent = '✏️ Editar Modalidade';
   toggleParcelasTaxa();
+  const diasSalvos = t.vencimentos || [];
+  renderCamposVencimento(diasSalvos);
   document.getElementById('modal-taxa').classList.add('open');
 }
 
@@ -11768,8 +11778,11 @@ async function salvarTaxaCartao() {
 
   if (isNaN(percentual) || percentual < 0) { alert('Informe uma taxa válida.'); return; }
 
-  const condicao = (document.getElementById('taxa-condicao').value || '').trim().toUpperCase();
-  const dados = { tipo, parcelas, percentual, ...(condicao ? { condicao } : {}) };
+  const vencimentos = Array.from({length: parcelas}, (_, i) => {
+    const el = document.getElementById(`taxa-venc-${i+1}`);
+    return el ? (parseInt(el.value) || (i+1)*30) : (i+1)*30;
+  });
+  const dados = { tipo, parcelas, percentual, vencimentos };
 
   try {
     mostrarLoading(true);
@@ -11834,7 +11847,7 @@ function renderTaxasCartao() {
       <td>${t.tipo}</td>
       <td>${t.tipo === 'Cartão débito' ? '—' : (t.parcelas || 1) + 'x'}</td>
       <td><strong>${parseFloat(t.percentual).toFixed(2)}%</strong></td>
-      <td>${t.condicao ? `<span style="font-size:12px;font-weight:600;color:var(--accent2);background:var(--surface);border:1px solid var(--border);padding:2px 8px;border-radius:20px;">${t.condicao}</span>` : '<span style="color:var(--muted);font-size:12px;">—</span>'}</td>
+      <td>${(t.vencimentos && t.vencimentos.length) ? `<span style="font-size:12px;font-weight:600;color:var(--accent2);">${t.vencimentos.map(d=>d+'d').join(' / ')}</span>` : '<span style="color:var(--muted);font-size:12px;">—</span>'}</td>
       <td>
         <button class="btn btn-sm" onclick="editarTaxaCartao('${t.id}')">✏️</button>
         <button class="btn btn-sm btn-danger" onclick="excluirTaxaCartao('${t.id}')">🗑</button>
