@@ -4916,6 +4916,7 @@ body.modo-vitrine-publica{
         <button type="button" class="pdv-pag-btn" data-valor="Cartão débito" onclick="selecionarFormaPagamento(this)">💳 Débito</button>
         <button type="button" class="pdv-pag-btn" data-valor="Cartão crédito" onclick="selecionarFormaPagamento(this)">💳 Crédito</button>
         <button type="button" class="pdv-pag-btn" data-valor="A prazo" onclick="selecionarFormaPagamento(this)">📄 Fiado</button>
+        <button type="button" class="pdv-pag-btn" data-valor="Crediário" onclick="selecionarFormaPagamento(this)">💳 Crediário</button>
         <button type="button" class="pdv-pag-btn" data-valor="Voucher" onclick="selecionarFormaPagamento(this)">🎫 Voucher</button>
       </div>
 
@@ -4926,6 +4927,7 @@ body.modo-vitrine-publica{
         <option>Cartão débito</option>
         <option>Pix</option>
         <option value="A prazo">A prazo (fiado)</option>
+        <option value="Crediário">Crediário (parcelado)</option>
         <option value="Voucher">Voucher (crédito de troca)</option>
       </select>
 
@@ -6597,6 +6599,7 @@ body.modo-vitrine-publica{
               <option value="Cartão débito">💳 Débito</option>
               <option value="Cartão crédito">💳 Crédito</option>
               <option value="A prazo">📄 Fiado</option>
+              <option value="Crediário">💳 Crediário</option>
               <option value="Voucher">🎫 Voucher</option>
             </select>
           </div>
@@ -6629,6 +6632,7 @@ body.modo-vitrine-publica{
               <option value="Cartão débito" selected>💳 Débito</option>
               <option value="Cartão crédito">💳 Crédito</option>
               <option value="A prazo">📄 Fiado</option>
+              <option value="Crediário">💳 Crediário</option>
               <option value="Voucher">🎫 Voucher</option>
             </select>
           </div>
@@ -6681,6 +6685,40 @@ body.modo-vitrine-publica{
         <div id="venda-voucher-saldo" style="font-size:12px;margin-top:6px;"></div>
       </div>
 
+      <!-- Campos extras para venda no crediário -->
+      <div id="crediario-fields" style="display:none;margin-top:12px;padding:14px;background:#F8FAFC;border:1px solid #CBD5E1;border-radius:var(--radius);">
+        <div style="font-size:12px;font-weight:800;color:#334155;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.4px;">💳 Venda no crediário — carnê parcelado</div>
+        <div id="crediario-limite-alerta" style="font-size:12px;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:#fff;border:1px solid #E2E8F0;color:#475569;">Informe o cliente para consultar limite.</div>
+        <div class="form-grid">
+          <div class="form-row" style="margin-bottom:8px;">
+            <label>Entrada (R$) — opcional</label>
+            <input type="text" inputmode="numeric" id="cred-venda-entrada" placeholder="0,00" oninput="mascaraMoeda(this);previewCredVenda();">
+          </div>
+          <div class="form-row" style="margin-bottom:8px;">
+            <label>Parcelas</label>
+            <select id="cred-venda-parcelas" onchange="previewCredVenda();">
+              <option value="1">1x</option><option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option><option value="7">7x</option><option value="8">8x</option><option value="9">9x</option><option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
+            </select>
+          </div>
+          <div class="form-row" style="margin-bottom:8px;">
+            <label>Primeiro vencimento</label>
+            <input type="date" id="cred-venda-vencimento" onchange="previewCredVenda();">
+          </div>
+          <div class="form-row" style="margin-bottom:8px;">
+            <label>Intervalo</label>
+            <select id="cred-venda-intervalo" onchange="previewCredVenda();"><option value="30">Mensal</option><option value="15">Quinzenal</option><option value="7">Semanal</option></select>
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:8px;">
+          <label>Observação</label>
+          <input type="text" id="cred-venda-obs" placeholder="Ex: carnê da venda 3x">
+        </div>
+        <label style="display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer;margin:6px 0 10px;">
+          <input type="checkbox" id="cred-venda-imprimir" checked style="width:auto;"> Gerar carnê após finalizar
+        </label>
+        <div id="cred-venda-preview" style="font-size:12px;color:#475569;">Informe parcelas e vencimento para visualizar o carnê.</div>
+      </div>
+
       <!-- Campos extras para venda a prazo -->
       <div id="prazo-fields" style="display:none;margin-top:12px;padding:14px;background:var(--warn-light);border:1px solid var(--warn);border-radius:var(--radius);">
         <div style="font-size:12px;font-weight:700;color:var(--warn);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.4px;">⚠️ Venda a prazo — preencha os dados abaixo</div>
@@ -6719,6 +6757,7 @@ body.modo-vitrine-publica{
     <div class="modal-body" id="confirm-venda-body"></div>
     <div class="modal-footer" style="flex-wrap:wrap;gap:8px;">
       <button class="btn btn-outline" onclick="mostrarModalCupom()">🧾 Ver Cupom</button>
+      <button class="btn btn-outline" id="btn-imprimir-carne-crediario" onclick="imprimirCarneCrediario()" style="display:none;">📄 Imprimir Carnê</button>
       <button class="btn btn-primary" onclick="fecharModal('modal-confirm-venda')">OK</button>
     </div>
   </div>
@@ -10251,6 +10290,7 @@ function togglePagamentoMisto() {
   document.querySelector('.pdv-forma-selecionada').style.display = ativo ? 'none' : 'flex';
   document.getElementById('venda-parcelas-wrap').style.display = 'none';
   document.getElementById('prazo-fields').style.display = 'none';
+  const cf = document.getElementById('crediario-fields'); if (cf) cf.style.display = 'none';
   document.getElementById('voucher-fields').style.display = 'none';
   document.getElementById('pagamento-misto-wrap').style.display = ativo ? 'block' : 'none';
   if (ativo) {
@@ -10394,12 +10434,12 @@ async function confirmarVenda() {
     pagamentos = [{ forma: pag, valor: totalFat, parcelas, voucherNumero }];
   }
 
-  const temPrazo = pagamentos.some(p => p.forma === 'A prazo');
+  const temPrazo = pagamentos.some(p => p.forma === 'A prazo' || p.forma === 'Crediário');
   if (temPrazo) {
-    if (!cliente) { alert('Para venda a prazo, informe o nome da cliente.'); document.getElementById('venda-cliente').focus(); return; }
+    if (!cliente) { alert('Para venda a prazo/crediário, informe o nome da cliente.'); document.getElementById('venda-cliente').focus(); return; }
     const clienteCadastrado = getClientes().find(c => (c.nome||'').trim().toLowerCase() === cliente.toLowerCase());
     if (!clienteCadastrado) {
-      alert('Venda fiado só é permitida para clientes já cadastrados. Cadastre "' + cliente + '" em Clientes/Fornecedores antes de continuar, ou escolha o nome certinho na lista.');
+      alert('Venda fiado/crediário só é permitida para clientes já cadastrados. Cadastre "' + cliente + '" em Clientes/Fornecedores antes de continuar, ou escolha o nome certinho na lista.');
       document.getElementById('venda-cliente').focus();
       return;
     }
@@ -10527,6 +10567,84 @@ async function confirmarVenda() {
           }
         } catch (e) { console.warn('Saldo do voucher atualizado localmente:', e.message); }
       }
+      return;
+    }
+
+    if (forma === 'Crediário') {
+      const entradaVal = valorMoeda('cred-venda-entrada');
+      const vencInput = document.getElementById('cred-venda-vencimento').value;
+      const qtdCred = Math.max(1, parseInt(document.getElementById('cred-venda-parcelas')?.value || '1', 10) || 1);
+      const intervaloCred = parseInt(document.getElementById('cred-venda-intervalo')?.value || '30', 10);
+      const obsCred = document.getElementById('cred-venda-obs')?.value.trim() || '';
+      if (!vencInput) { alert('Informe o primeiro vencimento do crediário.'); return; }
+      if (entradaVal >= valorLeg) { alert('A entrada não pode ser maior ou igual ao total da venda.'); return; }
+      const limiteOk = validarLimiteCrediarioVenda(cliente, valorLeg - entradaVal);
+      if (!limiteOk.ok) { alert(limiteOk.msg); return; }
+
+      const contratoId = 'cred_venda_' + vendaId + sufixoId;
+      const valorFinanciado = Math.max(0, valorLeg - entradaVal);
+      const parcelasCred = gerarParcelasCredVenda(valorFinanciado, qtdCred, vencInput, intervaloCred);
+      const debitos = getDebitos();
+      const prodLabel = carrinho.map(c => c.produto).join(', ');
+
+      if (entradaVal > 0) {
+        const dataBase = dataInput || new Date().toISOString().slice(0,10);
+        const [ey, em, ed] = dataBase.split('-');
+        const dataFmt = ed + '/' + em + '/' + ey;
+        debitos.unshift({
+          id: 'cred_ent_' + vendaId + sufixoId,
+          venda_id: vendaId,
+          contrato_id: contratoId,
+          cliente: 'Entrada Crediário · ' + cliente,
+          data_venda: agora,
+          total: entradaVal,
+          vencimento: dataFmt,
+          obs: '[CREDIARIO] Entrada recebida no ato da venda — ' + prodLabel,
+          itens: carrinho.map(c=>({produto:c.produto, qtd:c.qtd, valor:c.valor_unit*c.qtd})),
+          pagamentos: [{ valor: entradaVal, forma: 'Entrada Crediário', data: dataFmt, horaISO: new Date().toISOString() }],
+          origem_crediario: 'entrada_venda'
+        });
+      }
+
+      for (const pc of parcelasCred) {
+        const debitoCred = {
+          id: contratoId + '_p' + pc.parcela,
+          venda_id: vendaId,
+          contrato_id: contratoId,
+          cliente,
+          data_venda: agora,
+          total: pc.valor,
+          vencimento: pc.vencimento,
+          obs: '[CREDIARIO] Venda parcelada' + (obsCred ? ' — ' + obsCred : ''),
+          itens: carrinho.map(c=>({produto:c.produto, qtd:c.qtd, valor:(c.valor_unit*c.qtd) / qtdCred})),
+          pagamentos: [],
+          origem_crediario: 'venda',
+          parcela: pc.parcela,
+          total_parcelas: pc.total_parcelas,
+          imprimir_carne: !!document.getElementById('cred-venda-imprimir')?.checked
+        };
+        debitos.unshift(debitoCred);
+        try {
+          const criado = await sbPost('debitos', {
+            cliente: debitoCred.cliente,
+            produto: prodLabel,
+            valor_total: debitoCred.total,
+            valor_pago: 0,
+            vencimento: debitoCred.vencimento,
+            obs: debitoCred.obs,
+            pagamentos: [],
+            parcela: debitoCred.parcela,
+            total_parcelas: debitoCred.total_parcelas
+          });
+          const registro = Array.isArray(criado) ? criado[0] : criado;
+          if (registro && registro.id) debitoCred.id = registro.id;
+        } catch(e) { console.warn('Parcela de crediário salva localmente:', e.message); }
+      }
+      saveDebitos(debitos); invalidarCache('debitos');
+      _ultimoCarneCrediario = {
+        contratoId, cliente, totalVenda: valorLeg, entrada: entradaVal, valorFinanciado, parcelas: parcelasCred,
+        dataVenda: agora, loja: (window.CONFIG_LOJA?.nome || document.title || 'LegadoERP'), produtos: prodLabel
+      };
       return;
     }
 
@@ -10688,6 +10806,7 @@ async function confirmarVenda() {
         ${cliente?`<div><p style="font-size:11px;color:var(--muted);">Cliente</p><strong>${cliente}</strong></div>`:''}
       </div>
       ${pag==='A prazo'?`<div style="margin-top:10px;padding:8px 12px;background:var(--warn-light);border:1px solid var(--warn);border-radius:5px;font-size:12px;color:var(--warn);">💳 Débito registrado no Financeiro. Acompanhe os pagamentos na aba <strong>A Receber</strong>.</div>`:''}
+      ${pag==='Crediário'?`<div style="margin-top:10px;padding:8px 12px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:5px;font-size:12px;color:#3730A3;">📄 Crediário gerado com parcelas individuais no Financeiro / A Receber. O limite do cliente foi considerado pela carteira em aberto.</div>`:''}
       ${(pag==='Cartão crédito'||pag==='Cartão débito')?`<div style="margin-top:10px;padding:8px 12px;background:var(--accent-light);border:1px solid #D4C0B5;border-radius:5px;font-size:12px;color:var(--accent);">💳 Valor acumulado no lançamento de cartão do dia${pag==='Cartão crédito'&&parcelas>1?` (crédito ${parcelas}x)`:''}. Taxa estimada: <strong>${R(totalFat*(buscarTaxaPercentual(pag,parcelas)/100))}</strong> (${buscarTaxaPercentual(pag,parcelas).toFixed(2)}%). Vence no próximo dia útil — visível em <strong>A Receber</strong>.</div>`:''}
       ${(pag==='Dinheiro'||pag==='Pix'||pag==='À vista')?`<div style="margin-top:10px;padding:8px 12px;background:var(--success-light);border:1px solid #B8D9C0;border-radius:5px;font-size:12px;color:var(--success);">✅ Recebimento registrado como <strong>quitado</strong> em A Receber.</div>`:''}
       ${pagamentos.length > 1 ? `<div style="margin-top:10px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:5px;font-size:12px;">💰 Pagamento dividido: ${pagamentos.map(p => `${p.forma} (${R(p.valor)})`).join(' + ')}</div>` : ''}
@@ -10707,6 +10826,8 @@ async function confirmarVenda() {
 
   fecharModal('modal-finalizar-venda');
   document.getElementById('modal-confirm-venda').classList.add('open');
+  const btnCarne = document.getElementById('btn-imprimir-carne-crediario');
+  if (btnCarne) btnCarne.style.display = (pag === 'Crediário' && _ultimoCarneCrediario && document.getElementById('cred-venda-imprimir')?.checked) ? 'inline-flex' : 'none';
 
   // Reabilita o botão de finalizar venda (ficava travado em "Salvando..." até recarregar a página)
   if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = '✓ Finalizar Venda'; }
@@ -10720,9 +10841,14 @@ async function confirmarVenda() {
   document.getElementById('venda-data').value = '';
   document.getElementById('venda-pagamento').value = 'À vista';
   document.getElementById('prazo-fields').style.display = 'none';
+  const cf = document.getElementById('crediario-fields'); if (cf) cf.style.display = 'none';
   document.getElementById('prazo-vencimento').value = '';
   document.getElementById('prazo-entrada').value = '';
   document.getElementById('prazo-obs').value = '';
+  ['cred-venda-entrada','cred-venda-vencimento','cred-venda-obs'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const cvp=document.getElementById('cred-venda-parcelas'); if(cvp) cvp.value='1';
+  const cvi=document.getElementById('cred-venda-intervalo'); if(cvi) cvi.value='30';
+  const cvprev=document.getElementById('cred-venda-preview'); if(cvprev) cvprev.innerHTML='Informe parcelas e vencimento para visualizar o carnê.';
   document.getElementById('venda-desconto').value = '';
   document.getElementById('venda-voucher-numero').value = '';
   document.getElementById('venda-voucher-saldo').textContent = '';
@@ -10743,6 +10869,113 @@ async function confirmarVenda() {
 }
 
 
+
+
+// ===== CREDIÁRIO NO PDV — FASE 2 =====
+let _ultimoCarneCrediario = null;
+function prepararCredVenda(){
+  const venc = document.getElementById('cred-venda-vencimento');
+  if (venc && !venc.value) {
+    const d = new Date(); d.setDate(d.getDate() + 30);
+    venc.value = d.toISOString().slice(0,10);
+  }
+  const sel = document.getElementById('cred-venda-parcelas');
+  const cfg = getCredConfig();
+  if (sel && cfg.maxParcelas) {
+    [...sel.options].forEach(op => { op.disabled = Number(op.value) > Number(cfg.maxParcelas); });
+    if (Number(sel.value) > Number(cfg.maxParcelas)) sel.value = String(cfg.maxParcelas);
+  }
+}
+function totalCarrinhoLiquido(){
+  const totalBruto = carrinho.reduce((s,c) => s + c.valor_unit * c.qtd, 0);
+  const desconto = valorMoeda('venda-desconto');
+  return Math.max(0, totalBruto - desconto);
+}
+function gerarParcelasCredVenda(total, qtd, vencISO, intervalo){
+  total = Number(total)||0; qtd = Math.max(1, Number(qtd)||1); intervalo = Number(intervalo)||30;
+  const base = Math.floor((total / qtd) * 100) / 100;
+  let restante = Math.round(total * 100);
+  const arr = [];
+  for (let i=1;i<=qtd;i++){
+    const cents = i < qtd ? Math.round(base * 100) : restante;
+    restante -= cents;
+    arr.push({ parcela:i, total_parcelas:qtd, valor:cents/100, vencimento:credDataBR(credSomarDias(vencISO, intervalo*(i-1))) });
+  }
+  return arr;
+}
+function getClienteLimiteCredito(nome){
+  const cfg = getCredConfig();
+  const cliente = getClientes().find(c => (c.nome||'').trim().toLowerCase() === String(nome||'').trim().toLowerCase());
+  const campos = ['limite_credito','limiteCrediario','limite_crediario','credito_limite'];
+  for (const campo of campos) {
+    const v = Number(cliente?.[campo]);
+    if (v > 0) return v;
+  }
+  return Number(cfg.limitePadrao || 0);
+}
+function getClienteCarteiraCrediario(nome){
+  const alvo = String(nome||'').trim().toLowerCase();
+  if (!alvo) return { aberto:0, vencido:0, parcelas:0 };
+  return getCredParcelas().filter(p => String(p.cliente||'').trim().toLowerCase() === alvo && p.statusCred !== 'pago').reduce((acc,p)=>{
+    acc.aberto += Number(p.saldo)||0;
+    if (p.statusCred === 'vencido') acc.vencido += Number(p.saldo)||0;
+    acc.parcelas += 1;
+    return acc;
+  }, { aberto:0, vencido:0, parcelas:0 });
+}
+function validarLimiteCrediarioVenda(cliente, valorNovo){
+  const cfg = getCredConfig();
+  const limite = getClienteLimiteCredito(cliente);
+  const cart = getClienteCarteiraCrediario(cliente);
+  if (cfg.bloqueio === 'sim' && cart.vencido > 0) return { ok:false, msg:`Cliente possui ${R(cart.vencido)} vencido no crediário. Receba/regularize antes de vender novamente.` };
+  if (limite > 0 && (cart.aberto + valorNovo) > limite + 0.01) {
+    return { ok:false, msg:`Limite de crédito insuficiente. Limite: ${R(limite)} · usado: ${R(cart.aberto)} · disponível: ${R(Math.max(0,limite-cart.aberto))} · venda: ${R(valorNovo)}.` };
+  }
+  return { ok:true, limite, usado:cart.aberto, disponivel: limite ? Math.max(0, limite - cart.aberto) : 0, vencido:cart.vencido };
+}
+function previewCredVenda(){
+  const el = document.getElementById('cred-venda-preview');
+  const alertEl = document.getElementById('crediario-limite-alerta');
+  if (!el) return;
+  const cliente = document.getElementById('venda-cliente')?.value.trim() || '';
+  const total = totalCarrinhoLiquido();
+  const entrada = valorMoeda('cred-venda-entrada');
+  const financiado = Math.max(0, total - entrada);
+  const qtd = Math.max(1, parseInt(document.getElementById('cred-venda-parcelas')?.value || '1',10) || 1);
+  const venc = document.getElementById('cred-venda-vencimento')?.value;
+  const intervalo = parseInt(document.getElementById('cred-venda-intervalo')?.value || '30',10);
+  if (alertEl) {
+    if (!cliente) alertEl.innerHTML = 'Informe o cliente para consultar limite.';
+    else {
+      const lim = validarLimiteCrediarioVenda(cliente, financiado);
+      alertEl.style.borderColor = lim.ok ? '#BBF7D0' : '#FECACA';
+      alertEl.style.background = lim.ok ? '#F0FDF4' : '#FEF2F2';
+      alertEl.style.color = lim.ok ? '#166534' : '#991B1B';
+      alertEl.innerHTML = lim.ok ? `Limite: <strong>${lim.limite ? R(lim.limite) : 'não definido'}</strong> · usado: <strong>${R(lim.usado||0)}</strong> · nova venda: <strong>${R(financiado)}</strong>` : lim.msg;
+    }
+  }
+  if (!financiado || !venc) { el.innerHTML = 'Informe parcelas e vencimento para visualizar o carnê.'; return; }
+  const arr = gerarParcelasCredVenda(financiado, qtd, venc, intervalo);
+  el.innerHTML = `<div style="margin-bottom:8px;"><strong>Total:</strong> ${R(total)} · <strong>Entrada:</strong> ${R(entrada)} · <strong>Financiado:</strong> ${R(financiado)}</div><div class="table-wrap"><table><thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th></tr></thead><tbody>${arr.map(p=>`<tr><td>${p.parcela}/${p.total_parcelas}</td><td>${p.vencimento}</td><td><strong>${R(p.valor)}</strong></td></tr>`).join('')}</tbody></table></div>`;
+}
+function imprimirCarneCrediario(){
+  const c = _ultimoCarneCrediario;
+  if (!c) { alert('Nenhum carnê disponível para imprimir.'); return; }
+  const htmlParcelas = c.parcelas.map(p => `
+    <div class="carne-parcela">
+      <div><strong>${c.loja}</strong><br><small>Contrato: ${c.contratoId}</small></div>
+      <div><strong>Cliente:</strong> ${c.cliente}</div>
+      <div><strong>Parcela:</strong> ${p.parcela}/${p.total_parcelas}</div>
+      <div><strong>Vencimento:</strong> ${p.vencimento}</div>
+      <div class="valor">${R(p.valor)}</div>
+      <div class="linha">Assinatura / baixa</div>
+    </div>`).join('');
+  const w = window.open('', '_blank');
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Carnê Crediário</title><style>
+    body{font-family:Arial,sans-serif;margin:20px;color:#111827}.topo{margin-bottom:16px;border-bottom:2px solid #111827;padding-bottom:10px}.topo h1{margin:0;font-size:22px}.topo p{margin:4px 0;color:#475569}.grade{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.carne-parcela{border:1px dashed #334155;border-radius:10px;padding:12px;min-height:150px;page-break-inside:avoid}.carne-parcela .valor{font-size:22px;font-weight:800;margin:10px 0}.linha{border-top:1px solid #CBD5E1;margin-top:18px;padding-top:6px;font-size:11px;color:#64748b}@media print{button{display:none}.grade{grid-template-columns:repeat(2,1fr)}}
+  </style></head><body><button onclick="print()">Imprimir</button><div class="topo"><h1>Carnê de Crediário</h1><p><strong>${c.loja}</strong> · Cliente: ${c.cliente}</p><p>Total venda: ${R(c.totalVenda)} · Entrada: ${R(c.entrada)} · Financiado: ${R(c.valorFinanciado)}</p><p>Produtos: ${c.produtos}</p></div><div class="grade">${htmlParcelas}</div></body></html>`);
+  w.document.close();
+}
 
 // ===== MÓDULO CREDIÁRIO MVP =====
 const CRED_CONF_KEY = 'oi2026_crediario_config';
@@ -12064,6 +12297,12 @@ function togglePrazoFields() {
   const wrap = document.getElementById('prazo-fields');
   wrap.style.display = pag === 'A prazo' ? 'block' : 'none';
 
+  const credWrap = document.getElementById('crediario-fields');
+  if (credWrap) {
+    credWrap.style.display = pag === 'Crediário' ? 'block' : 'none';
+    if (pag === 'Crediário') { prepararCredVenda(); previewCredVenda(); }
+  }
+
   const voucherWrap = document.getElementById('voucher-fields');
   if (voucherWrap) voucherWrap.style.display = pag === 'Voucher' ? 'block' : 'none';
 
@@ -12104,6 +12343,7 @@ const PDV_FORMA_LABELS = {
   'Cartão débito': '💳 Débito',
   'Cartão crédito': '💳 Crédito',
   'A prazo': '📄 Fiado',
+  'Crediário': '💳 Crediário',
   'Voucher': '🎫 Voucher'
 };
 
