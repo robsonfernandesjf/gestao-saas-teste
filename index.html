@@ -5895,16 +5895,37 @@ body.modo-pdv-exclusivo main {
 
   <!-- ===== FECHAMENTO DE CARTÃO ===== -->
   <div id="subfin-cartao" style="display:none;">
-    <div class="section-title" style="font-size:14px;margin-bottom:8px;">💳 Fechamento de Cartão</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">
-      Selecione a data de vencimento para ver todas as parcelas de cartão que vencem naquele dia e dar baixa em lote.
-    </p>
-    <div class="toolbar" style="gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+    <div class="section-title" style="font-size:14px;margin-bottom:8px;">💳 Cartão</div>
+
+    <!-- Modo de filtro -->
+    <div class="cat-tabs" id="cartao-modo-tabs" style="margin-bottom:16px;max-width:400px;">
+      <div class="cat-tab active" onclick="cartaoModo('data')">📅 Data específica</div>
+      <div class="cat-tab" onclick="cartaoModo('periodo')">📆 Período</div>
+    </div>
+
+    <!-- Filtro data única -->
+    <div id="cartao-filtro-data" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px;">
       <div>
         <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Data de vencimento</label>
         <input type="date" id="cartao-fechamento-data" oninput="renderFechamentoCartao()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
       </div>
     </div>
+
+    <!-- Filtro período -->
+    <div id="cartao-filtro-periodo" style="display:none;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px;">
+      <div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">De</label>
+        <input type="date" id="cartao-periodo-ini" oninput="renderFechamentoCartao()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Até</label>
+        <input type="date" id="cartao-periodo-fim" oninput="renderFechamentoCartao()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="cartaoPeriodoPreset('mes')">Este mês</button>
+      <button class="btn btn-outline btn-sm" onclick="cartaoPeriodoPreset('proximo')">Próx. 30 dias</button>
+      <button class="btn btn-outline btn-sm" onclick="cartaoPeriodoPreset('todos')">Todos</button>
+    </div>
+
     <div id="cartao-fechamento-resultado"></div>
   </div>
 
@@ -12044,62 +12065,131 @@ function renderSubReceber() {
 
 // ===== FINANCEIRO (EXTRATO GERAL) =====
 const FIN_KEY = 'oi2026_debitos';
-function renderFechamentoCartao() {
-  const dataInput = document.getElementById('cartao-fechamento-data');
-  const resultado = document.getElementById('cartao-fechamento-resultado');
-  if (!dataInput || !resultado) return;
+function cartaoModo(modo) {
+  const isData = modo === 'data';
+  document.getElementById('cartao-filtro-data').style.display = isData ? 'flex' : 'none';
+  document.getElementById('cartao-filtro-periodo').style.display = isData ? 'none' : 'flex';
+  document.querySelectorAll('#cartao-modo-tabs .cat-tab').forEach((t,i) => t.classList.toggle('active', (i===0)===isData));
+  renderFechamentoCartao();
+}
 
-  // Definir data padrão como hoje se vazio
-  if (!dataInput.value) {
-    dataInput.value = new Date().toISOString().slice(0,10);
+function cartaoPeriodoPreset(preset) {
+  const hoje = new Date();
+  const ini = document.getElementById('cartao-periodo-ini');
+  const fim = document.getElementById('cartao-periodo-fim');
+  if (preset === 'mes') {
+    ini.value = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
+    fim.value = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).toISOString().slice(0,10);
+  } else if (preset === 'proximo') {
+    ini.value = hoje.toISOString().slice(0,10);
+    const f = new Date(hoje); f.setDate(f.getDate()+30);
+    fim.value = f.toISOString().slice(0,10);
+  } else {
+    ini.value = '';
+    fim.value = '';
   }
+  renderFechamentoCartao();
+}
 
-  const dataAlvo = dataInput.value; // YYYY-MM-DD
-  if (!dataAlvo) { resultado.innerHTML = '<div class="empty">Selecione uma data de vencimento.</div>'; return; }
+function _cartaoVencISO(debito) {
+  const venc = debito.vencimento || '';
+  if (!venc) return '';
+  if (venc.includes('/')) {
+    const parts = venc.split('/');
+    if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+  }
+  return venc;
+}
 
-  const [y, m, d] = dataAlvo.split('-');
-  const dataFmt = d + '/' + m + '/' + y;
+function renderFechamentoCartao() {
+  const resultado = document.getElementById('cartao-fechamento-resultado');
+  if (!resultado) return;
 
+  const modoData = document.getElementById('cartao-filtro-data').style.display !== 'none';
   const debitos = getDebitos();
   function dSaldo(d) { return d.total - (d.pagamentos||[]).reduce((s,p)=>s+p.valor,0); }
-  function dStatus(d) {
-    const pg = (d.pagamentos||[]).reduce((s,p)=>s+p.valor,0);
-    if (pg >= d.total) return 'pago';
-    return 'aberto';
+  function dStatus(d) { return (d.pagamentos||[]).reduce((s,p)=>s+p.valor,0) >= d.total ? 'pago' : 'aberto'; }
+
+  let parcelas = [];
+  let tituloFiltro = '';
+
+  if (modoData) {
+    const dataInput = document.getElementById('cartao-fechamento-data');
+    if (!dataInput.value) dataInput.value = new Date().toISOString().slice(0,10);
+    const dataAlvo = dataInput.value;
+    const [y,m,d] = dataAlvo.split('-');
+    tituloFiltro = d+'/'+m+'/'+y;
+    parcelas = debitos.filter(d => d.cartao_dia && dStatus(d) !== 'pago' && _cartaoVencISO(d) === dataAlvo);
+  } else {
+    const ini = document.getElementById('cartao-periodo-ini').value;
+    const fim = document.getElementById('cartao-periodo-fim').value;
+    if (!ini && !fim) {
+      // sem filtro: mostrar todos em aberto
+      parcelas = debitos.filter(d => d.cartao_dia && dStatus(d) !== 'pago');
+      tituloFiltro = 'todos os períodos';
+    } else {
+      parcelas = debitos.filter(d => {
+        if (!d.cartao_dia || dStatus(d) === 'pago') return false;
+        const vISO = _cartaoVencISO(d);
+        if (!vISO) return false;
+        if (ini && vISO < ini) return false;
+        if (fim && vISO > fim) return false;
+        return true;
+      });
+      const fmtD = s => { if (!s) return ''; const [y,m,d]=s.split('-'); return d+'/'+m+'/'+y; };
+      tituloFiltro = (ini && fim) ? `${fmtD(ini)} a ${fmtD(fim)}` : ini ? `a partir de ${fmtD(ini)}` : `até ${fmtD(fim)}`;
+    }
   }
 
-  // Filtrar parcelas de cartão com vencimento na data selecionada
-  const parcelas = debitos.filter(d => {
-    if (!d.cartao_dia) return false;
-    if (dStatus(d) === 'pago') return false;
-    // Verificar vencimento: pode estar em formato DD/MM/YYYY ou YYYY-MM-DD
-    const venc = d.vencimento || '';
-    let vencISO = '';
-    if (venc.includes('/')) {
-      const parts = venc.split('/');
-      if (parts.length === 3) vencISO = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-    } else {
-      vencISO = venc;
-    }
-    return vencISO === dataAlvo;
-  });
-
   if (!parcelas.length) {
-    resultado.innerHTML = `<div class="empty">Nenhum lançamento de cartão com vencimento em ${dataFmt}.</div>`;
+    resultado.innerHTML = `<div class="empty">Nenhum lançamento de cartão em aberto${tituloFiltro ? ' para ' + tituloFiltro : ''}.</div>`;
     return;
   }
 
-  const totalBruto = parcelas.reduce((s,d) => s + d.total, 0);
+  const totalBruto = parcelas.reduce((s,d) => s + dSaldo(d), 0);
   const totalTaxa = parcelas.reduce((s,d) => s + (d.taxa_total || 0), 0);
   const totalLiquido = totalBruto - totalTaxa;
   const nVendas = parcelas.reduce((s,d) => s + (d.venda_ids||[d.venda_id]).filter(Boolean).length, 0);
+
+  // Agrupar por data de vencimento para exibição em período
+  const grupos = {};
+  parcelas.forEach(d => {
+    const vISO = _cartaoVencISO(d) || d.cartao_dia || 'sem-data';
+    if (!grupos[vISO]) grupos[vISO] = [];
+    grupos[vISO].push(d);
+  });
+  const datasOrdenadas = Object.keys(grupos).sort();
+
+  const linhasTabela = datasOrdenadas.map(vISO => {
+    const grupo = grupos[vISO];
+    const bruto = grupo.reduce((s,d) => s + dSaldo(d), 0);
+    const taxa = grupo.reduce((s,d) => s + (d.taxa_total||0), 0);
+    const liq = bruto - taxa;
+    const nV = grupo.reduce((s,d) => s + (d.venda_ids||[d.venda_id]).filter(Boolean).length, 0);
+    const [y,m,d2] = vISO.split('-');
+    const vencFmt = vISO === 'sem-data' ? '—' : `${d2}/${m}/${y}`;
+    const dataAlvoGrupo = vISO;
+    return `<tr>
+      <td><strong>${vencFmt}</strong></td>
+      <td>${nV}</td>
+      <td>${R(bruto)}</td>
+      <td style="color:#e67e22;">${R(taxa)}</td>
+      <td style="color:var(--success);font-weight:700;">${R(liq)}</td>
+      ${modoData ? '' : `<td style="white-space:nowrap;">
+        <button class="btn btn-sm btn-primary" onclick="darBaixaLoteCartao('${dataAlvoGrupo}')">✅ Baixa</button>
+        <button class="btn btn-sm btn-outline" onclick="lancarTaxaCartaoCP('${dataAlvoGrupo}', ${taxa})" style="margin-left:4px;">📋 Taxa</button>
+      </td>`}
+    </tr>`;
+  }).join('');
+
+  const dataAlvoUnico = modoData ? document.getElementById('cartao-fechamento-data').value : '';
 
   resultado.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;">
       <div class="card" style="background:var(--accent-light);border:1px solid var(--border);padding:14px 16px;">
         <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Total Bruto</div>
         <div style="font-size:20px;font-weight:800;color:var(--accent);margin-top:4px;">${R(totalBruto)}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${nVendas} venda(s)</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${nVendas} venda(s) · ${parcelas.length} parcela(s)</div>
       </div>
       <div class="card" style="background:#fff3cd;border:1px solid #ffc107;padding:14px 16px;">
         <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Taxa Estimada</div>
@@ -12114,36 +12204,21 @@ function renderFechamentoCartao() {
     <div class="table-wrap" style="margin-bottom:20px;">
       <table>
         <thead><tr>
-          <th>Data da venda</th>
+          <th>Vencimento</th>
           <th>Qtd. vendas</th>
           <th>Total bruto</th>
           <th>Taxa est.</th>
           <th>Líquido</th>
+          ${modoData ? '' : '<th>Ações</th>'}
         </tr></thead>
-        <tbody>${parcelas.map(d => {
-          const saldo = dSaldo(d);
-          const taxa = d.taxa_total || 0;
-          const liq = saldo - taxa;
-          const nV = (d.venda_ids||[d.venda_id]).filter(Boolean).length;
-          return `<tr>
-            <td>${d.data_venda || d.cartao_dia || '—'}</td>
-            <td>${nV}</td>
-            <td>${R(saldo)}</td>
-            <td style="color:#e67e22;">${R(taxa)}</td>
-            <td style="color:var(--success);font-weight:700;">${R(liq)}</td>
-          </tr>`;
-        }).join('')}</tbody>
+        <tbody>${linhasTabela}</tbody>
       </table>
     </div>
 
-    <div style="display:flex;gap:12px;flex-wrap:wrap;">
-      <button class="btn btn-primary" onclick="darBaixaLoteCartao('${dataAlvo}')">
-        ✅ Dar baixa em lote · ${dataFmt}
-      </button>
-      <button class="btn btn-outline" onclick="lancarTaxaCartaoCP('${dataAlvo}', ${totalTaxa})">
-        📋 Lançar taxa como Conta a Pagar · ${R(totalTaxa)}
-      </button>
-    </div>
+    ${modoData ? `<div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="darBaixaLoteCartao('${dataAlvoUnico}')">✅ Dar baixa em lote</button>
+      <button class="btn btn-outline" onclick="lancarTaxaCartaoCP('${dataAlvoUnico}', ${totalTaxa})">📋 Lançar taxa como Conta a Pagar · ${R(totalTaxa)}</button>
+    </div>` : ''}
   `;
 }
 
