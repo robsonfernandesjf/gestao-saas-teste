@@ -4200,6 +4200,35 @@ position:fixed!important;top:12px!important;left:12px!important;z-index:999999!i
 body::before{display:none!important;}
 }
 </style>
+<style id="fix-mobile-hamburger-final">
+  @media (max-width: 820px) {
+    html body #app-header {
+      justify-content: space-between !important;
+      overflow: visible !important;
+      z-index: 3000 !important;
+    }
+    html body .btn-menu-mobile {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      position: relative !important;
+      z-index: 3200 !important;
+      pointer-events: auto !important;
+      width: 42px !important;
+      height: 42px !important;
+      flex: 0 0 42px !important;
+      margin-left: auto !important;
+    }
+    html body #nav-overlay,
+    html body #nav-overlay.open {
+      top: var(--ui23-topbar-h, 66px) !important;
+      z-index: 900 !important;
+    }
+    html body #main-nav {
+      z-index: 2000 !important;
+    }
+  }
+</style>
 </head>
 <body>
 
@@ -5402,6 +5431,14 @@ body::before{display:none!important;}
           <div class="ger-menu-info">
             <div class="ger-menu-title">Produtos por vendedor</div>
             <div class="ger-menu-sub">O que cada vendedor mais vendeu</div>
+          </div>
+        </div>
+
+        <div class="ger-menu-item" onclick="abrirRelatorio('ticket-vendedor')">
+          <div class="ger-menu-icon">🎯</div>
+          <div class="ger-menu-info">
+            <div class="ger-menu-title">Ticket médio por vendedor</div>
+            <div class="ger-menu-sub">Valor médio por venda de cada vendedor com gráfico comparativo</div>
           </div>
         </div>
 
@@ -14249,6 +14286,7 @@ function abrirRelatorio(tipo) {
     'margem-produtos': '📉 Maior e menor margem',
     'evolucao-margem': '📈 Evolução da margem',
     'vendas-vendedor': '🧑‍💼 Vendas por vendedor',
+    'ticket-vendedor': '🎯 Ticket médio por vendedor',
     'ranking-vendedores': '🏅 Ranking de vendedores',
     'comissao-vendedores': '💵 Comissão por vendedor',
     'produtos-vendedor': '📦 Produtos por vendedor'
@@ -14299,6 +14337,7 @@ function renderRelatorioAtual() {
     case 'ranking-vendedores': renderRankingVendedores(); break;
     case 'comissao-vendedores': renderComissaoVendedores(); break;
     case 'produtos-vendedor': renderProdutosPorVendedor(); break;
+    case 'ticket-vendedor': renderTicketMedioVendedor(); break;
   }
 }
 
