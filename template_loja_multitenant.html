@@ -6012,6 +6012,13 @@ body::before{display:none!important;}
         <label>Taxa (%)</label>
         <input type="number" id="taxa-percentual" step="0.01" placeholder="Ex: 3.05">
       </div>
+      <div class="form-row">
+        <label>Condição de pagamento</label>
+        <input type="text" id="taxa-condicao" placeholder="Ex: D+1, D+30, D+1-D+30" style="text-transform:uppercase;">
+        <small style="color:var(--muted);font-size:11px;margin-top:4px;display:block;">
+          D+1 = vence no dia seguinte · D+30 = vence em 30 dias · D+1-D+30 = parcelas mensais a partir do dia seguinte
+        </small>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="fecharModal('modal-taxa')">Cancelar</button>
@@ -6881,6 +6888,37 @@ function buscarTaxaPercentual(tipo, parcelas) {
   const alvo = _normalizarTipoTaxa(tipo);
   const achou = taxas.find(t => _normalizarTipoTaxa(t.tipo) === alvo && parseInt(t.parcelas || 1) === p);
   return achou ? (parseFloat(achou.percentual) || 0) : 0;
+}
+
+// Retorna a condição de pagamento (D+N) para o tipo/parcelas do cartão
+function buscarCondicaoCartao(tipo, parcelas) {
+  const taxas = getTaxasCartao();
+  const p = parseInt(parcelas) || 1;
+  const alvo = _normalizarTipoTaxa(tipo);
+  const taxa = taxas.find(t => _normalizarTipoTaxa(t.tipo) === alvo && parseInt(t.parcelas || 1) === p);
+  return taxa ? (taxa.condicao || '') : '';
+}
+
+function calcularVencimentoCondicao(dataBase, condicao, parcela) {
+  if (!condicao) return proximoDiaUtil(dataBase);
+  const upper = condicao.toUpperCase().trim();
+  const escalonado = upper.match(/^D[+](\d+)-D[+](\d+)$/);
+  if (escalonado) {
+    const inicio = parseInt(escalonado[1]);
+    const intervalo = parseInt(escalonado[2]) - inicio;
+    const p = (parseInt(parcela) || 1) - 1;
+    const dias = inicio + (p * intervalo);
+    return somarDias(dataBase, dias);
+  }
+  const simples = upper.match(/^D[+](\d+)$/);
+  if (simples) return somarDias(dataBase, parseInt(simples[1]));
+  return proximoDiaUtil(dataBase);
+}
+
+function somarDias(dataISO, dias) {
+  const d = new Date(dataISO + 'T12:00:00');
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().slice(0, 10);
 }
 
 // ---- DÉBITOS ----
@@ -10323,7 +10361,8 @@ async function confirmarVenda() {
           invalidarCache('debitos');
         } catch (e) { console.warn('Cartão salvo localmente:', e.message); }
       } else {
-        const proxUtil = proximoDiaUtil(dataBase);
+        const condicaoCartao = buscarCondicaoCartao(forma, parcelasLeg);
+        const proxUtil = calcularVencimentoCondicao(dataBase, condicaoCartao, 1);
         const [pu_y, pu_m, pu_d] = proxUtil.split('-');
         const vencFmt = pu_d + '/' + pu_m + '/' + pu_y;
         const novoCartao = {
@@ -11703,6 +11742,7 @@ function abrirModalTaxa() {
   document.getElementById('taxa-parcelas').value = '1';
   document.getElementById('taxa-percentual').value = '';
   document.getElementById('modal-taxa-titulo').textContent = '+ Nova Modalidade';
+  document.getElementById('taxa-condicao').value = '';
   toggleParcelasTaxa();
   document.getElementById('modal-taxa').classList.add('open');
 }
@@ -11714,6 +11754,7 @@ function editarTaxaCartao(id) {
   document.getElementById('taxa-tipo').value = t.tipo;
   document.getElementById('taxa-parcelas').value = t.parcelas || 1;
   document.getElementById('taxa-percentual').value = t.percentual;
+  document.getElementById('taxa-condicao').value = t.condicao || '';
   document.getElementById('modal-taxa-titulo').textContent = '✏️ Editar Modalidade';
   toggleParcelasTaxa();
   document.getElementById('modal-taxa').classList.add('open');
@@ -11727,7 +11768,8 @@ async function salvarTaxaCartao() {
 
   if (isNaN(percentual) || percentual < 0) { alert('Informe uma taxa válida.'); return; }
 
-  const dados = { tipo, parcelas, percentual };
+  const condicao = (document.getElementById('taxa-condicao').value || '').trim().toUpperCase();
+  const dados = { tipo, parcelas, percentual, ...(condicao ? { condicao } : {}) };
 
   try {
     mostrarLoading(true);
@@ -11792,12 +11834,13 @@ function renderTaxasCartao() {
       <td>${t.tipo}</td>
       <td>${t.tipo === 'Cartão débito' ? '—' : (t.parcelas || 1) + 'x'}</td>
       <td><strong>${parseFloat(t.percentual).toFixed(2)}%</strong></td>
+      <td>${t.condicao ? `<span style="font-size:12px;font-weight:600;color:var(--accent2);background:var(--surface);border:1px solid var(--border);padding:2px 8px;border-radius:20px;">${t.condicao}</span>` : '<span style="color:var(--muted);font-size:12px;">—</span>'}</td>
       <td>
         <button class="btn btn-sm" onclick="editarTaxaCartao('${t.id}')">✏️</button>
         <button class="btn btn-sm btn-danger" onclick="excluirTaxaCartao('${t.id}')">🗑</button>
       </td>
     </tr>
-  `).join('') : `<tr><td colspan="4" class="empty">Nenhuma taxa cadastrada ainda. Clique em "+ Nova Modalidade".</td></tr>`;
+  `).join('') : `<tr><td colspan="5" class="empty">Nenhuma taxa cadastrada ainda. Clique em "+ Nova Modalidade".</td></tr>`;
 }
 
 function renderFinanceiroUnificado() {
@@ -15794,6 +15837,7 @@ atualizarHora();
               <th>Modalidade</th>
               <th>Parcelas</th>
               <th>Taxa (%)</th>
+              <th>Condição</th>
               <th>Ações</th>
             </tr>
           </thead>
