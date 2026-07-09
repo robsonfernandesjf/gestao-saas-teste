@@ -4339,6 +4339,40 @@ body.modo-vitrine-publica{
 @media(max-width:620px){.vit-topbar .vit-wrap{justify-content:flex-start;gap:14px;overflow-x:auto;flex-wrap:nowrap}.vit-wrap{padding:0 14px}.vit-hero-inner{padding:20px 14px 24px}.vit-hero-img{height:230px;margin:0 -14px;border-radius:0}.vit-brand h1{font-size:29px}.vit-logo{width:86px;height:86px;font-size:36px}.vit-cta{min-width:0;width:100%}.vit-badges{gap:12px;font-size:12px}.vit-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.vit-card{border-radius:16px}.vit-card-body{padding:11px}.vit-card-title{font-size:12px;min-height:32px}.vit-price{font-size:16px}.vit-parc{font-size:11px}.vit-buy{font-size:11px;padding:10px 8px}.vit-mini-list{grid-template-columns:repeat(2,1fr)}.vit-trust{grid-template-columns:1fr}.vit-footer-grid{grid-template-columns:1fr}.vit-wa-float{right:16px;bottom:16px;width:56px;height:56px}.vit-search{height:52px;margin-top:18px}.vit-menu-dot{width:46px;height:46px;font-size:22px;left:14px;top:52px}.vit-section-head h2{font-size:17px}}
 </style>
 
+
+<style id="crediario-mvp-css">
+/* ===== MÓDULO CREDIÁRIO MVP ===== */
+#page-crediario{position:relative;}
+#page-crediario::before{content:"💳 Crediário";display:block;font-size:22px;font-weight:900;color:#1e293b;margin-bottom:14px;letter-spacing:-.02em;}
+.cred-hero{background:linear-gradient(135deg,#fff 0%,#fff7fa 55%,#fff 100%);border:1px solid var(--border);border-radius:22px;padding:18px;box-shadow:0 14px 42px rgba(15,23,42,.06);margin-bottom:16px;}
+.cred-flow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px;}
+.cred-flow-step{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:14px;text-align:center;min-height:106px;}
+.cred-flow-step .ico{width:42px;height:42px;border-radius:999px;background:#fff1f2;color:#9f1239;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:20px;}
+.cred-flow-step strong{display:block;font-size:12px;color:#111827;margin-bottom:4px;}
+.cred-flow-step span{font-size:11px;color:#64748b;line-height:1.35;}
+.cred-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px;}
+.cred-kpi{background:#fff;border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:0 10px 28px rgba(15,23,42,.05);}
+.cred-kpi small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;font-weight:800;margin-bottom:7px;}
+.cred-kpi strong{font-size:24px;color:#0f172a;}
+.cred-kpi.danger strong{color:#dc2626}.cred-kpi.ok strong{color:#16a34a}.cred-kpi.warn strong{color:#b45309}
+.cred-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;}
+.cred-tab{border:1px solid var(--border);background:#fff;color:#475569;border-radius:999px;padding:9px 14px;font-size:12px;font-weight:800;cursor:pointer;}
+.cred-tab.active{background:linear-gradient(135deg,#9f1239,#be445f);color:#fff;border-color:transparent;box-shadow:0 10px 24px rgba(159,18,57,.18);}
+.cred-panel{display:none}.cred-panel.active{display:block}
+.cred-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.cred-box{background:#fff;border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:0 10px 26px rgba(15,23,42,.04);}
+.cred-box h3{font-size:15px;margin:0 0 10px;color:#111827;}
+.cred-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.cred-form-row{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+.cred-form-row label{font-size:11px;font-weight:800;text-transform:uppercase;color:#64748b;letter-spacing:.04em;}
+.cred-form-row input,.cred-form-row select,.cred-form-row textarea{border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:13px;background:#fff;}
+.cred-status{display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:800;}
+.cred-status.aberto{background:#fff7ed;color:#c2410c}.cred-status.vencido{background:#fef2f2;color:#dc2626}.cred-status.pago{background:#ecfdf5;color:#16a34a}.cred-status.parcial{background:#eff6ff;color:#2563eb}
+#crediario-parcelas-table th,#crediario-parcelas-table td,#crediario-clientes-table th,#crediario-clientes-table td{font-size:12px;}
+.cred-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+@media(max-width:900px){.cred-flow,.cred-kpis,.cred-grid-2,.cred-form-grid{grid-template-columns:1fr}.cred-flow-step{text-align:left}.cred-flow-step .ico{margin-left:0}}
+</style>
+
 </head>
 <body>
 
@@ -4413,6 +4447,7 @@ body.modo-vitrine-publica{
   <button onclick="showPage('clientes')">👥 Clientes/Fornecedores</button>
   <button onclick="showPage('vendedores')">🧑‍💼 Vendedores</button>
   <button onclick="showPage('financeiro')">💰 Financeiro</button>
+  <button onclick="showPage('crediario')">💳 Crediário</button>
   <button onclick="showPage('trocas')">🔄 Trocas</button>
   <button id="nav-empresa" onclick="showPage('empresa'); carregarDadosEmpresa();" style="display:none;">⚙️ Config. Empresa</button>
   <button class="btn-logout-mobile" onclick="fazerLogout()" style="display:none;margin-top:auto;color:var(--danger);border-color:var(--danger);">🚪 Sair</button>
@@ -5773,6 +5808,124 @@ body.modo-vitrine-publica{
     </div>
   </div>
 </div>
+
+
+<!-- CREDIÁRIO MVP -->
+<div id="page-crediario" class="page">
+  <div class="cred-hero">
+    <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+      <div>
+        <h2 style="font-size:18px;margin:0 0 6px;color:#111827;">Central do Crediário</h2>
+        <p style="font-size:13px;color:#64748b;margin:0;max-width:760px;">Primeira fase segura: controlar carteira, importar saldo inicial e enxergar parcelas integradas ao Financeiro / A Receber.</p>
+      </div>
+      <button class="btn btn-primary" onclick="mostrarCredAba('importar')">+ Importar saldo inicial</button>
+    </div>
+    <div class="cred-flow">
+      <div class="cred-flow-step"><div class="ico">👤</div><strong>1. Cliente</strong><span>Selecionar ou cadastrar cliente com limite.</span></div>
+      <div class="cred-flow-step"><div class="ico">🧾</div><strong>2. Contrato</strong><span>Gerar venda ou saldo inicial importado.</span></div>
+      <div class="cred-flow-step"><div class="ico">📆</div><strong>3. Parcelas</strong><span>Criar vencimentos no A Receber.</span></div>
+      <div class="cred-flow-step"><div class="ico">💵</div><strong>4. Receber</strong><span>Baixar parcelas no PDV ou Financeiro.</span></div>
+      <div class="cred-flow-step"><div class="ico">📊</div><strong>5. Relatórios</strong><span>Carteira, vencidas e previsão.</span></div>
+    </div>
+  </div>
+
+  <div class="cred-kpis" id="cred-kpis"></div>
+
+  <div class="cred-tabs">
+    <button class="cred-tab active" id="cred-tab-visao" onclick="mostrarCredAba('visao')">📊 Visão Geral</button>
+    <button class="cred-tab" id="cred-tab-parcelas" onclick="mostrarCredAba('parcelas')">📆 Parcelas</button>
+    <button class="cred-tab" id="cred-tab-clientes" onclick="mostrarCredAba('clientes')">👥 Clientes</button>
+    <button class="cred-tab" id="cred-tab-importar" onclick="mostrarCredAba('importar')">⬆️ Saldo Inicial</button>
+    <button class="cred-tab" id="cred-tab-config" onclick="mostrarCredAba('config')">⚙️ Configurações</button>
+  </div>
+
+  <div id="cred-panel-visao" class="cred-panel active">
+    <div class="cred-grid-2">
+      <div class="cred-box">
+        <h3>📆 Próximas parcelas a vencer</h3>
+        <div id="cred-proximas"></div>
+      </div>
+      <div class="cred-box">
+        <h3>🚨 Parcelas vencidas</h3>
+        <div id="cred-vencidas"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="cred-panel-parcelas" class="cred-panel">
+    <div class="cred-box">
+      <div class="toolbar" style="margin-bottom:12px;gap:10px;flex-wrap:wrap;">
+        <input id="cred-busca" placeholder="Buscar cliente, contrato ou observação..." oninput="renderCrediario()" style="min-width:260px;">
+        <select id="cred-status" onchange="renderCrediario()">
+          <option value="">Todos os status</option>
+          <option value="aberto">Em aberto</option>
+          <option value="vencido">Vencidas</option>
+          <option value="pago">Pagas</option>
+        </select>
+        <button class="btn btn-outline" onclick="showPage('financeiro');mostrarSubFin('receber')">Ver no Financeiro</button>
+      </div>
+      <div class="table-wrap">
+        <table id="crediario-parcelas-table">
+          <thead><tr><th>Vencimento</th><th>Cliente</th><th>Contrato</th><th>Parcela</th><th>Valor</th><th>Pago</th><th>Status</th><th>Origem</th></tr></thead>
+          <tbody id="cred-parcelas-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="cred-panel-clientes" class="cred-panel">
+    <div class="cred-box">
+      <h3>👥 Carteira por cliente</h3>
+      <div class="table-wrap">
+        <table id="crediario-clientes-table">
+          <thead><tr><th>Cliente</th><th>Aberto</th><th>Vencido</th><th>Pago</th><th>Qtd. parcelas</th><th>Limite usado</th></tr></thead>
+          <tbody id="cred-clientes-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="cred-panel-importar" class="cred-panel">
+    <div class="cred-grid-2">
+      <div class="cred-box">
+        <h3>⬆️ Importar crediário já em aberto</h3>
+        <p style="font-size:12px;color:#64748b;margin:0 0 12px;">Use para trazer o saldo antigo sem gerar venda, sem mexer no estoque e sem movimentar caixa antigo.</p>
+        <div class="cred-form-row"><label>Cliente</label><input id="cred-imp-cliente" list="lista-clientes-venda" placeholder="Nome do cliente"></div>
+        <div class="cred-form-grid">
+          <div class="cred-form-row"><label>Valor total em aberto</label><input id="cred-imp-total" inputmode="numeric" placeholder="0,00" oninput="mascaraMoeda(this);previewCredImportacao();"></div>
+          <div class="cred-form-row"><label>Parcelas restantes</label><input id="cred-imp-qtd" type="number" min="1" value="1" oninput="previewCredImportacao();"></div>
+          <div class="cred-form-row"><label>Primeiro vencimento</label><input id="cred-imp-venc" type="date" onchange="previewCredImportacao();"></div>
+          <div class="cred-form-row"><label>Intervalo</label><select id="cred-imp-intervalo" onchange="previewCredImportacao();"><option value="30">Mensal</option><option value="15">Quinzenal</option><option value="7">Semanal</option></select></div>
+        </div>
+        <div class="cred-form-row"><label>Observação</label><textarea id="cred-imp-obs" rows="3" placeholder="Ex: saldo inicial vindo do caderno/planilha da loja"></textarea></div>
+        <div class="cred-actions">
+          <button class="btn btn-primary" onclick="salvarCredImportado()">Salvar saldo inicial</button>
+          <button class="btn btn-outline" onclick="limparCredImportacao()">Limpar</button>
+        </div>
+        <div id="cred-imp-msg" style="font-size:12px;margin-top:10px;color:#64748b;"></div>
+      </div>
+      <div class="cred-box">
+        <h3>Prévia das parcelas</h3>
+        <div id="cred-imp-preview" style="font-size:13px;color:#64748b;">Informe os dados para visualizar as parcelas.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="cred-panel-config" class="cred-panel">
+    <div class="cred-box">
+      <h3>⚙️ Configurações iniciais</h3>
+      <div class="cred-form-grid">
+        <div class="cred-form-row"><label>Limite padrão por cliente</label><input id="cred-conf-limite" inputmode="numeric" placeholder="0,00" oninput="mascaraMoeda(this)"></div>
+        <div class="cred-form-row"><label>Máximo de parcelas</label><input id="cred-conf-parcelas" type="number" min="1" value="6"></div>
+        <div class="cred-form-row"><label>Bloquear venda com atraso?</label><select id="cred-conf-bloqueio"><option value="sim">Sim</option><option value="nao">Não, apenas alertar</option></select></div>
+        <div class="cred-form-row"><label>Saldo inicial consome limite?</label><select id="cred-conf-saldo-limite"><option value="sim">Sim, recomendado</option><option value="nao">Não</option></select></div>
+      </div>
+      <button class="btn btn-primary" onclick="salvarCredConfig()">Salvar configurações</button>
+      <span id="cred-conf-msg" style="font-size:12px;color:#64748b;margin-left:10px;"></span>
+    </div>
+  </div>
+</div>
+
 
 <!-- FINANCEIRO -->
 <!-- FINANCEIRO UNIFICADO -->
@@ -7168,6 +7321,7 @@ const MODULOS = [
   { id: 'clientes',    label: '👥 Clientes/Fornecedores', icon: '👥' },
   { id: 'vendedores',  label: '🧑‍💼 Vendedores',        icon: '🧑‍💼' },
   { id: 'financeiro',  label: '💰 Financeiro',         icon: '💰' },
+  { id: 'crediario',   label: '💳 Crediário',          icon: '💳' },
   { id: 'trocas',      label: '🔄 Trocas/Devoluções',   icon: '🔄' },
 ];
 
@@ -7852,6 +8006,7 @@ function showPage(id) {
   if (id === 'cadastro') { aplicarFeatureFlagsUI(); }
   if (id === 'vendedores') { renderVendedores(); }
   if (id === 'financeiro') { renderFinanceiroUnificado(); }
+  if (id === 'crediario') { renderCrediario(); }
   if (id === 'trocas') { renderTrocas(); }
   if (id === 'usuarios') { renderUsuarios(); }
   if (id === 'vendas') { popularListaClientesVenda(); popularSelectVendedores(); atualizarWidgetCaixa(); if (!document.getElementById('venda-data').value) { const t = new Date(); document.getElementById('venda-data').value = t.toISOString().slice(0,10); } }
@@ -10626,6 +10781,198 @@ async function confirmarVenda() {
   document.getElementById('misto-voucher-2-saldo').textContent = '';
   togglePagamentoMisto();
 }
+
+
+
+// ===== MÓDULO CREDIÁRIO MVP =====
+const CRED_CONF_KEY = 'oi2026_crediario_config';
+let credAbaAtual = 'visao';
+function getCredConfig(){
+  return JSON.parse(localStorage.getItem(CRED_CONF_KEY) || '{"limitePadrao":0,"maxParcelas":6,"bloqueio":"sim","saldoConsomeLimite":"sim"}');
+}
+function salvarCredConfig(){
+  const cfg = {
+    limitePadrao: valorMoeda('cred-conf-limite'),
+    maxParcelas: parseInt(document.getElementById('cred-conf-parcelas')?.value || '6',10) || 6,
+    bloqueio: document.getElementById('cred-conf-bloqueio')?.value || 'sim',
+    saldoConsomeLimite: document.getElementById('cred-conf-saldo-limite')?.value || 'sim'
+  };
+  localStorage.setItem(CRED_CONF_KEY, JSON.stringify(cfg));
+  const msg = document.getElementById('cred-conf-msg'); if (msg) msg.textContent = 'Configurações salvas.';
+  renderCrediario();
+}
+function carregarCredConfig(){
+  const cfg = getCredConfig();
+  const lim = document.getElementById('cred-conf-limite'); if (lim) lim.value = cfg.limitePadrao ? String(cfg.limitePadrao.toFixed(2)).replace('.',',') : '';
+  const max = document.getElementById('cred-conf-parcelas'); if (max) max.value = cfg.maxParcelas || 6;
+  const bloq = document.getElementById('cred-conf-bloqueio'); if (bloq) bloq.value = cfg.bloqueio || 'sim';
+  const sal = document.getElementById('cred-conf-saldo-limite'); if (sal) sal.value = cfg.saldoConsomeLimite || 'sim';
+}
+function mostrarCredAba(aba){
+  credAbaAtual = aba;
+  document.querySelectorAll('.cred-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.cred-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('cred-tab-' + aba)?.classList.add('active');
+  document.getElementById('cred-panel-' + aba)?.classList.add('active');
+  if (aba === 'config') carregarCredConfig();
+  if (aba === 'importar') previewCredImportacao();
+  renderCrediario();
+}
+function credParseDataBR(s){
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(s+'T00:00:00');
+  const p = String(s).split('/');
+  if (p.length === 3) return new Date(`${p[2]}-${p[1]}-${p[0]}T00:00:00`);
+  return null;
+}
+function credDataBR(d){
+  const dt = d instanceof Date ? d : new Date(d);
+  return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear();
+}
+function credSomarDias(iso, dias){
+  const d = new Date(iso+'T00:00:00');
+  d.setDate(d.getDate() + dias);
+  return d;
+}
+function isCrediarioDebito(d){
+  const origem = String(d.origem || d.origem_crediario || d.tipo_origem || '').toLowerCase();
+  const obs = String(d.obs || '').toLowerCase();
+  return origem.includes('crediario') || obs.includes('[crediario]') || obs.includes('crediário');
+}
+function credStatusDebito(d){
+  const pago = (d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0);
+  const total = Number(d.total || d.valor_total || 0);
+  if (pago >= total && total > 0) return 'pago';
+  const venc = credParseDataBR(d.vencimento);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  if (venc && venc < hoje) return 'vencido';
+  if (pago > 0) return 'parcial';
+  return 'aberto';
+}
+function getCredParcelas(){
+  return getDebitos().filter(isCrediarioDebito).map(d => {
+    const total = Number(d.total || d.valor_total || 0);
+    const pago = (d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0);
+    return { ...d, total, pago, saldo: Math.max(0,total-pago), statusCred: credStatusDebito(d), vencDate: credParseDataBR(d.vencimento) };
+  }).sort((a,b)=>(a.vencDate?.getTime()||0)-(b.vencDate?.getTime()||0));
+}
+function renderCrediario(){
+  if (!document.getElementById('page-crediario')) return;
+  const parcelas = getCredParcelas();
+  const aberto = parcelas.filter(p=>p.statusCred!=='pago').reduce((s,p)=>s+p.saldo,0);
+  const vencido = parcelas.filter(p=>p.statusCred==='vencido').reduce((s,p)=>s+p.saldo,0);
+  const recebido = parcelas.reduce((s,p)=>s+p.pago,0);
+  const qtdVenc = parcelas.filter(p=>p.statusCred==='vencido').length;
+  const kpis = document.getElementById('cred-kpis');
+  if (kpis) kpis.innerHTML = `
+    <div class="cred-kpi warn"><small>Carteira em aberto</small><strong>${R(aberto)}</strong></div>
+    <div class="cred-kpi danger"><small>Vencido</small><strong>${R(vencido)}</strong></div>
+    <div class="cred-kpi ok"><small>Recebido</small><strong>${R(recebido)}</strong></div>
+    <div class="cred-kpi"><small>Parcelas vencidas</small><strong>${qtdVenc}</strong></div>`;
+  renderCredListas(parcelas);
+  renderCredClientes(parcelas);
+}
+function renderCredListas(parcelas){
+  const busca = (document.getElementById('cred-busca')?.value || '').toLowerCase();
+  const st = document.getElementById('cred-status')?.value || '';
+  const filtradas = parcelas.filter(p => (!busca || [p.cliente,p.obs,p.contrato_id,p.id].join(' ').toLowerCase().includes(busca)) && (!st || p.statusCred === st));
+  const tbody = document.getElementById('cred-parcelas-body');
+  if (tbody) tbody.innerHTML = filtradas.map(p => `
+    <tr>
+      <td>${p.vencimento||'—'}</td><td><strong>${p.cliente||'—'}</strong></td><td>${p.contrato_id||p.venda_id||'—'}</td>
+      <td>${p.parcela||'1'} / ${p.total_parcelas||'1'}</td><td><strong>${R(p.total)}</strong></td><td>${R(p.pago)}</td>
+      <td><span class="cred-status ${p.statusCred}">${p.statusCred}</span></td><td>${p.origem_crediario || p.origem || 'crediário'}</td>
+    </tr>`).join('') || '<tr><td colspan="8" class="empty">Nenhuma parcela de crediário encontrada.</td></tr>';
+  const proximas = parcelas.filter(p=>p.statusCred!=='pago' && p.statusCred!=='vencido').slice(0,6);
+  const proxEl = document.getElementById('cred-proximas');
+  if (proxEl) proxEl.innerHTML = proximas.length ? proximas.map(p=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #eef2f7;font-size:12px;"><span><strong>${p.cliente}</strong><br><small>${p.vencimento} · Parc. ${p.parcela||1}/${p.total_parcelas||1}</small></span><strong>${R(p.saldo)}</strong></div>`).join('') : '<div class="empty">Sem próximas parcelas.</div>';
+  const vencidas = parcelas.filter(p=>p.statusCred==='vencido').slice(0,6);
+  const vencEl = document.getElementById('cred-vencidas');
+  if (vencEl) vencEl.innerHTML = vencidas.length ? vencidas.map(p=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #fee2e2;font-size:12px;"><span><strong>${p.cliente}</strong><br><small>${p.vencimento} · Parc. ${p.parcela||1}/${p.total_parcelas||1}</small></span><strong style="color:#dc2626">${R(p.saldo)}</strong></div>`).join('') : '<div class="empty">Nenhuma parcela vencida.</div>';
+}
+function renderCredClientes(parcelas){
+  const map = {};
+  parcelas.forEach(p => {
+    const c = p.cliente || 'Sem cliente';
+    map[c] = map[c] || {cliente:c, aberto:0, vencido:0, pago:0, qtd:0};
+    map[c].qtd++; map[c].pago += p.pago;
+    if (p.statusCred !== 'pago') map[c].aberto += p.saldo;
+    if (p.statusCred === 'vencido') map[c].vencido += p.saldo;
+  });
+  const cfg = getCredConfig();
+  const linhas = Object.values(map).sort((a,b)=>b.aberto-a.aberto);
+  const tbody = document.getElementById('cred-clientes-body');
+  if (tbody) tbody.innerHTML = linhas.map(c => {
+    const usado = cfg.saldoConsomeLimite === 'sim' ? c.aberto : 0;
+    return `<tr><td><strong>${c.cliente}</strong></td><td>${R(c.aberto)}</td><td style="color:#dc2626;font-weight:700;">${R(c.vencido)}</td><td>${R(c.pago)}</td><td>${c.qtd}</td><td>${R(usado)}</td></tr>`;
+  }).join('') || '<tr><td colspan="6" class="empty">Nenhum cliente com crediário.</td></tr>';
+}
+function gerarPreviewCredImportacao(){
+  const total = valorMoeda('cred-imp-total');
+  const qtd = Math.max(1, parseInt(document.getElementById('cred-imp-qtd')?.value || '1',10) || 1);
+  const venc = document.getElementById('cred-imp-venc')?.value;
+  const intervalo = parseInt(document.getElementById('cred-imp-intervalo')?.value || '30',10);
+  if (!total || !venc) return [];
+  const base = Math.floor((total / qtd) * 100) / 100;
+  let restante = Math.round(total * 100);
+  const arr = [];
+  for (let i=1;i<=qtd;i++){
+    let cents = i < qtd ? Math.round(base*100) : restante;
+    restante -= cents;
+    arr.push({ parcela:i, total_parcelas:qtd, valor:cents/100, vencimento:credDataBR(credSomarDias(venc, intervalo*(i-1))) });
+  }
+  return arr;
+}
+function previewCredImportacao(){
+  const el = document.getElementById('cred-imp-preview'); if (!el) return;
+  const arr = gerarPreviewCredImportacao();
+  if (!arr.length) { el.innerHTML = 'Informe valor e primeiro vencimento para visualizar as parcelas.'; return; }
+  el.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th></tr></thead><tbody>${arr.map(p=>`<tr><td>${p.parcela}/${p.total_parcelas}</td><td>${p.vencimento}</td><td><strong>${R(p.valor)}</strong></td></tr>`).join('')}</tbody></table></div>`;
+}
+async function salvarCredImportado(){
+  const cliente = (document.getElementById('cred-imp-cliente')?.value || '').trim();
+  const obs = (document.getElementById('cred-imp-obs')?.value || '').trim();
+  const arr = gerarPreviewCredImportacao();
+  const msg = document.getElementById('cred-imp-msg');
+  if (!cliente || !arr.length) { if (msg) msg.textContent = 'Informe cliente, valor e vencimento.'; return; }
+  const contratoId = 'cred_imp_' + Date.now();
+  const debitos = getDebitos();
+  for (const p of arr) {
+    const d = {
+      id: contratoId + '_p' + p.parcela,
+      contrato_id: contratoId,
+      cliente,
+      data_venda: new Date().toLocaleString('pt-BR'),
+      total: p.valor,
+      vencimento: p.vencimento,
+      obs: '[CREDIARIO] Saldo inicial importado' + (obs ? ' — ' + obs : ''),
+      itens: [{ produto:'Saldo inicial de crediário', qtd:1, valor:p.valor }],
+      pagamentos: [],
+      origem_crediario: 'saldo_inicial',
+      parcela: p.parcela,
+      total_parcelas: p.total_parcelas
+    };
+    debitos.unshift(d);
+    try {
+      const criado = await sbPost('debitos', {
+        cliente: d.cliente, produto: 'Saldo inicial de crediário', valor_total: d.total, valor_pago: 0, vencimento: d.vencimento, obs: d.obs, pagamentos: [], parcela: d.parcela, total_parcelas: d.total_parcelas
+      });
+      const registro = Array.isArray(criado) ? criado[0] : criado;
+      if (registro && registro.id) d.id = registro.id;
+    } catch(e) { console.warn('Crediário importado salvo localmente:', e.message); }
+  }
+  saveDebitos(debitos); invalidarCache('debitos');
+  if (msg) msg.textContent = 'Saldo inicial importado e integrado ao A Receber.';
+  limparCredImportacao(false);
+  mostrarCredAba('parcelas');
+}
+function limparCredImportacao(limparMsg=true){
+  ['cred-imp-cliente','cred-imp-total','cred-imp-qtd','cred-imp-venc','cred-imp-obs'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value = id==='cred-imp-qtd'?'1':''; });
+  const it = document.getElementById('cred-imp-intervalo'); if (it) it.value = '30';
+  if (limparMsg) { const msg=document.getElementById('cred-imp-msg'); if(msg) msg.textContent=''; }
+  previewCredImportacao();
+}
+
 
 // ===== HISTÓRICO =====
 let histPage = 1;
