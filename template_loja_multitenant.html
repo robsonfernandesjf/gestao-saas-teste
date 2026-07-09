@@ -5720,7 +5720,6 @@ body::before{display:none!important;}
         <button class="btn btn-outline" onclick="gerarPDFClienteReceber()">📄 PDF</button>
       </div>
     </div>
-    <div id="cartao-dia-banner" style="display:none;"></div>
     <div id="rel-receber-lista"></div>
   </div>
 
@@ -10322,91 +10321,61 @@ async function confirmarVenda() {
       } catch (e) { console.warn('Venda a prazo salva localmente:', e.message); }
     }
 
-    // Cartão (débito ou crédito) → acumula no débito do dia (um único lançamento por dia, somando débito + crédito)
+    // Cartão → gera uma parcela por vencimento configurado na tabela de taxas
     if (forma === 'Cartão crédito' || forma === 'Cartão débito') {
       const dataBase = dataInput || new Date().toISOString().slice(0,10);
       const debitos = getDebitos();
-      const existente = debitos.find(d => d.cartao_dia === dataBase);
-
       const taxaPct = buscarTaxaPercentual(forma, parcelasLeg);
-      const taxaValor = valorLeg * (taxaPct / 100);
+      const taxaValorTotal = valorLeg * (taxaPct / 100);
+      const vencimentos = buscarVencimentosCartao(forma, parcelasLeg);
+      const nParcelas = (vencimentos && vencimentos.length) ? vencimentos.length : 1;
+      const valorParcela = valorLeg / nParcelas;
+      const taxaParcela = taxaValorTotal / nParcelas;
+      const prodLabel = carrinho.map(c => c.produto).join(', ');
       const movimentoLabel = forma === 'Cartão crédito' ? `Crédito${parcelasLeg>1?' '+parcelasLeg+'x':' à vista'}` : 'Débito';
 
-      if (existente) {
-        existente.total += valorLeg;
-        existente.taxa_total = (existente.taxa_total || 0) + taxaValor;
-        existente.venda_ids = existente.venda_ids || [];
-        existente.venda_ids.push(vendaId);
-        existente.itens = existente.itens || [];
-        carrinho.forEach(c => existente.itens.push({produto: c.produto, qtd: c.qtd, valor: c.valor_unit * c.qtd}));
-        existente.movimentos = existente.movimentos || [];
-        existente.movimentos.push({ tipo: movimentoLabel, valor: valorLeg, taxaPct, taxaValor });
-        existente.obs = `${existente.venda_ids.length} venda(s) no cartão em ${existente.data_venda.split(',')[0]} · taxa estimada ${R(existente.taxa_total)}`;
-        saveDebitos(debitos);
-
-        try {
-          const ehIdReal = existente.id && !String(existente.id).startsWith('cartao_');
-          if (ehIdReal) {
-            await sbPatch('debitos', existente.id, {
-              produto: existente.itens.map(i => i.produto).join(', '),
-              valor_total: existente.total,
-              obs: existente.obs
-            });
-          } else {
-            const criado = await sbPost('debitos', {
-              cliente: 'Cartão',
-              produto: existente.itens.map(i => i.produto).join(', '),
-              valor_total: existente.total,
-              valor_pago: 0,
-              vencimento: existente.vencimento,
-              obs: existente.obs,
-              pagamentos: [],
-              cartao_dia: dataBase
-            });
-            const registro = Array.isArray(criado) ? criado[0] : criado;
-            if (registro && registro.id) existente.id = registro.id;
-            saveDebitos(debitos);
-          }
-          invalidarCache('debitos');
-        } catch (e) { console.warn('Cartão salvo localmente:', e.message); }
-      } else {
-        const proxUtil = calcularVencimentoParcela(dataBase, forma, parcelasLeg, 1);
-        const [pu_y, pu_m, pu_d] = proxUtil.split('-');
+      for (let i = 0; i < nParcelas; i++) {
+        const vencISO = calcularVencimentoParcela(dataBase, forma, parcelasLeg, i + 1);
+        const [pu_y, pu_m, pu_d] = vencISO.split('-');
         const vencFmt = pu_d + '/' + pu_m + '/' + pu_y;
+        const parcelaLabel = nParcelas > 1 ? ` (${i+1}/${nParcelas})` : '';
         const novoCartao = {
-          id: 'cartao_' + dataBase,
+          id: 'cartao_' + vendaId + '_p' + (i+1),
           venda_id: vendaId,
           venda_ids: [vendaId],
           cliente: 'Cartão',
           data_venda: agora.split(',')[0],
-          total: valorLeg,
-          taxa_total: taxaValor,
+          total: valorParcela,
+          taxa_total: taxaParcela,
           vencimento: vencFmt,
-          obs: `1 venda(s) no cartão em ${agora.split(',')[0]} · taxa estimada ${R(taxaValor)}`,
-          itens: carrinho.map(c => ({produto: c.produto, qtd: c.qtd, valor: c.valor_unit * c.qtd})),
-          movimentos: [{ tipo: movimentoLabel, valor: valorLeg, taxaPct, taxaValor }],
+          obs: `${movimentoLabel}${parcelaLabel} — ${prodLabel} · taxa est. ${R(taxaParcela)}`,
+          itens: carrinho.map(c => ({produto: c.produto, qtd: c.qtd, valor: c.valor_unit * c.qtd / nParcelas})),
+          movimentos: [{ tipo: movimentoLabel + parcelaLabel, valor: valorParcela, taxaPct, taxaValor: taxaParcela }],
           pagamentos: [],
-          cartao_dia: dataBase
+          cartao_dia: dataBase,
+          parcela: i + 1,
+          total_parcelas: nParcelas
         };
         debitos.unshift(novoCartao);
-        saveDebitos(debitos);
-
         try {
           const criado = await sbPost('debitos', {
             cliente: 'Cartão',
-            produto: carrinho.map(c => c.produto).join(', '),
-            valor_total: valorLeg,
+            produto: prodLabel,
+            valor_total: valorParcela,
             valor_pago: 0,
             vencimento: vencFmt,
             obs: novoCartao.obs,
             pagamentos: [],
-            cartao_dia: dataBase
+            cartao_dia: dataBase,
+            parcela: i + 1,
+            total_parcelas: nParcelas
           });
           const registro = Array.isArray(criado) ? criado[0] : criado;
-          if (registro && registro.id) { novoCartao.id = registro.id; saveDebitos(debitos); }
-          invalidarCache('debitos');
-        } catch (e) { console.warn('Cartão salvo localmente:', e.message); }
+          if (registro && registro.id) { novoCartao.id = registro.id; }
+        } catch (e) { console.warn('Cartão parcela salva localmente:', e.message); }
       }
+      saveDebitos(debitos);
+      invalidarCache('debitos');
     }
 
     // Dinheiro, Pix ou À vista → débito gerado já quitado (para histórico financeiro completo)
@@ -11921,7 +11890,6 @@ function renderCardsFinUnif() {
 
 function renderSubReceber() {
   renderCardsFinUnif();
-  renderCartaoDiaBanner();
   populateRelReceberClientes();
   const clienteFil = document.getElementById('rel-receber-cliente')?.value || '';
   const statusFil  = document.getElementById('rel-receber-status')?.value  || '';
@@ -12129,8 +12097,7 @@ Vencimento: ${dataFmt}`)) return;
     invalidarCache('debitos');
     mostrarNotificacao('✅ Baixa em lote realizada!');
     renderFechamentoCartao();
-    renderCartaoDiaBanner();
-  } catch(e) { console.error(e); alert('Erro: ' + e.message); } finally { mostrarLoading(false); }
+    } catch(e) { console.error(e); alert('Erro: ' + e.message); } finally { mostrarLoading(false); }
 }
 
 async function lancarTaxaCartaoCP(dataISO, valorTaxa) {
