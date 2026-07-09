@@ -4248,11 +4248,11 @@ body.modo-vitrine-publica{
 .vit-topbar{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff;font-size:13px;font-weight:700;}
 .vit-topbar .vit-wrap{min-height:42px;display:flex;align-items:center;justify-content:center;gap:26px;flex-wrap:wrap;opacity:.96;}
 .vit-hero{position:relative;overflow:hidden;background:radial-gradient(circle at 15% 10%,rgba(255,255,255,.85),transparent 35%),linear-gradient(120deg,rgba(255,255,255,.92),rgba(255,245,246,.86));border-bottom:1px solid var(--vit-border);}
-.vit-hero-inner{display:grid;grid-template-columns:minmax(260px,430px) 1fr;gap:34px;align-items:center;min-height:385px;padding:32px 22px;}
+.vit-hero-inner{display:grid;grid-template-columns:minmax(260px,430px) 1fr minmax(230px,310px);gap:26px;align-items:center;min-height:385px;padding:32px 22px;}
 .vit-hero-img{height:385px;border-radius:0 0 34px 0;overflow:hidden;box-shadow:var(--vit-shadow);background:linear-gradient(135deg,#f7dbdc,#fff);}
 .vit-hero-img img{width:100%;height:100%;object-fit:cover;display:block;}
 .vit-menu-dot{display:none!important;}
-.vit-brand{text-align:center;padding:12px 0;max-width:620px;margin:0 auto;}
+.vit-brand{text-align:center;padding:12px 0;}
 .vit-logo{width:106px;height:106px;border-radius:50%;margin:0 auto 12px;background:#fff;border:1px solid var(--vit-border);box-shadow:0 12px 30px rgba(120,55,70,.11);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--accent);font-family:Georgia,serif;font-size:44px;letter-spacing:.04em;}
 .vit-logo img{width:100%;height:100%;object-fit:contain;padding:10px;}
 .vit-brand h1{font-family:Georgia,serif;font-size:34px;line-height:1.1;margin:0;color:var(--vit-text);font-weight:500;}
@@ -4264,12 +4264,6 @@ body.modo-vitrine-publica{
 .vit-badges span{display:inline-flex;gap:7px;align-items:center;}
 .vit-cta{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-width:300px;padding:15px 28px;border-radius:14px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff!important;text-decoration:none;font-weight:900;box-shadow:0 14px 30px rgba(181,107,122,.28);transition:.18s ease;}
 .vit-cta:hover{transform:translateY(-2px);box-shadow:0 18px 38px rgba(181,107,122,.34);}
-.vit-info-card{background:rgba(255,255,255,.92);border:1px solid var(--vit-border);border-radius:24px;padding:22px;box-shadow:var(--vit-shadow);backdrop-filter:blur(10px);}
-.vit-info-item{display:grid;grid-template-columns:34px 1fr;gap:12px;margin-bottom:18px;align-items:start;}
-.vit-info-item:last-child{margin-bottom:0;}
-.vit-info-ico{width:34px;height:34px;border-radius:12px;background:var(--accent-light,#F7E7EA);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:17px;}
-.vit-info-item strong{display:block;font-size:13px;margin-bottom:3px;}
-.vit-info-item p{font-size:13px;line-height:1.45;color:var(--vit-muted);margin:0;}
 .vit-search{margin-top:28px;display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--vit-border);box-shadow:0 8px 28px rgba(0,0,0,.05);border-radius:18px;padding:0 18px;height:56px;}
 .vit-search input{border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;font-size:15px!important;width:100%;height:100%;color:var(--vit-text)!important;}
 .vit-chip-row{display:flex;gap:12px;overflow-x:auto;padding:22px 0 10px;scrollbar-width:none;}
@@ -4312,11 +4306,8 @@ body.modo-vitrine-publica{
 .vit-copy{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff;font-size:12px;padding:12px 0;text-align:center;}
 .vit-wa-float{position:fixed;right:22px;bottom:22px;width:62px;height:62px;border-radius:50%;background:#25D366;color:#fff!important;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:30px;box-shadow:0 14px 34px rgba(37,211,102,.38);z-index:9999;}
 .vit-empty{grid-column:1/-1;text-align:center;color:var(--vit-muted);padding:44px 16px;background:#fff;border:1px dashed var(--vit-border);border-radius:18px;}
-@media(max-width:980px){.vit-hero-inner{grid-template-columns:1fr;min-height:auto;text-align:center}.vit-hero-img{height:260px;border-radius:0 0 28px 28px;order:-1}.vit-info-card{max-width:520px;margin:0 auto}.vit-mini-area{grid-template-columns:1fr}.vit-trust{grid-template-columns:1fr 1fr}.vit-footer-grid{grid-template-columns:1fr 1fr}.vit-menu-dot{top:54px}}
+@media(max-width:980px){.vit-hero-inner{grid-template-columns:1fr;min-height:auto;text-align:center}.vit-hero-img{height:260px;border-radius:0 0 28px 28px;order:-1}.vit-mini-area{grid-template-columns:1fr}.vit-trust{grid-template-columns:1fr 1fr}.vit-footer-grid{grid-template-columns:1fr 1fr}.vit-menu-dot{top:54px}}
 @media(max-width:620px){.vit-topbar .vit-wrap{justify-content:flex-start;gap:14px;overflow-x:auto;flex-wrap:nowrap}.vit-wrap{padding:0 14px}.vit-hero-inner{padding:20px 14px 24px}.vit-hero-img{height:230px;margin:0 -14px;border-radius:0}.vit-brand h1{font-size:29px}.vit-logo{width:86px;height:86px;font-size:36px}.vit-cta{min-width:0;width:100%}.vit-badges{gap:12px;font-size:12px}.vit-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.vit-card{border-radius:16px}.vit-card-body{padding:11px}.vit-card-title{font-size:12px;min-height:32px}.vit-price{font-size:16px}.vit-parc{font-size:11px}.vit-buy{font-size:11px;padding:10px 8px}.vit-mini-list{grid-template-columns:repeat(2,1fr)}.vit-trust{grid-template-columns:1fr}.vit-footer-grid{grid-template-columns:1fr}.vit-wa-float{right:16px;bottom:16px;width:56px;height:56px}.vit-search{height:52px;margin-top:18px}.vit-menu-dot{width:46px;height:46px;font-size:22px;left:14px;top:52px}.vit-section-head h2{font-size:17px}}
-
-/* Ajuste solicitado: remover card lateral do banner da vitrine pública */
-body.modo-vitrine-publica .vit-info-card{display:none!important;}
 </style>
 
 </head>
