@@ -5703,6 +5703,7 @@ body.modo-pdv-exclusivo main {
     <div class="cat-tab" onclick="mostrarSubFin('pagar')">💸 A Pagar</div>
     <div class="cat-tab" onclick="mostrarSubFin('extrato')">📋 Extrato Geral</div>
     <div class="cat-tab" onclick="mostrarSubFin('caixa')">🧾 Fechamento de Caixa</div>
+    <div class="cat-tab" onclick="mostrarSubFin('cartao')">💳 Cartão</div>
   </div>
   <p style="font-size:12px;color:var(--muted);margin:-12px 0 16px;">💳 Taxas de Cartão agora fica em Config. Empresa.</p>
 
@@ -5891,6 +5892,21 @@ body.modo-pdv-exclusivo main {
 
     <div class="section-title" style="font-size:14px;">📋 Histórico de fechamentos</div>
     <div id="caixa-tab-historico"></div>
+  </div>
+
+  <!-- ===== FECHAMENTO DE CARTÃO ===== -->
+  <div id="subfin-cartao" style="display:none;">
+    <div class="section-title" style="font-size:14px;margin-bottom:8px;">💳 Fechamento de Cartão</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">
+      Selecione a data de vencimento para ver todas as parcelas de cartão que vencem naquele dia e dar baixa em lote.
+    </p>
+    <div class="toolbar" style="gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+      <div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Data de vencimento</label>
+        <input type="date" id="cartao-fechamento-data" oninput="renderFechamentoCartao()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
+      </div>
+    </div>
+    <div id="cartao-fechamento-resultado"></div>
   </div>
 
   <!-- ===== TAXAS DE CARTÃO ===== -->
@@ -11746,16 +11762,17 @@ function abrirModalFinalizarVenda() {
 
 // ===== FINANCEIRO UNIFICADO =====
 function mostrarSubFin(sub) {
-  ['receber','pagar','extrato','caixa'].forEach(s => {
+  ['receber','pagar','extrato','caixa','cartao'].forEach(s => {
     document.getElementById('subfin-' + s).style.display = s === sub ? 'block' : 'none';
   });
   document.querySelectorAll('#fin-subtabs .cat-tab').forEach((t, i) => {
-    t.classList.toggle('active', ['receber','pagar','extrato','caixa'][i] === sub);
+    t.classList.toggle('active', ['receber','pagar','extrato','caixa','cartao'][i] === sub);
   });
   if (sub === 'receber')  renderSubReceber();
   if (sub === 'pagar')    renderContasPagar();
   if (sub === 'extrato')  renderFinanceiro();
   if (sub === 'caixa')    renderTelaFechamentoCaixa();
+  if (sub === 'cartao')   renderFechamentoCartao();
 }
 
 // ===== TAXAS DE CARTÃO =====
@@ -12059,6 +12076,203 @@ function renderSubReceber() {
 
 // ===== FINANCEIRO (EXTRATO GERAL) =====
 const FIN_KEY = 'oi2026_debitos';
+function renderFechamentoCartao() {
+  const dataInput = document.getElementById('cartao-fechamento-data');
+  const resultado = document.getElementById('cartao-fechamento-resultado');
+  if (!dataInput || !resultado) return;
+
+  // Definir data padrão como hoje se vazio
+  if (!dataInput.value) {
+    dataInput.value = new Date().toISOString().slice(0,10);
+  }
+
+  const dataAlvo = dataInput.value; // YYYY-MM-DD
+  if (!dataAlvo) { resultado.innerHTML = '<div class="empty">Selecione uma data de vencimento.</div>'; return; }
+
+  const [y, m, d] = dataAlvo.split('-');
+  const dataFmt = d + '/' + m + '/' + y;
+
+  const debitos = getDebitos();
+  function dSaldo(d) { return d.total - (d.pagamentos||[]).reduce((s,p)=>s+p.valor,0); }
+  function dStatus(d) {
+    const pg = (d.pagamentos||[]).reduce((s,p)=>s+p.valor,0);
+    if (pg >= d.total) return 'pago';
+    return 'aberto';
+  }
+
+  // Filtrar parcelas de cartão com vencimento na data selecionada
+  const parcelas = debitos.filter(d => {
+    if (!d.cartao_dia) return false;
+    if (dStatus(d) === 'pago') return false;
+    // Verificar vencimento: pode estar em formato DD/MM/YYYY ou YYYY-MM-DD
+    const venc = d.vencimento || '';
+    let vencISO = '';
+    if (venc.includes('/')) {
+      const parts = venc.split('/');
+      if (parts.length === 3) vencISO = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+    } else {
+      vencISO = venc;
+    }
+    return vencISO === dataAlvo;
+  });
+
+  if (!parcelas.length) {
+    resultado.innerHTML = `<div class="empty">Nenhum lançamento de cartão com vencimento em ${dataFmt}.</div>`;
+    return;
+  }
+
+  const totalBruto = parcelas.reduce((s,d) => s + d.total, 0);
+  const totalTaxa = parcelas.reduce((s,d) => s + (d.taxa_total || 0), 0);
+  const totalLiquido = totalBruto - totalTaxa;
+  const nVendas = parcelas.reduce((s,d) => s + (d.venda_ids||[d.venda_id]).filter(Boolean).length, 0);
+
+  resultado.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;">
+      <div class="card" style="background:var(--accent-light);border:1px solid var(--border);padding:14px 16px;">
+        <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Total Bruto</div>
+        <div style="font-size:20px;font-weight:800;color:var(--accent);margin-top:4px;">${R(totalBruto)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${nVendas} venda(s)</div>
+      </div>
+      <div class="card" style="background:#fff3cd;border:1px solid #ffc107;padding:14px 16px;">
+        <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Taxa Estimada</div>
+        <div style="font-size:20px;font-weight:800;color:#e67e22;margin-top:4px;">${R(totalTaxa)}</div>
+      </div>
+      <div class="card" style="background:var(--success-light,#d4edda);border:1px solid #28a745;padding:14px 16px;">
+        <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Líquido a Receber</div>
+        <div style="font-size:20px;font-weight:800;color:var(--success);margin-top:4px;">${R(totalLiquido)}</div>
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-bottom:20px;">
+      <table>
+        <thead><tr>
+          <th>Data da venda</th>
+          <th>Qtd. vendas</th>
+          <th>Total bruto</th>
+          <th>Taxa est.</th>
+          <th>Líquido</th>
+        </tr></thead>
+        <tbody>${parcelas.map(d => {
+          const saldo = dSaldo(d);
+          const taxa = d.taxa_total || 0;
+          const liq = saldo - taxa;
+          const nV = (d.venda_ids||[d.venda_id]).filter(Boolean).length;
+          return `<tr>
+            <td>${d.data_venda || d.cartao_dia || '—'}</td>
+            <td>${nV}</td>
+            <td>${R(saldo)}</td>
+            <td style="color:#e67e22;">${R(taxa)}</td>
+            <td style="color:var(--success);font-weight:700;">${R(liq)}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="darBaixaLoteCartao('${dataAlvo}')">
+        ✅ Dar baixa em lote · ${dataFmt}
+      </button>
+      <button class="btn btn-outline" onclick="lancarTaxaCartaoCP('${dataAlvo}', ${totalTaxa})">
+        📋 Lançar taxa como Conta a Pagar · ${R(totalTaxa)}
+      </button>
+    </div>
+  `;
+}
+
+async function darBaixaLoteCartao(dataISO) {
+  const debitos = getDebitos();
+  function dSaldo(d) { return d.total - (d.pagamentos||[]).reduce((s,p)=>s+p.valor,0); }
+  function dStatus(d) {
+    const pg = (d.pagamentos||[]).reduce((s,p)=>s+p.valor,0);
+    if (pg >= d.total) return 'pago';
+    return 'aberto';
+  }
+
+  const [y,m,d] = dataISO.split('-');
+  const dataFmt = d+'/'+m+'/'+y;
+
+  const parcelas = debitos.filter(d => {
+    if (!d.cartao_dia) return false;
+    if (dStatus(d) === 'pago') return false;
+    const venc = d.vencimento || '';
+    let vencISO = '';
+    if (venc.includes('/')) {
+      const parts = venc.split('/');
+      if (parts.length === 3) vencISO = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+    } else { vencISO = venc; }
+    return vencISO === dataISO;
+  });
+
+  if (!parcelas.length) { mostrarNotificacao('Nenhuma parcela encontrada.'); return; }
+
+  const totalBruto = parcelas.reduce((s,d) => s + dSaldo(d), 0);
+  if (!confirm(`Dar baixa em ${parcelas.length} lançamento(s) de cartão?
+Total: ${R(totalBruto)}
+Vencimento: ${dataFmt}`)) return;
+
+  mostrarLoading(true);
+  try {
+    const hoje = new Date().toISOString().slice(0,10);
+    for (const debito of parcelas) {
+      const saldo = dSaldo(debito);
+      const pag = { data: hoje, valor: saldo, forma: 'Cartão', obs: `Fechamento cartão ${dataFmt}` };
+      debito.pagamentos = debito.pagamentos || [];
+      debito.pagamentos.push(pag);
+      const ehIdReal = debito.id && !String(debito.id).startsWith('cartao_');
+      if (ehIdReal) {
+        await sbPatch('debitos', debito.id, { pagamentos: debito.pagamentos }).catch(e => console.warn(e));
+      }
+    }
+    saveDebitos(debitos);
+    invalidarCache('debitos');
+    mostrarNotificacao('✅ Baixa em lote realizada!');
+    renderFechamentoCartao();
+    renderCartaoDiaBanner();
+  } catch(e) {
+    console.error(e);
+    alert('Erro ao dar baixa: ' + e.message);
+  } finally { mostrarLoading(false); }
+}
+
+async function lancarTaxaCartaoCP(dataISO, valorTaxa) {
+  if (valorTaxa <= 0) { alert('Taxa zerada — nada a lançar.'); return; }
+  const [y,m,d] = dataISO.split('-');
+  const dataFmt = d+'/'+m+'/'+y;
+  // Calcular vencimento 30 dias à frente
+  const dt = new Date(dataISO + 'T12:00:00');
+  dt.setDate(dt.getDate() + 30);
+  const vencISO = dt.toISOString().slice(0,10);
+  const [vy,vm,vd] = vencISO.split('-');
+  const vencFmt = vd+'/'+vm+'/'+vy;
+
+  if (!confirm(`Lançar taxa de cartão como Conta a Pagar?
+Valor: ${R(valorTaxa)}
+Descrição: Taxa cartão ${dataFmt}
+Vencimento: ${vencFmt}`)) return;
+
+  mostrarLoading(true);
+  try {
+    const cp = {
+      descricao: `Taxa cartão ${dataFmt}`,
+      valor: valorTaxa,
+      vencimento: vencFmt,
+      categoria: 'Taxa cartão',
+      pago: false,
+      pagamentos: []
+    };
+    const novo = await sbPost('contas_pagar', cp);
+    const criado = Array.isArray(novo) ? novo[0] : novo;
+    const contas = getContasPagar();
+    contas.unshift(criado || { ...cp, id: 'cp_taxa_' + Date.now() });
+    saveContasPagar(contas);
+    invalidarCache('contasPagar');
+    mostrarNotificacao('✅ Taxa lançada em Contas a Pagar!');
+  } catch(e) {
+    console.error(e);
+    alert('Erro ao lançar taxa: ' + e.message);
+  } finally { mostrarLoading(false); }
+}
+
 // getDebitos()/saveDebitos() definidos na camada Supabase (com _cache) — não redefinir aqui.
 
 let _baixaDebitoId = null;
