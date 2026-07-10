@@ -10150,8 +10150,10 @@ function modalCredBuscar(busca) {
 
   const debitos = getDebitos();
   const clientes = getClientes(); // para cruzar CPF
-  const buscaLower = busca.toLowerCase().replace(/\D/g,'') || busca.toLowerCase();
-  const ehCPF = /^\d{3,}$/.test(busca.replace(/\D/g,'')) && busca.replace(/\D/g,'').length >= 3;
+  const buscaLower = busca.toLowerCase();
+  const buscaSoDigitos = busca.replace(/\D/g,'');
+  // Considera busca por CPF se tiver 3+ dígitos (com ou sem pontuação)
+  const ehCPF = buscaSoDigitos.length >= 3;
 
   function dStatus(d) {
     return (d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0) >= Number(d.total||d.valor_total||0) ? 'pago' : 'aberto';
@@ -10168,7 +10170,7 @@ function modalCredBuscar(busca) {
     if (ehCPF) {
       const cli = clientes.find(c => (c.nome||'') === nome);
       const cpfLimpo = (cli?.cpf||'').replace(/\D/g,'');
-      return cpfLimpo.includes(busca.replace(/\D/g,''));
+      return cpfLimpo.includes(buscaSoDigitos);
     }
     return false;
   });
