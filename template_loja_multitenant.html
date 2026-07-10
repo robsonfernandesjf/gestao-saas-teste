@@ -6371,6 +6371,14 @@ body.modo-vitrine-publica{
     <button class="btn btn-primary" onclick="abrirModalNovoConsignado()">+ Novo Consignado</button>
   </div>
 
+  <!-- Abas -->
+  <div class="cat-tabs" id="consig-abas" style="margin-bottom:16px;">
+    <div class="cat-tab active" onclick="consigMostrarAba('lista')">📋 Lista</div>
+    <div class="cat-tab" onclick="consigMostrarAba('relatorios')">📊 Relatórios</div>
+  </div>
+
+  <!-- Painel Lista -->
+  <div id="consig-painel-lista">
   <!-- Filtros -->
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
     <input type="text" id="consig-busca" placeholder="🔍 Buscar por nº, cliente..."
@@ -6404,6 +6412,36 @@ body.modo-vitrine-publica{
       <tbody id="consig-tbody"></tbody>
     </table>
   </div>
+  </div><!-- fim consig-painel-lista -->
+
+  <!-- Painel Relatórios -->
+  <div id="consig-painel-relatorios" style="display:none;">
+    <div class="cred-box" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <h3 style="margin:0;">📊 Relatórios do Consignado</h3>
+        <select id="consig-rel-periodo" onchange="renderRelatoriosConsignado()"
+          style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
+          <option value="30">Últimos 30 dias</option>
+          <option value="90" selected>Últimos 90 dias</option>
+          <option value="180">Últimos 6 meses</option>
+          <option value="0">Todo o período</option>
+        </select>
+      </div>
+      <!-- KPIs -->
+      <div id="consig-rel-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;"></div>
+      <div class="cred-grid-2">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;">🏆 Top Clientes</div>
+          <div id="consig-rel-top-clientes"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;">🚨 Consignados Vencidos</div>
+          <div id="consig-rel-vencidos"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- MODAL: Novo Consignado -->
@@ -11927,6 +11965,95 @@ let _consignados = [];
 let _consigItensModal = []; // itens em edição no modal
 let _consigRetornoId = null;
 
+
+// ── CONTROLE DE ABAS DO CONSIGNADO ──
+function consigMostrarAba(aba) {
+  document.getElementById('consig-painel-lista').style.display = aba === 'lista' ? 'block' : 'none';
+  document.getElementById('consig-painel-relatorios').style.display = aba === 'relatorios' ? 'block' : 'none';
+  document.querySelectorAll('#consig-abas .cat-tab').forEach((t,i) => {
+    t.classList.toggle('active', (i===0 && aba==='lista') || (i===1 && aba==='relatorios'));
+  });
+  if (aba === 'relatorios') renderRelatoriosConsignado();
+}
+
+// ── RELATÓRIOS DO CONSIGNADO ──
+function renderRelatoriosConsignado() {
+  const kpisEl = document.getElementById('consig-rel-kpis');
+  const topEl = document.getElementById('consig-rel-top-clientes');
+  const vencEl = document.getElementById('consig-rel-vencidos');
+  if (!kpisEl) return;
+
+  const diasFiltro = parseInt(document.getElementById('consig-rel-periodo')?.value || '90');
+  const hoje = new Date().toISOString().slice(0,10);
+  const corte = diasFiltro > 0
+    ? new Date(Date.now() - diasFiltro * 86400000).toISOString().slice(0,10)
+    : null;
+
+  const lista = _consignados.filter(c => !corte || (c.data_saida||'') >= corte);
+
+  const total = lista.length;
+  const emAberto = lista.filter(c => c.status === 'aberto' || c.status === 'parcial').length;
+  const finalizados = lista.filter(c => c.status === 'finalizado').length;
+  const cancelados = lista.filter(c => c.status === 'cancelado').length;
+  const vencidos = lista.filter(c =>
+    (c.status === 'aberto' || c.status === 'parcial') &&
+    c.data_prevista && c.data_prevista < hoje).length;
+  const taxaConversao = total > 0 ? (finalizados / total * 100) : 0;
+
+  kpisEl.innerHTML = [
+    { l:'Total', v:total, cor:'#6b7280', bg:'#f8fafc' },
+    { l:'Em aberto', v:emAberto, cor:'#3b82f6', bg:'#eff6ff' },
+    { l:'Vencidos', v:vencidos, cor:'#dc2626', bg:'#fef2f2' },
+    { l:'Finalizados', v:finalizados, cor:'#16a34a', bg:'#f0fdf4' },
+    { l:'Cancelados', v:cancelados, cor:'#6b7280', bg:'#f8fafc' },
+    { l:'Taxa conversão', v:taxaConversao.toFixed(1)+'%', cor:taxaConversao>=50?'#16a34a':'#d97706', bg:'#fffbeb' },
+  ].map(k=>`<div style="background:${k.bg};border:1px solid ${k.cor}20;border-radius:10px;padding:12px 14px;">
+    <div style="font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;">${k.l}</div>
+    <div style="font-size:20px;font-weight:900;color:${k.cor};margin-top:3px;">${k.v}</div>
+  </div>`).join('');
+
+  // Top clientes por volume
+  const porCliente = {};
+  lista.forEach(c => {
+    const n = c.cliente_nome || '—';
+    if (!porCliente[n]) porCliente[n] = { nome:n, total:0, finalizados:0, abertos:0 };
+    porCliente[n].total++;
+    if (c.status === 'finalizado') porCliente[n].finalizados++;
+    if (c.status === 'aberto' || c.status === 'parcial') porCliente[n].abertos++;
+  });
+  const topClientes = Object.values(porCliente).sort((a,b)=>b.total-a.total).slice(0,6);
+  const maxTop = topClientes[0]?.total || 1;
+
+  topEl.innerHTML = topClientes.length ? topClientes.map((c,i) => `
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
+        <span>${i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':''}<strong>${c.nome}</strong></span>
+        <span style="color:#3b82f6;font-weight:700;">${c.total} consig.</span>
+      </div>
+      <div style="background:#f1f5f9;border-radius:4px;height:8px;">
+        <div style="background:#3b82f6;height:100%;width:${Math.round(c.total/maxTop*100)}%;border-radius:4px;"></div>
+      </div>
+      <div style="font-size:10px;color:#94a3b8;margin-top:2px;">Finalizados: ${c.finalizados} · Em aberto: ${c.abertos}</div>
+    </div>`) .join('') : '<div class="empty">Sem dados no período.</div>';
+
+  // Vencidos
+  const listaVencidos = lista.filter(c =>
+    (c.status === 'aberto' || c.status === 'parcial') &&
+    c.data_prevista && c.data_prevista < hoje
+  ).sort((a,b) => (a.data_prevista||'').localeCompare(b.data_prevista||''));
+
+  vencEl.innerHTML = listaVencidos.length ? listaVencidos.map(c => {
+    const dias = Math.floor((new Date(hoje) - new Date(c.data_prevista)) / 86400000);
+    return `<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <strong>#${String(c.numero).padStart(4,'0')}</strong> · ${c.cliente_nome||'—'}
+        <div style="font-size:11px;color:#dc2626;margin-top:2px;">Vencido há ${dias} dia${dias!==1?'s':''} · prev. ${c.data_prevista.split('-').reverse().join('/')}</div>
+      </div>
+      <button class="btn btn-sm" data-cid="${c.id}" onclick="consigMostrarAba('lista');abrirRetornoConsignado(this.dataset.cid)" style="background:var(--accent);color:#fff;font-size:11px;">🔄 Retorno</button>
+    </div>`;
+  }).join('') : '<div style="font-size:12px;color:var(--muted);padding:8px 0;">✅ Nenhum consignado vencido.</div>';
+}
+
 // ── CACHE E CARREGAMENTO ──
 async function carregarConsignados() {
   try {
@@ -14622,6 +14749,35 @@ function abrirFinanceiroCliente(id) {
       <strong style="color:var(--success);">${R(d.total)}</strong>
     </div>
   `).join('') : '<p style="font-size:12px;color:var(--muted);padding:8px 0;">Nenhuma conta quitada ainda.</p>';
+
+  // Histórico de consignados (se módulo ativo)
+  const wrapConsig = document.getElementById('cli-fin-consignado-wrap');
+  const elConsig = document.getElementById('cli-fin-consignados');
+  if (wrapConsig && LOJA_USA_CONSIGNADO) {
+    wrapConsig.style.display = 'block';
+    const nomeConsig = cl.nome;
+    const consigsCli = (_consignados || []).filter(c => c.cliente_nome === nomeConsig);
+    if (!consigsCli.length) {
+      elConsig.innerHTML = '<p style="font-size:12px;color:var(--muted);padding:8px 0;">Nenhum consignado registrado.</p>';
+    } else {
+      const statusBadge = s => ({
+        aberto: '<span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">Aberto</span>',
+        parcial: '<span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">Parcial</span>',
+        finalizado: '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">Finalizado</span>',
+        cancelado: '<span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">Cancelado</span>',
+      }[s] || s);
+      elConsig.innerHTML = consigsCli.map(c => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;">
+          <span>#${String(c.numero).padStart(4,'0')} · saída ${c.data_saida?c.data_saida.split('-').reverse().join('/'):'—'} · prev. ${c.data_prevista?c.data_prevista.split('-').reverse().join('/'):'—'}</span>
+          <div style="display:flex;gap:6px;align-items:center;">
+            ${statusBadge(c.status)}
+            <button class="btn btn-sm btn-outline" data-cid="${c.id}" onclick="fecharModal('modal-cliente-fin');imprimirComprovanteConsignado(this.dataset.cid)" style="font-size:10px;padding:2px 6px;">🖨️</button>
+          </div>
+        </div>`).join('');
+    }
+  } else if (wrapConsig) {
+    wrapConsig.style.display = 'none';
+  }
 
   document.getElementById('modal-cliente-fin').classList.add('open');
 }
@@ -19691,7 +19847,12 @@ atualizarHora();
       <div id="cli-fin-abertas" style="max-height:150px;overflow-y:auto;margin-bottom:16px;"></div>
 
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--success);margin-bottom:8px;">✓ Contas pagas</p>
-      <div id="cli-fin-pagas" style="max-height:150px;overflow-y:auto;"></div>
+      <div id="cli-fin-pagas" style="max-height:150px;overflow-y:auto;margin-bottom:16px;"></div>
+
+      <div id="cli-fin-consignado-wrap" style="display:none;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#7c3aed;margin-bottom:8px;">📦 Consignados</p>
+        <div id="cli-fin-consignados" style="max-height:200px;overflow-y:auto;"></div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="fecharModal('modal-cliente-fin')">Fechar</button>
