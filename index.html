@@ -5939,6 +5939,7 @@ body.modo-vitrine-publica{
     <button class="cred-tab" id="cred-tab-clientes" onclick="mostrarCredAba('clientes')">👥 Clientes</button>
     <button class="cred-tab" id="cred-tab-importar" onclick="mostrarCredAba('importar')">⬆️ Saldo Inicial</button>
     <button class="cred-tab" id="cred-tab-inadimplencia" onclick="mostrarCredAba('inadimplencia')">🚨 Inadimplência</button>
+    <button class="cred-tab" id="cred-tab-relatorios" onclick="mostrarCredAba('relatorios')">📊 Relatórios</button>
     <button class="cred-tab" id="cred-tab-config" onclick="mostrarCredAba('config')">⚙️ Configurações</button>
   </div>
 
@@ -6043,6 +6044,35 @@ body.modo-vitrine-publica{
       </div>
       <div id="inadimpl-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;"></div>
       <div id="inadimpl-lista"></div>
+    </div>
+  </div>
+
+  <div id="cred-panel-relatorios" class="cred-panel">
+    <div class="cred-box" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+        <h3 style="margin:0;">📊 Relatórios do Crediário</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="cred-rel-periodo" onchange="renderRelatoriosCrediario()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
+            <option value="30">Últimos 30 dias</option>
+            <option value="60">Últimos 60 dias</option>
+            <option value="90" selected>Últimos 90 dias</option>
+            <option value="180">Últimos 6 meses</option>
+            <option value="365">Último ano</option>
+            <option value="0">Todo o período</option>
+          </select>
+        </div>
+      </div>
+      <div id="cred-rel-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;"></div>
+      <div class="cred-grid-2">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;">🏆 Top Clientes (por volume)</div>
+          <div id="cred-rel-top-clientes"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;">📅 Contratos por mês</div>
+          <div id="cred-rel-por-mes"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -6983,6 +7013,7 @@ body.modo-vitrine-publica{
     <div class="modal-footer" style="flex-wrap:wrap;gap:8px;">
       <button class="btn btn-outline" onclick="mostrarModalCupom()">🧾 Ver Cupom</button>
       <button class="btn btn-outline" id="btn-imprimir-carne-crediario" onclick="imprimirCarneCrediario()" style="display:none;">📄 Imprimir Carnê</button>
+      <button class="btn btn-outline" id="btn-imprimir-contrato-crediario" onclick="imprimirContratoCrediario()" style="display:none;">📋 Imprimir Contrato</button>
       <button class="btn btn-primary" onclick="fecharModal('modal-confirm-venda')">OK</button>
     </div>
   </div>
@@ -11468,6 +11499,8 @@ async function confirmarVenda() {
   document.getElementById('modal-confirm-venda').classList.add('open');
   const btnCarne = document.getElementById('btn-imprimir-carne-crediario');
   if (btnCarne) btnCarne.style.display = (pag === 'Crediário' && _ultimoCarneCrediario && document.getElementById('cred-venda-imprimir')?.checked) ? 'inline-flex' : 'none';
+  const btnContrato = document.getElementById('btn-imprimir-contrato-crediario');
+  if (btnContrato) btnContrato.style.display = (pag === 'Crediário' && _ultimoCarneCrediario) ? 'inline-flex' : 'none';
 
   // Reabilita o botão de finalizar venda (ficava travado em "Salvando..." até recarregar a página)
   if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = '✓ Finalizar Venda'; }
@@ -12107,6 +12140,252 @@ function imprimirExtratoCliente(cliente) {
   w.document.close();
 }
 
+
+// ── CONTRATO / PROMISSÓRIA ──
+function imprimirContratoCrediario(dadosCarne) {
+  const c = dadosCarne || _ultimoCarneCrediario;
+  if (!c) { alert('Nenhum contrato disponível para imprimir.'); return; }
+
+  const cfg = getCarneConfig();
+  const nomeLoja = cfg.nome || c.loja || 'Loja';
+  const endereco = cfg.endereco || '';
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#D4145A';
+  const logoHTML = (cfg.logo !== 'nao' && window.logoBase64)
+    ? `<img src="${window.logoBase64}" style="height:44px;object-fit:contain;">` : '';
+
+  const clientes = getClientes();
+  const cli = clientes.find(x => x.nome === c.cliente);
+  const cpf = getCPFCliente(cli);
+  const hoje = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+
+  const linhasParcelas = c.parcelas.map(p => `
+    <tr>
+      <td style="padding:7px 10px;text-align:center;border:1px solid #e5e7eb;">${p.parcela}ª</td>
+      <td style="padding:7px 10px;text-align:center;border:1px solid #e5e7eb;">${p.vencimento}</td>
+      <td style="padding:7px 10px;text-align:right;border:1px solid #e5e7eb;font-weight:700;">${R(p.valor)}</td>
+      <td style="padding:7px 10px;border:1px solid #e5e7eb;"></td>
+    </tr>`).join('');
+
+  const html = `<!doctype html><html><head>
+  <meta charset="utf-8"><title>Contrato · ${c.contratoId}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Times New Roman',serif;background:#fff;padding:30px;color:#111827;font-size:13px;line-height:1.6}
+    .btn-print{background:${accent};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:20px;font-family:Arial,sans-serif;}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid ${accent};padding-bottom:14px;margin-bottom:20px;}
+    .loja-nome{font-size:16px;font-weight:800;color:${accent};font-family:Arial,sans-serif;}
+    .contrato-titulo{font-size:20px;font-weight:900;text-align:center;margin:16px 0 4px;letter-spacing:.5px;text-transform:uppercase;font-family:Arial,sans-serif;}
+    .contrato-num{text-align:center;font-size:12px;color:#64748b;margin-bottom:20px;font-family:Arial,sans-serif;}
+    .secao{margin-bottom:18px;}
+    .secao-titulo{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${accent};border-bottom:1px solid ${accent}30;padding-bottom:4px;margin-bottom:10px;font-family:Arial,sans-serif;}
+    .campo{display:flex;gap:8px;margin-bottom:6px;}
+    .campo label{font-weight:700;min-width:120px;font-size:12px;}
+    .campo span{border-bottom:1px solid #94a3b8;flex:1;padding-bottom:2px;}
+    table{width:100%;border-collapse:collapse;font-size:12px;}
+    thead th{background:#f8fafc;padding:8px 10px;text-align:center;border:1px solid #e5e7eb;font-family:Arial,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;}
+    .clausulas{font-size:11px;line-height:1.7;color:#374151;margin-bottom:20px;}
+    .clausulas p{margin-bottom:8px;text-align:justify;}
+    .assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px;}
+    .assinatura-box{text-align:center;}
+    .assinatura-linha{border-top:1px solid #374151;margin-top:50px;padding-top:6px;font-size:11px;}
+    @media print{.btn-print{display:none}body{padding:15px}}
+  </style></head><body>
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimir Contrato</button>
+
+  <div class="header">
+    <div>
+      ${logoHTML}
+      <div class="loja-nome">${nomeLoja}</div>
+      ${endereco ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">${endereco}</div>` : ''}
+    </div>
+    <div style="text-align:right;font-size:11px;color:#64748b;">
+      <div>Data: ${hoje}</div>
+      <div style="margin-top:4px;">Contrato Nº: <strong>${c.contratoId}</strong></div>
+    </div>
+  </div>
+
+  <div class="contrato-titulo">Contrato de Crédito Pessoal</div>
+  <div class="contrato-num">Nº ${c.contratoId}</div>
+
+  <div class="secao">
+    <div class="secao-titulo">1. Partes Contratantes</div>
+    <div class="campo"><label>Credor (Loja):</label><span>${nomeLoja}</span></div>
+    ${endereco ? `<div class="campo"><label>Endereço:</label><span>${endereco}</span></div>` : ''}
+    <div class="campo"><label>Devedor (Cliente):</label><span>${c.cliente}</span></div>
+    ${cpf ? `<div class="campo"><label>CPF:</label><span>${cpf}</span></div>` : ''}
+    <div class="campo"><label>Endereço:</label><span>&nbsp;</span></div>
+    <div class="campo"><label>Telefone:</label><span>${cli?.tel || cli?.telefone || '&nbsp;'}</span></div>
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">2. Objeto do Contrato</div>
+    <div class="campo"><label>Produtos/Serviços:</label><span>${c.produtos}</span></div>
+    <div class="campo"><label>Data da compra:</label><span>${c.dataVenda || hoje}</span></div>
+    <div class="campo"><label>Valor total:</label><span>${R(c.totalVenda)}</span></div>
+    <div class="campo"><label>Entrada paga:</label><span>${R(c.entrada || 0)}</span></div>
+    <div class="campo"><label>Valor financiado:</label><span><strong>${R(c.valorFinanciado)}</strong></span></div>
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">3. Plano de Pagamento</div>
+    <table>
+      <thead><tr>
+        <th>Parcela</th>
+        <th>Vencimento</th>
+        <th>Valor</th>
+        <th>Assinatura / Recibo</th>
+      </tr></thead>
+      <tbody>${linhasParcelas}</tbody>
+    </table>
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">4. Cláusulas e Condições</div>
+    <div class="clausulas">
+      <p><strong>4.1.</strong> O DEVEDOR se compromete a efetuar os pagamentos nas datas de vencimento estabelecidas neste contrato, no estabelecimento do CREDOR ou pelo meio de pagamento acordado entre as partes.</p>
+      <p><strong>4.2.</strong> Em caso de atraso no pagamento de qualquer parcela, incidirá multa de 2% (dois por cento) sobre o valor da parcela em atraso, acrescida de juros de mora de 1% (um por cento) ao mês, calculados pro rata die.</p>
+      <p><strong>4.3.</strong> O não pagamento de qualquer parcela na data de vencimento implica o vencimento antecipado de todas as parcelas restantes, tornando exigível o saldo devedor integral.</p>
+      <p><strong>4.4.</strong> As partes elegem o foro da comarca de domicílio do CREDOR para dirimir eventuais litígios oriundos do presente contrato, com renúncia expressa a qualquer outro.</p>
+      <p><strong>4.5.</strong> Este contrato é celebrado em 2 (duas) vias de igual teor e forma, ficando uma via com cada parte.</p>
+    </div>
+  </div>
+
+  <p style="text-align:center;font-size:12px;color:#64748b;margin-bottom:20px;">
+    ${endereco || nomeLoja}, ${hoje}.
+  </p>
+
+  <div class="assinaturas">
+    <div class="assinatura-box">
+      <div class="assinatura-linha">${nomeLoja}<br><span style="font-size:10px;color:#64748b;">CREDOR</span></div>
+    </div>
+    <div class="assinatura-box">
+      <div class="assinatura-linha">${c.cliente}<br><span style="font-size:10px;color:#64748b;">DEVEDOR${cpf ? ` · CPF: ${cpf}` : ''}</span></div>
+    </div>
+  </div>
+
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { alert('Pop-up bloqueado. Permita pop-ups para esta página.'); return; }
+  w.document.write(html);
+  w.document.close();
+}
+
+// ── RELATÓRIOS DO CREDIÁRIO ──
+function renderRelatoriosCrediario() {
+  const kpisEl = document.getElementById('cred-rel-kpis');
+  const topEl = document.getElementById('cred-rel-top-clientes');
+  const mesEl = document.getElementById('cred-rel-por-mes');
+  if (!kpisEl || !topEl || !mesEl) return;
+
+  const diasFiltro = parseInt(document.getElementById('cred-rel-periodo')?.value || '90');
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const corte = diasFiltro > 0 ? new Date(hoje - diasFiltro * 86400000) : null;
+
+  const debitos = getDebitos().filter(d => isCrediarioDebito(d));
+  function dSaldo(d) { return Number(d.total||d.valor_total||0) - (d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0); }
+  function dTotal(d) { return Number(d.total||d.valor_total||0); }
+  function dPago(d) { return (d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0); }
+
+  // Filtrar por período (data da venda / criação)
+  const filtrados = debitos.filter(d => {
+    if (!corte) return true;
+    const dataStr = d.data_venda || d.created_at || '';
+    if (!dataStr) return true;
+    const dt = new Date(dataStr.includes('/') ? dataStr.split('/').reverse().join('-') : dataStr.slice(0,10));
+    return dt >= corte;
+  });
+
+  const totalCarteira = filtrados.reduce((s,d) => s + dTotal(d), 0);
+  const totalRecebido = filtrados.reduce((s,d) => s + dPago(d), 0);
+  const totalAberto = filtrados.reduce((s,d) => s + dSaldo(d), 0);
+  const totalVencido = filtrados.filter(d => {
+    const s = dSaldo(d); if (s <= 0.009) return false;
+    const venc = d.vencimento||''; if (!venc) return false;
+    let dt;
+    if (venc.includes('/')) { const [dd,mm,yy]=venc.split('/'); dt=new Date(yy+'-'+mm+'-'+dd); }
+    else dt = new Date(venc);
+    return dt < hoje;
+  }).reduce((s,d) => s + dSaldo(d), 0);
+
+  const qtdContratos = new Set(filtrados.map(d => d.contrato_id||d.id)).size;
+  const qtdClientes = new Set(filtrados.map(d => d.cliente)).size;
+  const ticketMedio = qtdContratos > 0 ? totalCarteira / qtdContratos : 0;
+  const taxaInadimpl = totalAberto > 0 ? (totalVencido / totalAberto * 100) : 0;
+
+  // KPIs
+  kpisEl.innerHTML = [
+    { l:'Carteira total', v:R(totalCarteira), cor:'#3b82f6', bg:'#eff6ff' },
+    { l:'Recebido', v:R(totalRecebido), cor:'#16a34a', bg:'#f0fdf4' },
+    { l:'Em aberto', v:R(totalAberto), cor:'#d97706', bg:'#fffbeb' },
+    { l:'Inadimplência', v:R(totalVencido), cor:'#dc2626', bg:'#fef2f2' },
+    { l:'Taxa inadimpl.', v:taxaInadimpl.toFixed(1)+'%', cor: taxaInadimpl>10?'#dc2626':'#16a34a', bg:'#f8fafc' },
+    { l:'Ticket médio', v:R(ticketMedio), cor:'#7c3aed', bg:'#f5f3ff' },
+    { l:'Contratos', v:qtdContratos, cor:'#0891b2', bg:'#ecfeff' },
+    { l:'Clientes', v:qtdClientes, cor:'#0891b2', bg:'#ecfeff' },
+  ].map(k => `<div style="background:${k.bg};border:1px solid ${k.cor}20;border-radius:10px;padding:10px 12px;">
+    <div style="font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;">${k.l}</div>
+    <div style="font-size:16px;font-weight:900;color:${k.cor};margin-top:3px;">${k.v}</div>
+  </div>`).join('');
+
+  // Top clientes
+  const porCliente = {};
+  filtrados.forEach(d => {
+    const c = d.cliente || '—';
+    if (!porCliente[c]) porCliente[c] = { total:0, pago:0, aberto:0 };
+    porCliente[c].total += dTotal(d);
+    porCliente[c].pago += dPago(d);
+    porCliente[c].aberto += dSaldo(d);
+  });
+  const topClientes = Object.entries(porCliente)
+    .sort((a,b) => b[1].total - a[1].total).slice(0,8);
+  const maxTop = topClientes[0]?.[1].total || 1;
+
+  topEl.innerHTML = topClientes.length ? topClientes.map(([nome, v], i) => {
+    const pct = Math.round(v.total / maxTop * 100);
+    return `<div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
+        <span><strong>${i===0?'🥇':i===1?'🥈':i===2?'🥉':''}${nome}</strong></span>
+        <span style="color:#3b82f6;font-weight:700;">${R(v.total)}</span>
+      </div>
+      <div style="background:#f1f5f9;border-radius:4px;height:8px;">
+        <div style="background:#3b82f6;height:100%;width:${pct}%;border-radius:4px;"></div>
+      </div>
+      <div style="font-size:10px;color:#94a3b8;margin-top:2px;">Recebido: ${R(v.pago)} · Aberto: ${R(v.aberto)}</div>
+    </div>`;
+  }).join('') : '<div class="empty">Sem dados no período.</div>';
+
+  // Contratos por mês (últimos 6)
+  const porMes = {};
+  filtrados.forEach(d => {
+    const dataStr = d.data_venda || d.created_at || '';
+    if (!dataStr) return;
+    const dt = new Date(dataStr.includes('/') ? dataStr.split('/')[2]+'-'+dataStr.split('/')[1]+'-'+dataStr.split('/')[0] : dataStr.slice(0,10));
+    if (isNaN(dt)) return;
+    const chave = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
+    if (!porMes[chave]) porMes[chave] = { total:0, qtd:0 };
+    porMes[chave].total += dTotal(d);
+    porMes[chave].qtd++;
+  });
+  const mesesOrdenados = Object.keys(porMes).sort().slice(-6);
+  const maxMes = Math.max(...mesesOrdenados.map(k => porMes[k].total), 1);
+
+  mesEl.innerHTML = mesesOrdenados.length ? mesesOrdenados.map(k => {
+    const [y,m] = k.split('-');
+    const label = new Date(parseInt(y),parseInt(m)-1,1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});
+    const pct = Math.round(porMes[k].total / maxMes * 100);
+    return `<div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
+        <span><strong>${label}</strong> <span style="color:#94a3b8">(${porMes[k].qtd} parcela${porMes[k].qtd!==1?'s':''})</span></span>
+        <span style="color:#7c3aed;font-weight:700;">${R(porMes[k].total)}</span>
+      </div>
+      <div style="background:#f1f5f9;border-radius:4px;height:8px;">
+        <div style="background:#7c3aed;height:100%;width:${pct}%;border-radius:4px;"></div>
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty">Sem dados no período.</div>';
+}
+
 function imprimirReciboCrediario(dados) {
   const w = window.open('', '_blank');
   if (!w) { alert('Pop-up bloqueado. Permita pop-ups para esta página.'); return; }
@@ -12175,6 +12454,7 @@ function mostrarCredAba(aba){
   if (aba === 'config') carregarCredConfig();
   if (aba === 'importar') previewCredImportacao();
   if (aba === 'inadimplencia') { renderInadimplencia(); return; }
+  if (aba === 'relatorios') { renderRelatoriosCrediario(); return; }
   renderCrediario();
 }
 function credParseDataBR(s){
