@@ -5912,6 +5912,7 @@ body.modo-vitrine-publica{
     <button class="cred-tab" id="cred-tab-parcelas" onclick="mostrarCredAba('parcelas')">📆 Parcelas</button>
     <button class="cred-tab" id="cred-tab-clientes" onclick="mostrarCredAba('clientes')">👥 Clientes</button>
     <button class="cred-tab" id="cred-tab-importar" onclick="mostrarCredAba('importar')">⬆️ Saldo Inicial</button>
+    <button class="cred-tab" id="cred-tab-inadimplencia" onclick="mostrarCredAba('inadimplencia')">🚨 Inadimplência</button>
     <button class="cred-tab" id="cred-tab-config" onclick="mostrarCredAba('config')">⚙️ Configurações</button>
   </div>
 
@@ -5984,6 +5985,27 @@ body.modo-vitrine-publica{
         <h3>Prévia das parcelas</h3>
         <div id="cred-imp-preview" style="font-size:13px;color:#64748b;">Informe os dados para visualizar as parcelas.</div>
       </div>
+    </div>
+  </div>
+
+  <div id="cred-panel-inadimplencia" class="cred-panel">
+    <div class="cred-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+        <h3 style="margin:0;">🚨 Relatório de Inadimplência</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <select id="inadimpl-atraso" onchange="renderInadimplencia()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--surface);">
+            <option value="1">Qualquer atraso</option>
+            <option value="7">Mais de 7 dias</option>
+            <option value="15">Mais de 15 dias</option>
+            <option value="30">Mais de 30 dias</option>
+            <option value="60">Mais de 60 dias</option>
+            <option value="90">Mais de 90 dias</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="exportarInadimplenciaCSV()" style="font-size:12px;">📥 Exportar CSV</button>
+        </div>
+      </div>
+      <div id="inadimpl-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;"></div>
+      <div id="inadimpl-lista"></div>
     </div>
   </div>
 
@@ -11642,6 +11664,252 @@ function imprimirCarneCrediario(dadosCarne) {
   const w = window.open('', '_blank');
   if (!w) { alert('Pop-up bloqueado. Permita pop-ups para esta página.'); return; }
   w.document.write(gerarHTMLCarne(c));
+  w.document.close();
+}
+
+
+// ── RELATÓRIO DE INADIMPLÊNCIA ──
+function renderInadimplencia() {
+  const kpisEl = document.getElementById('inadimpl-kpis');
+  const listaEl = document.getElementById('inadimpl-lista');
+  if (!kpisEl || !listaEl) return;
+
+  const diasFiltro = parseInt(document.getElementById('inadimpl-atraso')?.value || '1');
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0);
+
+  const debitos = getDebitos();
+  function dSaldo(d) { return Number(d.total||d.valor_total||0) - (d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0); }
+
+  // Filtrar só parcelas de crediário vencidas com saldo
+  const vencidas = debitos.filter(d => {
+    if (!d.origem_crediario) return false;
+    const saldo = dSaldo(d);
+    if (saldo <= 0.009) return false;
+    const venc = d.vencimento || '';
+    let vencDate;
+    if (venc.includes('/')) {
+      const [dd,mm,yy] = venc.split('/');
+      vencDate = new Date(`${yy}-${mm}-${dd}`);
+    } else if (venc) {
+      vencDate = new Date(venc);
+    } else return false;
+    vencDate.setHours(0,0,0,0);
+    const diasAtraso = Math.floor((hoje - vencDate) / 86400000);
+    return diasAtraso >= diasFiltro;
+  }).map(d => {
+    const venc = d.vencimento || '';
+    let vencDate;
+    if (venc.includes('/')) { const [dd,mm,yy] = venc.split('/'); vencDate = new Date(`${yy}-${mm}-${dd}`); }
+    else vencDate = new Date(venc);
+    vencDate.setHours(0,0,0,0);
+    const diasAtraso = Math.floor((hoje - vencDate) / 86400000);
+    return { ...d, saldo: dSaldo(d), diasAtraso, vencDate };
+  }).sort((a,b) => b.diasAtraso - a.diasAtraso);
+
+  // Agrupar por cliente
+  const porCliente = {};
+  vencidas.forEach(d => {
+    const c = d.cliente || 'Sem cliente';
+    if (!porCliente[c]) porCliente[c] = { cliente: c, total: 0, parcelas: 0, maiorAtraso: 0, itens: [] };
+    porCliente[c].total += d.saldo;
+    porCliente[c].parcelas++;
+    porCliente[c].maiorAtraso = Math.max(porCliente[c].maiorAtraso, d.diasAtraso);
+    porCliente[c].itens.push(d);
+  });
+
+  const clientes = Object.values(porCliente).sort((a,b) => b.total - a.total);
+  const totalGeral = clientes.reduce((s,c) => s + c.total, 0);
+  const totalClientes = clientes.length;
+  const totalParcelas = vencidas.length;
+  const maiorAtraso = vencidas.length ? Math.max(...vencidas.map(d => d.diasAtraso)) : 0;
+
+  // KPIs
+  kpisEl.innerHTML = [
+    { label: 'Total em atraso', valor: R(totalGeral), cor: '#dc2626', bg: '#fef2f2' },
+    { label: 'Clientes inadimplentes', valor: totalClientes, cor: '#b45309', bg: '#fffbeb' },
+    { label: 'Parcelas vencidas', valor: totalParcelas, cor: '#6d28d9', bg: '#f5f3ff' },
+    { label: 'Maior atraso', valor: `${maiorAtraso} dias`, cor: '#be123c', bg: '#fff1f2' }
+  ].map(k => `
+    <div style="background:${k.bg};border:1px solid ${k.cor}30;border-radius:10px;padding:12px 14px;">
+      <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">${k.label}</div>
+      <div style="font-size:20px;font-weight:900;color:${k.cor};margin-top:4px;">${k.valor}</div>
+    </div>`).join('');
+
+  if (!clientes.length) {
+    listaEl.innerHTML = `<div class="empty" style="padding:40px 0;text-align:center;">
+      ✅ Nenhuma parcela em atraso${diasFiltro > 1 ? ` superior a ${diasFiltro} dias` : ''}.
+    </div>`;
+    return;
+  }
+
+  // Faixas de atraso para cada cliente
+  function faixaCor(dias) {
+    if (dias <= 15) return { bg:'#fff7ed', border:'#fdba74', texto:'#c2410c' };
+    if (dias <= 30) return { bg:'#fef2f2', border:'#fca5a5', texto:'#b91c1c' };
+    if (dias <= 60) return { bg:'#fef2f2', border:'#f87171', texto:'#991b1b' };
+    return { bg:'#4c0519', border:'#be123c', texto:'#fff' };
+  }
+
+  listaEl.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr style="background:var(--bg);">
+          <th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;">Cliente</th>
+          <th style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;">Parcelas</th>
+          <th style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;">Total</th>
+          <th style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;">Maior atraso</th>
+          <th style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;">Detalhe</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${clientes.map((c,i) => {
+          const cor = faixaCor(c.maiorAtraso);
+          const detalhe = c.itens.map(it =>
+            `<div style="font-size:11px;color:var(--muted);padding:2px 0;">Parc. ${it.parcela||1}/${it.total_parcelas||1} · venc. ${it.vencimento} · <strong style="color:#dc2626;">${it.diasAtraso}d</strong> · ${R(it.saldo)}</div>`
+          ).join('');
+          return `<tr style="border-top:1px solid var(--border);">
+            <td style="padding:10px 12px;">
+              <strong>${c.cliente}</strong>
+            </td>
+            <td style="padding:10px 12px;text-align:center;">${c.parcelas}</td>
+            <td style="padding:10px 12px;text-align:center;font-weight:800;color:#dc2626;">${R(c.total)}</td>
+            <td style="padding:10px 12px;text-align:center;">
+              <span style="background:${cor.bg};color:${cor.texto};border:1px solid ${cor.border};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">${c.maiorAtraso} dias</span>
+            </td>
+            <td style="padding:10px 12px;">
+              <details>
+                <summary style="cursor:pointer;font-size:11px;color:var(--accent);">Ver ${c.itens.length} parcela(s)</summary>
+                <div style="margin-top:6px;">${detalhe}</div>
+              </details>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--bg);border-top:2px solid var(--border);">
+          <td style="padding:10px 12px;font-size:12px;color:var(--muted);">${totalClientes} cliente(s)</td>
+          <td style="padding:10px 12px;text-align:center;font-size:12px;color:var(--muted);">${totalParcelas}</td>
+          <td style="padding:10px 12px;text-align:center;font-size:15px;font-weight:900;color:#dc2626;">${R(totalGeral)}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    </table>`;
+}
+
+function exportarInadimplenciaCSV() {
+  const diasFiltro = parseInt(document.getElementById('inadimpl-atraso')?.value || '1');
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const debitos = getDebitos();
+  function dSaldo(d) { return Number(d.total||d.valor_total||0) - (d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0); }
+
+  const rows = [['Cliente','Contrato','Parcela','Vencimento','Dias de Atraso','Saldo Devedor']];
+
+  debitos.filter(d => {
+    if (!d.origem_crediario) return false;
+    if (dSaldo(d) <= 0.009) return false;
+    const venc = d.vencimento || '';
+    let vencDate;
+    if (venc.includes('/')) { const [dd,mm,yy] = venc.split('/'); vencDate = new Date(`${yy}-${mm}-${dd}`); }
+    else vencDate = new Date(venc);
+    vencDate.setHours(0,0,0,0);
+    return Math.floor((hoje - vencDate) / 86400000) >= diasFiltro;
+  }).forEach(d => {
+    const venc = d.vencimento || '';
+    let vencDate;
+    if (venc.includes('/')) { const [dd,mm,yy] = venc.split('/'); vencDate = new Date(`${yy}-${mm}-${dd}`); }
+    else vencDate = new Date(venc);
+    vencDate.setHours(0,0,0,0);
+    const dias = Math.floor((hoje - vencDate) / 86400000);
+    rows.push([
+      d.cliente || '',
+      d.contrato_id || d.id || '',
+      `${d.parcela||1}/${d.total_parcelas||1}`,
+      d.vencimento || '',
+      dias,
+      dSaldo(d).toFixed(2).replace('.',',')
+    ]);
+  });
+
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('
+');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `inadimplencia_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  mostrarNotificacao('✅ CSV exportado!');
+}
+
+function gerarReciboCrediario(dados) {
+  const cfg = getCarneConfig();
+  const nomeLoja = cfg.nome || dados.loja || 'Loja';
+  const endereco = cfg.endereco || '';
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#D4145A';
+  const logoHTML = (cfg.logo !== 'nao' && window.logoBase64)
+    ? `<img src="${window.logoBase64}" style="height:40px;object-fit:contain;">`
+    : '';
+
+  const now = new Date();
+  const dataHora = now.toLocaleString('pt-BR');
+
+  return `<!doctype html><html><head>
+  <meta charset="utf-8">
+  <title>Recibo · ${dados.cliente}</title>
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:Arial,sans-serif; background:#f1f5f9; padding:20px; color:#111827; }
+    .recibo { background:#fff; border-radius:12px; max-width:420px; margin:0 auto; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,.08); }
+    .header { display:flex; align-items:center; gap:12px; margin-bottom:16px; padding-bottom:16px; border-bottom:2px solid ${accent}; }
+    .loja-nome { font-size:15px; font-weight:800; color:${accent}; }
+    .loja-end { font-size:11px; color:#64748b; margin-top:2px; }
+    .titulo { font-size:18px; font-weight:900; color:#111827; text-align:center; margin-bottom:16px; }
+    .linha { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid #f1f5f9; font-size:13px; }
+    .linha span { color:#64748b; }
+    .linha strong { color:#111827; }
+    .valor-destaque { text-align:center; margin:16px 0; padding:14px; background:${accent}15; border-radius:10px; border:2px solid ${accent}30; }
+    .valor-destaque .label { font-size:11px; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+    .valor-destaque .valor { font-size:32px; font-weight:900; color:${accent}; margin-top:4px; }
+    .rodape { text-align:center; font-size:11px; color:#94a3b8; margin-top:16px; padding-top:12px; border-top:1px dashed #e2e8f0; }
+    .btn-print { display:block; width:100%; background:${accent}; color:#fff; border:none; border-radius:8px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; margin-bottom:16px; }
+    @media print { .btn-print { display:none; } body { background:#fff; padding:0; } .recibo { box-shadow:none; } }
+  </style>
+  </head><body>
+  <div class="recibo">
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimir Recibo</button>
+    <div class="header">
+      ${logoHTML}
+      <div>
+        <div class="loja-nome">${nomeLoja}</div>
+        ${endereco ? `<div class="loja-end">${endereco}</div>` : ''}
+      </div>
+    </div>
+    <div class="titulo">✅ Recibo de Pagamento</div>
+    <div class="linha"><span>Data / Hora</span><strong>${dataHora}</strong></div>
+    <div class="linha"><span>Cliente</span><strong>${dados.cliente}</strong></div>
+    ${dados.cpf ? `<div class="linha"><span>CPF</span><strong>${dados.cpf}</strong></div>` : ''}
+    <div class="linha"><span>Contrato</span><strong>${dados.contratoId || '—'}</strong></div>
+    <div class="linha"><span>Parcela</span><strong>${dados.parcela} de ${dados.totalParcelas}</strong></div>
+    <div class="linha"><span>Vencimento original</span><strong>${dados.vencimento}</strong></div>
+    <div class="linha"><span>Forma de pagamento</span><strong>${dados.forma}</strong></div>
+    <div class="valor-destaque">
+      <div class="label">Valor recebido</div>
+      <div class="valor">${R(dados.valor)}</div>
+    </div>
+    <div class="rodape">
+      Recibo emitido por ${nomeLoja} · ${dataHora}<br>
+      ${cfg.rodape || 'Guarde este recibo como comprovante.'}
+    </div>
+  </div>
+  </body></html>`;
+}
+
+function imprimirReciboCrediario(dados) {
+  const w = window.open('', '_blank');
+  if (!w) { alert('Pop-up bloqueado. Permita pop-ups para esta página.'); return; }
+  w.document.write(gerarReciboCrediario(dados));
   w.document.close();
 }
 
