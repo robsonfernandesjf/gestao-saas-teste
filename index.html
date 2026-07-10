@@ -10397,8 +10397,8 @@ function modalCredBuscar(busca) {
     if ((nome||'').toLowerCase().includes(busca.toLowerCase())) return true;
     if (ehCPF) {
       const cli = clientes.find(c => (c.nome||'') === nome);
-      const cpfLimpo = (cli?.cpf||'').replace(/\D/g,'');
-      return cpfLimpo.includes(buscaSoDigitos);
+      const cpfLimpo = (cli?.cpf || cli?.doc_numero || '').replace(/\D/g,'');
+      return cpfLimpo.length > 0 && cpfLimpo.includes(buscaSoDigitos);
     }
     return false;
   });
@@ -10411,7 +10411,8 @@ function modalCredBuscar(busca) {
 
   sug.innerHTML = resultados.map(nome => {
     const cli = clientes.find(c => (c.nome||'') === nome);
-    const cpf = cli?.cpf ? `<span style="font-size:11px;color:var(--muted);margin-left:6px;">${cli.cpf}</span>` : '';
+    const cpfVal = cli?.cpf || cli?.doc_numero || '';
+    const cpf = cpfVal ? `<span style="font-size:11px;color:var(--muted);margin-left:6px;">${cpfVal}</span>` : '';
     return `<div onclick="modalCredSelecionarCliente('${nome.replace(/'/g,"\'")}')"
       style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;align-items:center;"
       onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
