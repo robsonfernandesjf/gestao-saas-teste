@@ -10387,7 +10387,7 @@ function modalCredBuscar(busca) {
 
   // Nomes únicos com parcelas em aberto
   const nomesComDebito = [...new Set(
-    debitos.filter(d => d.origem_crediario && dStatus(d) !== 'pago').map(d => d.cliente)
+    debitos.filter(d => isCrediarioDebito(d) && dStatus(d) !== 'pago').map(d => d.cliente)
   )];
 
   // Filtrar por nome OU por CPF (cruzando com tabela clientes)
@@ -10438,7 +10438,7 @@ function pdvCredRenderParcelas(cliente) {
     return v;
   }
   const parcelas = debitos
-    .filter(d => d.origem_crediario && (d.cliente||'') === cliente && dStatus(d) === 'aberto')
+    .filter(d => isCrediarioDebito(d) && (d.cliente||'') === cliente && dStatus(d) === 'aberto')
     .sort((a,b) => (vencISO(a)||'').localeCompare(vencISO(b)||''));
   if (!parcelas.length) {
     el.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:8px 0;">Nenhuma parcela em aberto.</div>`;
