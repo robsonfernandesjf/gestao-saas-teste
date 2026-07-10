@@ -12835,6 +12835,9 @@ function abrirModalCliente(id) {
   document.getElementById('cli-email').value = '';
   toggleTipoCliente();
   document.getElementById('modal-cliente-titulo').textContent = 'Novo Cliente';
+  // Mostrar/ocultar seção crediário conforme flag da loja
+  const wrapCliCredN = document.getElementById('cli-crediario-wrap');
+  if (wrapCliCredN) wrapCliCredN.style.display = LOJA_USA_CREDIARIO ? 'block' : 'none';
   document.getElementById('modal-cliente').classList.add('open');
 }
 
@@ -12918,6 +12921,9 @@ function editarCliente(id) {
   document.getElementById('cli-email').value = cl.email || '';
   toggleTipoCliente();
   document.getElementById('modal-cliente-titulo').textContent = 'Editar Cliente';
+  // Mostrar/ocultar seção crediário conforme flag da loja
+  const wrapCliCredE = document.getElementById('cli-crediario-wrap');
+  if (wrapCliCredE) wrapCliCredE.style.display = LOJA_USA_CREDIARIO ? 'block' : 'none';
   document.getElementById('modal-cliente').classList.add('open');
 }
 
