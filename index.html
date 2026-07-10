@@ -1678,7 +1678,7 @@
     margin-bottom:14px!important;
   }
   #page-vendas .pdv-pag-btn{
-    min-height:70px!important;
+    min-height:80px!important;
     border-radius:16px!important;
     border:1px solid #dfe6f0!important;
     background:#fff!important;
@@ -1830,7 +1830,7 @@
 /* compacta área geral somente na tela de venda */
 #page-vendas.active,
 #page-vendas{
-  --pdv-right: 380px;
+  --pdv-right: 460px;
   --pdv-gap: 18px;
 }
 
@@ -2155,7 +2155,7 @@
   }
 
   #page-vendas{
-    --pdv-right: 360px !important;
+    --pdv-right: 440px !important;
     --pdv-gap: 12px !important;
   }
 
@@ -4990,15 +4990,12 @@ body.modo-vitrine-publica{
       </div>
 
       <!-- RECEBER CREDIÁRIO — só aparece se loja tem crediário habilitado -->
-      <div id="pdv-receber-cred-wrap" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">💳 Receber Crediário</div>
-        <div style="position:relative;">
-          <input type="text" id="pdv-cred-busca-cliente" placeholder="Buscar cliente..." autocomplete="off"
-            oninput="pdvCredBuscarCliente(this.value)"
-            style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface);">
-          <div id="pdv-cred-sugestoes" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);max-height:150px;overflow-y:auto;margin-top:2px;"></div>
-        </div>
-        <div id="pdv-cred-parcelas" style="margin-top:8px;"></div>
+      <div id="pdv-receber-cred-wrap" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
+        <button onclick="abrirModalReceberCrediario()"
+          style="width:100%;padding:12px;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(59,130,246,0.3);transition:.15s ease;"
+          onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform=''">
+          💳 Receber Crediário
+        </button>
       </div>
 
     </div>
@@ -5759,6 +5756,26 @@ body.modo-vitrine-publica{
 </div>
 
 <!-- MODAL: Vendedor -->
+
+<!-- MODAL: Receber Crediário no PDV -->
+<div class="modal-bg" id="modal-receber-crediario">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h2>💳 Receber Crediário</h2>
+      <button class="modal-close" onclick="fecharModal('modal-receber-crediario')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row" style="position:relative;">
+        <label>Cliente</label>
+        <input type="text" id="modal-cred-busca" placeholder="Digite o nome do cliente..." autocomplete="off"
+          oninput="modalCredBuscar(this.value)"
+          style="width:100%;">
+        <div id="modal-cred-sugestoes" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);max-height:180px;overflow-y:auto;margin-top:2px;"></div>
+      </div>
+      <div id="modal-cred-parcelas" style="margin-top:12px;max-height:340px;overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
 <div class="modal-bg" id="modal-vendedor">
   <div class="modal" style="max-width:480px;">
     <div class="modal-header">
@@ -10018,9 +10035,15 @@ function aplicarFeatureFlagsUI() {
 }
 
 // ── RECEBIMENTO DE CREDIÁRIO NO PDV ──
-function pdvCredBuscarCliente(busca) {
-  const sug = document.getElementById('pdv-cred-sugestoes');
-  const parcelas = document.getElementById('pdv-cred-parcelas');
+function abrirModalReceberCrediario() {
+  document.getElementById('modal-cred-busca').value = '';
+  document.getElementById('modal-cred-sugestoes').style.display = 'none';
+  document.getElementById('modal-cred-parcelas').innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0;">Digite o nome do cliente para ver as parcelas em aberto.</div>';
+  document.getElementById('modal-receber-crediario').classList.add('open');
+}
+
+function modalCredBuscar(busca) {
+  const sug = document.getElementById('modal-cred-sugestoes');
   if (!busca || busca.length < 2) { sug.style.display = 'none'; return; }
   const debitos = getDebitos();
   function dStatus(d) {
@@ -10033,21 +10056,21 @@ function pdvCredBuscarCliente(busca) {
   )];
   if (!clientes.length) { sug.style.display = 'none'; return; }
   sug.innerHTML = clientes.map(c =>
-    `<div onclick="pdvCredSelecionarCliente('${c.replace(/'/g,"\'")}")"
-      style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
+    `<div onclick="modalCredSelecionarCliente('${c.replace(/'/g,"\'")}')"
+      style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
       onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">${c}</div>`
   ).join('');
   sug.style.display = 'block';
 }
 
-function pdvCredSelecionarCliente(nome) {
-  document.getElementById('pdv-cred-busca-cliente').value = nome;
-  document.getElementById('pdv-cred-sugestoes').style.display = 'none';
+function modalCredSelecionarCliente(nome) {
+  document.getElementById('modal-cred-busca').value = nome;
+  document.getElementById('modal-cred-sugestoes').style.display = 'none';
   pdvCredRenderParcelas(nome);
 }
 
 function pdvCredRenderParcelas(cliente) {
-  const el = document.getElementById('pdv-cred-parcelas');
+  const el = document.getElementById('modal-cred-parcelas');
   if (!el) return;
   const debitos = getDebitos();
   const hoje = new Date().toISOString().slice(0,10);
@@ -10133,7 +10156,15 @@ async function pdvCredReceberParcela(debitoId, idx, saldo) {
     // Atualizar widget do caixa
     atualizarWidgetCaixa();
     // Recarregar parcelas do cliente
+    // Recarregar parcelas do cliente no modal
     pdvCredRenderParcelas(d.cliente);
+    // Se não houver mais parcelas, fechar modal após 1s
+    setTimeout(() => {
+      const debitos2 = getDebitos();
+      const temAberto = debitos2.some(x => x.origem_crediario && x.cliente === d.cliente &&
+        (x.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0) < Number(x.total||x.valor_total||0));
+      if (!temAberto) fecharModal('modal-receber-crediario');
+    }, 800);
   } catch(e) {
     console.error(e);
     alert('Erro: ' + e.message);
