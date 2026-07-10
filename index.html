@@ -11851,34 +11851,40 @@ function exportarInadimplenciaCSV() {
     if (dSaldo(d) <= 0.009) return false;
     const venc = d.vencimento || '';
     let vencDate;
-    if (venc.includes('/')) { const [dd,mm,yy] = venc.split('/'); vencDate = new Date(`${yy}-${mm}-${dd}`); }
+    if (venc.includes('/')) { const [dd,mm,yy] = venc.split('/'); vencDate = new Date(yy+'-'+mm+'-'+dd); }
     else vencDate = new Date(venc);
     vencDate.setHours(0,0,0,0);
     return Math.floor((hoje - vencDate) / 86400000) >= diasFiltro;
   }).forEach(d => {
     const venc = d.vencimento || '';
     let vencDate;
-    if (venc.includes('/')) { const [dd,mm,yy] = venc.split('/'); vencDate = new Date(`${yy}-${mm}-${dd}`); }
+    if (venc.includes('/')) { const [dd,mm,yy] = venc.split('/'); vencDate = new Date(yy+'-'+mm+'-'+dd); }
     else vencDate = new Date(venc);
     vencDate.setHours(0,0,0,0);
     const dias = Math.floor((hoje - vencDate) / 86400000);
     rows.push([
       d.cliente || '',
       d.contrato_id || d.id || '',
-      `${d.parcela||1}/${d.total_parcelas||1}`,
+      (d.parcela||1) + '/' + (d.total_parcelas||1),
       d.vencimento || '',
       dias,
       dSaldo(d).toFixed(2).replace('.',',')
     ]);
   });
 
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('
-');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const sep = ';';
+  const nl = '\n';
+  const q = '"';
+  const csv = rows.map(r =>
+    r.map(v => q + String(v).replace(new RegExp(q,'g'), q+q) + q).join(sep)
+  ).join(nl);
+
+  const bom = '\uFEFF';
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `inadimplencia_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = 'inadimplencia_' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
   URL.revokeObjectURL(url);
   mostrarNotificacao('✅ CSV exportado!');
