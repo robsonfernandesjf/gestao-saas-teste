@@ -6453,7 +6453,6 @@ body.modo-vitrine-publica{
           <label>Cliente</label>
           <div style="position:relative;">
             <input type="text" id="consig-cliente" placeholder="Nome ou CPF do cliente..." autocomplete="off"
-              oninput="consigBuscarCliente(this.value)"
               style="width:100%;">
             <input type="hidden" id="consig-cliente-id">
             <div id="consig-cliente-sug" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);max-height:160px;overflow-y:auto;margin-top:2px;"></div>
@@ -12079,6 +12078,21 @@ function abrirModalNovoConsignado() {
   renderItensModal();
   document.getElementById('modal-consig-titulo').textContent = '📦 Novo Consignado';
   document.getElementById('modal-consignado').classList.add('open');
+  setTimeout(() => {
+    const inp = document.getElementById('consig-cliente');
+    if (inp) {
+      inp.removeEventListener('input', inp._handler);
+      inp._handler = e => consigBuscarCliente(e.target.value);
+      inp.addEventListener('input', inp._handler);
+      inp.focus();
+    }
+    const prodInp = document.getElementById('consig-prod-busca');
+    if (prodInp) {
+      prodInp.removeEventListener('input', prodInp._handler);
+      prodInp._handler = e => consigBuscarProduto(e.target.value);
+      prodInp.addEventListener('input', prodInp._handler);
+    }
+  }, 100);
 }
 
 // ── AUTOCOMPLETE CLIENTE ──
