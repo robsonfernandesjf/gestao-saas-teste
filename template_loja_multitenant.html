@@ -12319,13 +12319,15 @@ function renderRelatoriosCrediario() {
   filtrados.forEach(d => {
     const dataStr = d.data_venda || d.created_at || '';
     if (!dataStr) return;
-    // data_venda pode ser "DD/MM/YYYY HH:MM" ou "YYYY-MM-DD" ou ISO
+    // data_venda pode ser "DD/MM/YYYY, HH:MM" ou "DD/MM/YYYY HH:MM" ou "YYYY-MM-DDTHH:MM" ou ISO
     let dt;
     if (dataStr.includes('/')) {
-      const partes = dataStr.split(' ')[0].split('/'); // pega só a data sem hora
+      // Remove vírgula e pega só a parte da data
+      const soData = dataStr.replace(',','').trim().split(/[\s,]/)[0];
+      const partes = soData.split('/');
       if (partes.length === 3) {
         const [dd, mm, yyyy] = partes;
-        dt = new Date(yyyy + '-' + mm.padStart(2,'0') + '-' + dd.padStart(2,'0'));
+        dt = new Date(yyyy.slice(0,4) + '-' + mm.padStart(2,'0') + '-' + dd.padStart(2,'0'));
       } else dt = new Date(dataStr);
     } else {
       dt = new Date(dataStr.slice(0,10));
