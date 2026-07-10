@@ -10167,6 +10167,7 @@ Total: ${R(totalComJuros)}${juros > 0 ? ` (inclui ${juros}% de juros/multa)` : '
           valor_total: p.valor,
           valor_pago: 0,
           vencimento: p.vencimento,
+          vencimento_iso: credDataISO(p.vencimento),
           obs: novoDebito.obs,
           pagamentos: [],
           parcela: p.parcela,
@@ -11272,6 +11273,7 @@ async function confirmarVenda() {
             valor_total: debitoCred.total,
             valor_pago: 0,
             vencimento: debitoCred.vencimento,
+            vencimento_iso: credDataISO(debitoCred.vencimento),
             obs: debitoCred.obs,
             pagamentos: [],
             parcela: debitoCred.parcela,
@@ -12407,9 +12409,23 @@ function previewCarneDemo() {
 const CRED_CONF_KEY = 'oi2026_crediario_config';
 let credAbaAtual = 'visao';
 function getCredConfig(){
+  if (window._credConfigCache) return window._credConfigCache;
   return JSON.parse(localStorage.getItem(CRED_CONF_KEY) || '{"limitePadrao":0,"maxParcelas":6,"bloqueio":"sim","saldoConsomeLimite":"sim"}');
 }
-function salvarCredConfig(){
+
+async function carregarCredConfigBanco(){
+  try {
+    const rows = await sbGet('crediario_configuracoes', 'select=chave,valor');
+    if (!rows || !rows.length) return;
+    const base = JSON.parse(localStorage.getItem(CRED_CONF_KEY) || '{}');
+    rows.forEach(r => { try { base[r.chave] = JSON.parse(r.valor); } catch { base[r.chave] = r.valor; } });
+    window._credConfigCache = base;
+    localStorage.setItem(CRED_CONF_KEY, JSON.stringify(base));
+  } catch(e) {
+    console.warn('Config crediário: usando localStorage', e.message);
+  }
+}
+async function salvarCredConfig(){
   const cfg = {
     limitePadrao: valorMoeda('cred-conf-limite'),
     maxParcelas: parseInt(document.getElementById('cred-conf-parcelas')?.value || '6',10) || 6,
@@ -12418,7 +12434,24 @@ function salvarCredConfig(){
     saldoConsomeLimite: document.getElementById('cred-conf-saldo-limite')?.value || 'sim'
   };
   localStorage.setItem(CRED_CONF_KEY, JSON.stringify(cfg));
-  const msg = document.getElementById('cred-conf-msg'); if (msg) msg.textContent = 'Configurações salvas.';
+  window._credConfigCache = cfg;
+  try {
+    for (const [chave, valor] of Object.entries(cfg)) {
+      await sbPost('crediario_configuracoes', { chave, valor: JSON.stringify(valor) })
+        .catch(async () => {
+          const rows = await sbGet('crediario_configuracoes', 'chave=eq.'+chave).catch(()=>[]);
+          if (rows && rows.length) {
+            await sbPatch('crediario_configuracoes', rows[0].id, { valor: JSON.stringify(valor) }).catch(()=>{});
+          }
+        });
+    }
+    const msg = document.getElementById('cred-conf-msg');
+    if (msg) { msg.textContent = '✅ Salvo no banco!'; setTimeout(() => msg.textContent = '', 2000); }
+  } catch(e) {
+    console.warn('Salvo só localmente:', e.message);
+    const msg = document.getElementById('cred-conf-msg');
+    if (msg) { msg.textContent = '⚠️ Salvo localmente'; setTimeout(() => msg.textContent = '', 2000); }
+  }
   renderCrediario();
 }
 function carregarCredConfig(){
@@ -12458,6 +12491,25 @@ function credParseDataBR(s){
 function credDataBR(d){
   const dt = d instanceof Date ? d : new Date(d);
   return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear();
+}
+// Retorna YYYY-MM-DD a partir de DD/MM/YYYY, Date ou ISO
+function credDataISO(d){
+  if (!d) return null;
+  if (d instanceof Date) return d.toISOString().slice(0,10);
+  const s = String(d).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  const p = s.split('/');
+  if (p.length === 3) return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
+  return s.slice(0,10);
+}
+// Exibe data em DD/MM/YYYY aceitando ambos formatos
+function credFormatarData(s){
+  if (!s) return '—';
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const parts = s.slice(0,10).split('-');
+    return parts[2]+'/'+parts[1]+'/'+parts[0];
+  }
+  return s;
 }
 function credSomarDias(iso, dias){
   const d = new Date(iso+'T00:00:00');
@@ -12619,6 +12671,11 @@ async function executarBloqueioAutomatico() {
 
 function renderCrediario(){
   if (!document.getElementById('page-crediario')) return;
+  // Carregar config do banco na primeira vez
+  if (!window._credConfigCarregado) {
+    window._credConfigCarregado = true;
+    carregarCredConfigBanco().then(() => carregarCredConfig()).catch(() => {});
+  }
   const parcelas = getCredParcelas();
   const aberto = parcelas.filter(p=>p.statusCred!=='pago').reduce((s,p)=>s+p.saldo,0);
   const vencido = parcelas.filter(p=>p.statusCred==='vencido').reduce((s,p)=>s+p.saldo,0);
