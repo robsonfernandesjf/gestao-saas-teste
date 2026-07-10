@@ -5731,6 +5731,50 @@ body.modo-vitrine-publica{
 
 <!-- MODAL: Vendedor -->
 
+
+<!-- MODAL: Renegociação de Crediário -->
+<div class="modal-bg" id="modal-renegociar-crediario">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <h2>🔄 Renegociação de Crediário</h2>
+      <button class="modal-close" onclick="fecharModal('modal-renegociar-crediario')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-reneg-info" style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;"></div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-row">
+          <label>Novo vencimento (1ª parcela)</label>
+          <input type="date" id="reneg-novo-venc">
+        </div>
+        <div class="form-row">
+          <label>Nº de parcelas</label>
+          <input type="number" id="reneg-parcelas" min="1" max="24" value="1">
+        </div>
+        <div class="form-row">
+          <label>Intervalo entre parcelas</label>
+          <select id="reneg-intervalo">
+            <option value="30">Mensal (30 dias)</option>
+            <option value="15">Quinzenal (15 dias)</option>
+            <option value="7">Semanal (7 dias)</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Juros / Multa (%)</label>
+          <input type="number" id="reneg-juros" min="0" step="0.1" value="0" placeholder="0">
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:8px;">
+        <label>Observação</label>
+        <input type="text" id="reneg-obs" placeholder="Ex: Renegociado em 09/07/2026">
+      </div>
+      <div id="reneg-preview" style="margin-top:16px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-renegociar-crediario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarRenegociacao()">✅ Confirmar renegociação</button>
+    </div>
+  </div>
+</div>
 <!-- MODAL: Receber Crediário no PDV -->
 <div class="modal-bg" id="modal-receber-crediario">
   <div class="modal" style="max-width:480px;">
@@ -5883,7 +5927,7 @@ body.modo-vitrine-publica{
       </div>
       <div class="table-wrap">
         <table id="crediario-parcelas-table">
-          <thead><tr><th>Vencimento</th><th>Cliente</th><th>Contrato</th><th>Parcela</th><th>Valor</th><th>Pago</th><th>Status</th><th>Origem</th></tr></thead>
+          <thead><tr><th>Vencimento</th><th>Cliente</th><th>Contrato</th><th>Parcela</th><th>Valor</th><th>Pago</th><th>Status</th><th>Ações</th></tr></thead>
           <tbody id="cred-parcelas-body"></tbody>
         </table>
       </div>
@@ -5895,7 +5939,7 @@ body.modo-vitrine-publica{
       <h3>👥 Carteira por cliente</h3>
       <div class="table-wrap">
         <table id="crediario-clientes-table">
-          <thead><tr><th>Cliente</th><th>Aberto</th><th>Vencido</th><th>Pago</th><th>Qtd. parcelas</th><th>Limite usado</th></tr></thead>
+          <thead><tr><th>Cliente</th><th>Em aberto</th><th>Vencido</th><th>Pago</th><th>Parcelas</th><th>Limite</th><th>Disponível</th><th>Ações</th></tr></thead>
           <tbody id="cred-clientes-body"></tbody>
         </table>
       </div>
@@ -9845,6 +9889,167 @@ function aplicarFeatureFlagsUI() {
   aplicarFlagCrediario();
 }
 
+
+// ── RENEGOCIAÇÃO DE CREDIÁRIO ──
+let _renegCliente = '';
+let _renegParcelasOrigem = [];
+
+function abrirModalRenegociar(cliente) {
+  _renegCliente = cliente;
+  const parcelas = getCredParcelas().filter(p =>
+    p.cliente === cliente && p.statusCred !== 'pago'
+  );
+  _renegParcelasOrigem = parcelas;
+
+  const totalAberto = parcelas.reduce((s,p) => s + p.saldo, 0);
+  const vencidas = parcelas.filter(p => p.statusCred === 'vencido');
+  const totalVencido = vencidas.reduce((s,p) => s + p.saldo, 0);
+
+  const info = document.getElementById('modal-reneg-info');
+  if (info) info.innerHTML = `
+    <div style="display:flex;gap:20px;flex-wrap:wrap;">
+      <div><div style="font-size:11px;color:var(--muted);">Cliente</div><strong>${cliente}</strong></div>
+      <div><div style="font-size:11px;color:var(--muted);">Total em aberto</div><strong>${R(totalAberto)}</strong></div>
+      <div><div style="font-size:11px;color:var(--muted);">Parcelas vencidas</div><strong style="color:#dc2626;">${R(totalVencido)} (${vencidas.length})</strong></div>
+      <div><div style="font-size:11px;color:var(--muted);">Parcelas a vencer</div><strong>${parcelas.length - vencidas.length}</strong></div>
+    </div>`;
+
+  // Preencher data padrão: hoje
+  const hoje = new Date().toISOString().slice(0,10);
+  document.getElementById('reneg-novo-venc').value = hoje;
+  document.getElementById('reneg-parcelas').value = '1';
+  document.getElementById('reneg-juros').value = '0';
+  document.getElementById('reneg-obs').value = `Renegociado em ${new Date().toLocaleDateString('pt-BR')}`;
+
+  // Adicionar listeners para preview
+  ['reneg-novo-venc','reneg-parcelas','reneg-intervalo','reneg-juros'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.oninput = renderRenegPreview;
+  });
+
+  renderRenegPreview();
+  document.getElementById('modal-renegociar-crediario').classList.add('open');
+}
+
+function renderRenegPreview() {
+  const el = document.getElementById('reneg-preview');
+  if (!el) return;
+
+  const totalOrigem = _renegParcelasOrigem.reduce((s,p) => s + p.saldo, 0);
+  const juros = parseFloat(document.getElementById('reneg-juros')?.value || '0') || 0;
+  const totalComJuros = totalOrigem * (1 + juros / 100);
+  const qtd = Math.max(1, parseInt(document.getElementById('reneg-parcelas')?.value || '1') || 1);
+  const vencISO = document.getElementById('reneg-novo-venc')?.value || new Date().toISOString().slice(0,10);
+  const intervalo = parseInt(document.getElementById('reneg-intervalo')?.value || '30') || 30;
+
+  const parcelas = gerarParcelasCredVenda(totalComJuros, qtd, vencISO, intervalo);
+
+  el.innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">
+      Total a renegociar: <strong style="color:var(--text);">${R(totalOrigem)}</strong>
+      ${juros > 0 ? ` + ${juros}% juros = <strong style="color:var(--accent);">${R(totalComJuros)}</strong>` : ''}
+    </div>
+    <table style="width:100%;font-size:12px;border-collapse:collapse;">
+      <thead><tr>
+        <th style="text-align:left;padding:6px 8px;background:var(--bg);">Parcela</th>
+        <th style="text-align:left;padding:6px 8px;background:var(--bg);">Vencimento</th>
+        <th style="text-align:right;padding:6px 8px;background:var(--bg);">Valor</th>
+      </tr></thead>
+      <tbody>${parcelas.map(p => `<tr style="border-top:1px solid var(--border);">
+        <td style="padding:6px 8px;">${p.parcela}/${p.total_parcelas}</td>
+        <td style="padding:6px 8px;">${p.vencimento}</td>
+        <td style="padding:6px 8px;text-align:right;font-weight:700;">${R(p.valor)}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+async function confirmarRenegociacao() {
+  if (!_renegCliente || !_renegParcelasOrigem.length) return;
+
+  const totalOrigem = _renegParcelasOrigem.reduce((s,p) => s + p.saldo, 0);
+  const juros = parseFloat(document.getElementById('reneg-juros')?.value || '0') || 0;
+  const totalComJuros = totalOrigem * (1 + juros / 100);
+  const qtd = Math.max(1, parseInt(document.getElementById('reneg-parcelas')?.value || '1') || 1);
+  const vencISO = document.getElementById('reneg-novo-venc')?.value;
+  const intervalo = parseInt(document.getElementById('reneg-intervalo')?.value || '30') || 30;
+  const obs = document.getElementById('reneg-obs')?.value || 'Renegociado';
+
+  if (!vencISO) { alert('Informe o novo vencimento.'); return; }
+
+  const novasParcelas = gerarParcelasCredVenda(totalComJuros, qtd, vencISO, intervalo);
+  const contratoId = 'cred_reneg_' + Date.now();
+
+  if (!confirm(`Renegociar ${_renegParcelasOrigem.length} parcela(s) de ${_renegCliente} em ${qtd}x?
+Total: ${R(totalComJuros)}${juros > 0 ? ` (inclui ${juros}% de juros/multa)` : ''}`)) return;
+
+  mostrarLoading(true);
+  try {
+    const debitos = getDebitos();
+
+    // 1. Marcar parcelas originais como pagas (quitadas pela renegociação)
+    for (const p of _renegParcelasOrigem) {
+      const d = debitos.find(x => String(x.id) === String(p.id));
+      if (!d) continue;
+      d.pagamentos = d.pagamentos || [];
+      d.pagamentos.push({
+        data: new Date().toISOString().slice(0,10),
+        valor: p.saldo,
+        forma: 'Renegociação',
+        obs: obs
+      });
+      const ehIdReal = d.id && !String(d.id).startsWith('cred_') && !String(d.id).startsWith('cartao_');
+      if (ehIdReal) {
+        await sbPatch('debitos', d.id, { pagamentos: d.pagamentos }).catch(e => console.warn(e));
+      }
+    }
+
+    // 2. Criar novas parcelas renegociadas
+    for (const p of novasParcelas) {
+      const novoDebito = {
+        id: contratoId + '_p' + p.parcela,
+        contrato_id: contratoId,
+        cliente: _renegCliente,
+        data_venda: new Date().toLocaleString('pt-BR'),
+        total: p.valor,
+        vencimento: p.vencimento,
+        obs: `[CREDIARIO] ${obs} · parcela ${p.parcela}/${p.total_parcelas}`,
+        itens: [{ produto: 'Parcela renegociada', qtd: 1, valor: p.valor }],
+        pagamentos: [],
+        parcela: p.parcela,
+        total_parcelas: p.total_parcelas,
+        origem_crediario: 'renegociacao'
+      };
+      debitos.unshift(novoDebito);
+      try {
+        const criado = await sbPost('debitos', {
+          cliente: _renegCliente,
+          produto: `Parcela renegociada ${p.parcela}/${p.total_parcelas}`,
+          valor_total: p.valor,
+          valor_pago: 0,
+          vencimento: p.vencimento,
+          obs: novoDebito.obs,
+          pagamentos: [],
+          parcela: p.parcela,
+          total_parcelas: p.total_parcelas,
+          contrato_id: contratoId,
+          origem_crediario: 'renegociacao'
+        });
+        const reg = Array.isArray(criado) ? criado[0] : criado;
+        if (reg?.id) novoDebito.id = reg.id;
+      } catch(e) { console.warn('Renegociação salva localmente:', e.message); }
+    }
+
+    saveDebitos(debitos);
+    invalidarCache('debitos');
+    fecharModal('modal-renegociar-crediario');
+    mostrarNotificacao(`✅ Renegociação concluída! ${qtd} nova(s) parcela(s) criada(s).`);
+    renderCrediario();
+  } catch(e) {
+    console.error(e);
+    alert('Erro na renegociação: ' + e.message);
+  } finally { mostrarLoading(false); }
+}
+
 // ── RECEBIMENTO DE CREDIÁRIO NO PDV ──
 function abrirModalReceberCrediario() {
   document.getElementById('modal-cred-busca').value = '';
@@ -11468,7 +11673,12 @@ function renderCredListas(parcelas){
     <tr>
       <td>${p.vencimento||'—'}</td><td><strong>${p.cliente||'—'}</strong></td><td>${p.contrato_id||p.venda_id||'—'}</td>
       <td>${p.parcela||'1'} / ${p.total_parcelas||'1'}</td><td><strong>${R(p.total)}</strong></td><td>${R(p.pago)}</td>
-      <td><span class="cred-status ${p.statusCred}">${p.statusCred}</span></td><td>${p.origem_crediario || p.origem || 'crediário'}</td>
+      <td><span class="cred-status ${p.statusCred}">${p.statusCred}</span></td>
+      <td>${p.statusCred === 'vencido'
+        ? `<button class="btn btn-sm" onclick="abrirModalRenegociar('${(p.cliente||'').replace(/'/g,"\'")}')" style="background:var(--accent);color:#fff;font-size:11px;padding:3px 8px;">🔄 Renegociar</button>`
+        : p.statusCred !== 'pago'
+          ? `<button class="btn btn-sm btn-outline" onclick="abrirModalRenegociar('${(p.cliente||'').replace(/'/g,"\'")}')" style="font-size:11px;padding:3px 8px;">Renegociar</button>`
+          : '—'}</td>
     </tr>`).join('') || '<tr><td colspan="8" class="empty">Nenhuma parcela de crediário encontrada.</td></tr>';
   const proximas = parcelas.filter(p=>p.statusCred!=='pago' && p.statusCred!=='vencido').slice(0,6);
   const proxEl = document.getElementById('cred-proximas');
@@ -11486,13 +11696,33 @@ function renderCredClientes(parcelas){
     if (p.statusCred !== 'pago') map[c].aberto += p.saldo;
     if (p.statusCred === 'vencido') map[c].vencido += p.saldo;
   });
-  const cfg = getCredConfig();
   const linhas = Object.values(map).sort((a,b)=>b.aberto-a.aberto);
   const tbody = document.getElementById('cred-clientes-body');
   if (tbody) tbody.innerHTML = linhas.map(c => {
-    const usado = cfg.saldoConsomeLimite === 'sim' ? c.aberto : 0;
-    return `<tr><td><strong>${c.cliente}</strong></td><td>${R(c.aberto)}</td><td style="color:#dc2626;font-weight:700;">${R(c.vencido)}</td><td>${R(c.pago)}</td><td>${c.qtd}</td><td>${R(usado)}</td></tr>`;
-  }).join('') || '<tr><td colspan="6" class="empty">Nenhum cliente com crediário.</td></tr>';
+    const limite = getClienteLimiteCredito(c.cliente);
+    const disponivel = limite > 0 ? Math.max(0, limite - c.aberto) : null;
+    const limiteStr = limite > 0 ? R(limite) : '<span style="color:var(--muted)">Sem limite</span>';
+    const dispStr = disponivel !== null
+      ? `<span style="color:${disponivel <= 0 ? '#dc2626' : 'var(--success)' };font-weight:700;">${R(disponivel)}</span>`
+      : '<span style="color:var(--muted)">—</span>';
+    const vencidoBadge = c.vencido > 0
+      ? `<span style="color:#dc2626;font-weight:700;">${R(c.vencido)}</span>`
+      : `<span style="color:var(--muted)">—</span>`;
+    return `<tr>
+      <td><strong>${c.cliente}</strong></td>
+      <td>${R(c.aberto)}</td>
+      <td>${vencidoBadge}</td>
+      <td style="color:var(--muted)">${R(c.pago)}</td>
+      <td>${c.qtd}</td>
+      <td>${limiteStr}</td>
+      <td>${dispStr}</td>
+      <td>
+        ${c.vencido > 0
+          ? `<button class="btn btn-sm" onclick="abrirModalRenegociar('${c.cliente.replace(/'/g,"\'")}")" style="background:var(--accent);color:#fff;font-size:11px;">🔄 Renegociar</button>`
+          : `<span style="font-size:11px;color:var(--muted)">Em dia</span>`}
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" class="empty">Nenhum cliente com crediário.</td></tr>';
 }
 function gerarPreviewCredImportacao(){
   const total = valorMoeda('cred-imp-total');
@@ -12477,6 +12707,8 @@ function abrirModalCliente(id) {
   document.getElementById('cli-end').value = '';
   document.getElementById('cli-obs').value = '';
   document.getElementById('cli-eh-fornecedor').checked = false;
+  const limElN = document.getElementById('cli-limite-credito');
+  if (limElN) limElN.value = '';
   document.getElementById('cli-doc-tipo').value = 'cpf';
   document.getElementById('cli-doc-numero').value = '';
   document.getElementById('cli-ie').value = '';
@@ -12554,6 +12786,8 @@ function editarCliente(id) {
   document.getElementById('cli-end').value = cl.end||'';
   document.getElementById('cli-obs').value = cl.obs||'';
   document.getElementById('cli-eh-fornecedor').checked = !!cl.eh_fornecedor;
+  const limEl = document.getElementById('cli-limite-credito');
+  if (limEl) limEl.value = cl.limite_credito > 0 ? String(cl.limite_credito.toFixed(2)).replace('.',',') : '';
   document.getElementById('cli-doc-tipo').value = cl.doc_tipo || 'cpf';
   document.getElementById('cli-doc-numero').value = cl.doc_numero || '';
   document.getElementById('cli-ie').value = cl.ie || '';
@@ -12607,7 +12841,8 @@ async function salvarCliente() {
     obs: document.getElementById('cli-obs').value.trim(),
     eh_fornecedor: document.getElementById('cli-eh-fornecedor').checked,
     doc_tipo: document.getElementById('cli-doc-tipo').value,
-    doc_numero: document.getElementById('cli-doc-numero').value.trim()
+    doc_numero: document.getElementById('cli-doc-numero').value.trim(),
+    limite_credito: (() => { const el = document.getElementById('cli-limite-credito'); if (!el) return 0; return valorMoeda(el.id) || 0; })()
   };
   if (dados.eh_fornecedor && LOJA_USA_NFCE) {
     dados.ie = document.getElementById('cli-ie').value.trim();
