@@ -10994,6 +10994,22 @@ function calcularLucroPreview() {
   box.innerHTML = `💰 Lucro previsto: ${R(lucro)} &nbsp;|&nbsp; Margem: ${pct(margem)} &nbsp;|&nbsp; Subtotal: ${R(val * qtd)}`;
 }
 
+
+// Adiciona item diretamente ao carrinho (usado pelo consignado)
+function adicionarItemCarrinhoDireto(ref, nome, qtd, preco) {
+  const produtos = getProdutos();
+  const prod = produtos.find(p => p.ref === ref);
+  carrinho.push({
+    ref: ref,
+    produto: nome || (prod?.produto || ref),
+    categoria: prod?.categoria || '',
+    custo_unit: prod?.custo || 0,
+    qtd: qtd || 1,
+    valor_unit: preco || prod?.preco || 0
+  });
+  renderCarrinho();
+}
+
 function adicionarAoCarrinho() {
   if (!produtoSelecionado) { alert('Selecione um produto.'); return; }
   const qtd = parseInt(document.getElementById('venda-qtd').value)||1;
@@ -12086,7 +12102,7 @@ function consigAdicionarProduto(ref) {
       ean: produto.ean || '',
       nome: produto.produto,
       qtd: 1,
-      valor: produto.preco || 0,
+      valor: produto.preco || 0,    // preço de venda como referência
       estoque: produto.estoque || 0
     });
   }
@@ -12325,18 +12341,23 @@ async function confirmarRetornoConsignado() {
 
     // Enviar para carrinho do PDV se houver itens vendidos
     if (carrinhoItens.length) {
-      if (confirm(`${carrinhoItens.reduce((s,i)=>s+i.qtd,0)} peça(s) serão enviadas para o carrinho do PDV.\nDeseja ir para o PDV agora?`)) {
-        // Preencher carrinho
+      const totalPecas = carrinhoItens.reduce((s,i)=>s+i.qtd,0);
+      if (confirm(`${totalPecas} peça(s) serão enviadas para o carrinho do PDV.\nDeseja ir para o PDV agora?`)) {
+        // Limpar carrinho atual e adicionar itens do consignado
+        carrinho.length = 0;
         carrinhoItens.forEach(item => {
+          // Usar preço de venda do produto cadastrado
           const prod = produtos.find(p => p.ref === item.ref);
-          if (prod) adicionarAoCarrinho(prod, item.qtd, item.preco);
+          const preco = prod?.preco || item.preco || 0;
+          adicionarItemCarrinhoDireto(item.ref, item.nome, item.qtd, preco);
         });
         // Registrar cliente
         if (consig?.cliente_nome) {
-          const el = document.getElementById('venda-cliente');
-          if (el) { el.value = consig.cliente_nome; }
+          const elCli = document.getElementById('venda-cliente');
+          if (elCli) { elCli.value = consig.cliente_nome; }
         }
         showPage('vendas');
+        renderCarrinho();
       }
     }
 
