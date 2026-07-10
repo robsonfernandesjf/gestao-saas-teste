@@ -221,11 +221,11 @@
   .pdv-btn-limpar:hover { background: var(--danger-light); }
 
   /* ===== LAYOUT 2 COLUNAS ESTILO PDV ===== */
-  .pdv-layout { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
+  .pdv-layout { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: start; }
   .pdv-col-esquerda { min-width: 0; max-height: calc(100vh - 200px); overflow-y: auto; padding-right: 6px; }
   .pdv-col-direita {
     background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-    padding: 20px; box-shadow: var(--shadow); position: sticky; top: 12px;
+    padding: 14px; box-shadow: var(--shadow); position: sticky; top: 12px;
     max-height: calc(100vh - 24px); overflow-y: auto;
   }
 
@@ -287,8 +287,12 @@
 
   .pdv-resumo-lateral {
     background: linear-gradient(135deg, var(--accent2-light) 0%, var(--accent-light) 100%);
-    border-radius: 12px; padding: 16px 18px; margin: 16px 0;
+    border-radius: 10px; padding: 10px 14px; margin: 10px 0;
   }
+  #carrinho-body td { padding: 5px 8px !important; font-size: 12px !important; }
+  #carrinho-body td strong { font-size: 12px !important; }
+  #carrinho-body td code { font-size: 10px !important; }
+  .pdv-carrinho-tabela-head span { font-size: 10px !important; padding: 5px 8px !important; }
   .pdv-resumo-lateral .linha { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; margin-bottom: 6px; }
   .pdv-resumo-lateral .linha:last-child { margin-bottom: 0; padding-top: 8px; border-top: 1px solid rgba(181,107,122,0.2); }
   .pdv-resumo-lateral .linha .valor-total { font-size: 22px; font-weight: 800; color: var(--accent); }
@@ -1391,7 +1395,7 @@
   /* Layout PDV: carrinho grande + painel de fechamento */
   #page-vendas .pdv-layout{
     display:grid!important;
-    grid-template-columns:minmax(0, 1fr) 390px!important;
+    grid-template-columns:minmax(0, 1fr) 300px!important;
     gap:20px!important;
     align-items:start!important;
   }
@@ -2114,7 +2118,7 @@
     overflow: visible !important;
   }
   #page-vendas #sem-produto-msg{display:none!important;}
-  #page-vendas .pdv-carrinho-tabela{min-height: 260px !important;}
+  #page-vendas .pdv-carrinho-tabela{min-height: 140px !important;}
   #page-vendas .pdv-pagamento-grid{grid-template-columns:repeat(2,1fr)!important;}
   #page-vendas .pdv-finalizar-bar{grid-template-columns:1fr!important;}
 }
