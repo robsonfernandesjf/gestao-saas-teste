@@ -11879,7 +11879,7 @@ function getCarneConfig() {
   } catch { return {}; }
 }
 
-function salvarCarneConfig() {
+async function salvarCarneConfig() {
   const cfg = {
     nome: document.getElementById('carne-conf-nome')?.value.trim() || '',
     endereco: document.getElementById('carne-conf-endereco')?.value.trim() || '',
@@ -11888,6 +11888,14 @@ function salvarCarneConfig() {
     logo: document.getElementById('carne-conf-logo')?.value || 'sim'
   };
   localStorage.setItem(CARNE_CONF_KEY, JSON.stringify(cfg));
+  // Sync com Supabase
+  try {
+    await sbPost('loja_configuracoes', { loja_id: LOJA_ID, chave: 'carne_config', valor: JSON.stringify(cfg) })
+      .catch(async () => {
+        const rows = await sbGet('loja_configuracoes', `chave=eq.carne_config&loja_id=eq.${LOJA_ID}`).catch(()=>[]);
+        if (rows?.length) await sbPatch('loja_configuracoes', rows[0].id, { valor: JSON.stringify(cfg) }).catch(()=>{});
+      });
+  } catch(e) { console.warn('Sync carnê config:', e.message); }
   const msg = document.getElementById('carne-conf-msg');
   if (msg) { msg.textContent = '✅ Salvo!'; setTimeout(() => msg.textContent = '', 2000); }
 }
@@ -15718,6 +15726,55 @@ function getCaixaAtual() {
 function saveCaixaAtual(obj) {
   if (obj) localStorage.setItem(CAIXA_ATUAL_KEY, JSON.stringify(obj));
   else localStorage.removeItem(CAIXA_ATUAL_KEY);
+  // Sync com Supabase em background
+  _syncCaixaAtualSB(obj).catch(e => console.warn('Sync caixa:', e.message));
+}
+
+
+async function _carregarConfigsBanco() {
+  try {
+    const rows = await sbGet('loja_configuracoes', 'select=chave,valor');
+    if (!rows?.length) return;
+    rows.forEach(r => {
+      try {
+        const val = JSON.parse(r.valor);
+        if (r.chave === 'carne_config') {
+          localStorage.setItem(CARNE_CONF_KEY, JSON.stringify(val));
+        } else if (r.chave === 'cat_despesas') {
+          localStorage.setItem(CAT_DESPESAS_KEY, JSON.stringify(val));
+          popularSelectCatDespesas();
+        }
+      } catch(e) {}
+    });
+  } catch(e) { console.warn('_carregarConfigsBanco:', e.message); }
+}
+
+async function _syncCaixaAtualSB(obj) {
+  if (!obj) return;
+  const ehReal = ehIdRealCaixa(obj.id);
+  const payload = {
+    loja_id: LOJA_ID,
+    numero: obj.numero,
+    abertura_hora: obj.abertura?.dataHoraISO || new Date().toISOString(),
+    abertura_operador: obj.abertura?.operador || '',
+    fundo_troco: obj.abertura?.fundoTroco || 0,
+    movimentos: obj.movimentos || [],
+    status: obj.fechamento ? 'fechado' : 'aberto',
+    fechamento: obj.fechamento || null
+  };
+  try {
+    if (ehReal) {
+      await sbPatch('caixa_sessoes', obj.id, payload);
+    } else {
+      const criado = await sbPost('caixa_sessoes', payload);
+      const reg = Array.isArray(criado) ? criado[0] : criado;
+      if (reg?.id) {
+        obj.id = reg.id;
+        localStorage.setItem(CAIXA_ATUAL_KEY, JSON.stringify(obj));
+      }
+    }
+    invalidarCache('caixaSessoes');
+  } catch(e) { console.warn('Sync caixa SB:', e.message); }
 }
 function getHistoricoCaixas() {
   const local = JSON.parse(localStorage.getItem(CAIXA_HISTORICO_KEY) || '[]');
@@ -15726,7 +15783,27 @@ function getHistoricoCaixas() {
   [...remoto, ...local].forEach(s => { porId[s.id] = s; }); // local tem prioridade se já existir com o mesmo id
   return Object.values(porId).sort((a, b) => new Date(b.fechamento?.dataHoraISO || 0) - new Date(a.fechamento?.dataHoraISO || 0));
 }
-function saveHistoricoCaixas(lista) { localStorage.setItem(CAIXA_HISTORICO_KEY, JSON.stringify(lista)); }
+function saveHistoricoCaixas(lista) {
+  localStorage.setItem(CAIXA_HISTORICO_KEY, JSON.stringify(lista));
+  // Sync fechamentos novos com Supabase
+  lista.filter(s => s.fechamento && !ehIdRealCaixa(s.id)).forEach(async s => {
+    try {
+      const criado = await sbPost('caixa_sessoes', {
+        loja_id: LOJA_ID,
+        numero: s.numero,
+        abertura_hora: s.abertura?.dataHoraISO || new Date().toISOString(),
+        abertura_operador: s.abertura?.operador || '',
+        fundo_troco: s.abertura?.fundoTroco || 0,
+        movimentos: s.movimentos || [],
+        status: 'fechado',
+        fechamento: s.fechamento
+      });
+      const reg = Array.isArray(criado) ? criado[0] : criado;
+      if (reg?.id) { s.id = reg.id; localStorage.setItem(CAIXA_HISTORICO_KEY, JSON.stringify(lista)); }
+      invalidarCache('caixaSessoes');
+    } catch(e) { console.warn('Sync histórico caixa:', e.message); }
+  });
+}
 function proximoNumeroCaixa() {
   const chave = 'oi2026_caixa_seq';
   const atual = parseInt(localStorage.getItem(chave) || '0') + 1;
@@ -18748,6 +18825,8 @@ async function aplicarConfigLoja() {
         LOJA_USA_CONSIGNADO = !!loja.usa_consignado;
         LOJA_CATALOGO_WHATSAPP = loja.catalogo_whatsapp || '';
         aplicarFeatureFlagsUI();
+        // Carregar configs salvas no banco (carnê, categorias)
+        _carregarConfigsBanco().catch(e => console.warn('Configs banco:', e.message));
       }
     }
   } catch (e) {
