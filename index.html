@@ -12292,7 +12292,16 @@ function renderRelatoriosCrediario() {
     if (!corte) return true;
     const dataStr = d.data_venda || d.created_at || '';
     if (!dataStr) return true;
-    const dt = new Date(dataStr.includes('/') ? dataStr.split('/').reverse().join('-') : dataStr.slice(0,10));
+    let dt;
+    if (dataStr.includes('/')) {
+      const soData = dataStr.replace(',','').trim().split(' ')[0];
+      const partes = soData.split('/');
+      if (partes.length === 3) {
+        dt = new Date(partes[2].slice(0,4) + '-' + partes[1].padStart(2,'0') + '-' + partes[0].padStart(2,'0'));
+      } else dt = new Date(dataStr);
+    } else {
+      dt = new Date(dataStr.slice(0,10));
+    }
     return dt >= corte;
   });
 
