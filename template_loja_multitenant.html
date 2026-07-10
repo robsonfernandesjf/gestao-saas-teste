@@ -10162,6 +10162,7 @@ Total: ${R(totalComJuros)}${juros > 0 ? ` (inclui ${juros}% de juros/multa)` : '
       try {
         const criado = await sbPost('debitos', {
           cliente: _renegCliente,
+          cliente_id: _cliReneg?.id || null,
           produto: `Parcela renegociada ${p.parcela}/${p.total_parcelas}`,
           valor_total: p.valor,
           valor_pago: 0,
@@ -10266,7 +10267,14 @@ function pdvCredRenderParcelas(cliente) {
     return v;
   }
   const parcelas = debitos
-    .filter(d => isCrediarioDebito(d) && (d.cliente||'') === cliente && dStatus(d) === 'aberto')
+    .filter(d => {
+      if (!isCrediarioDebito(d)) return false;
+      if (dStatus(d) !== 'aberto') return false;
+      // Preferir cliente_id se disponível
+      const cliObj = getClientes().find(c => c.nome === cliente);
+      if (cliObj && d.cliente_id) return d.cliente_id === cliObj.id;
+      return (d.cliente||'') === cliente;
+    })
     .sort((a,b) => (vencISO(a)||'').localeCompare(vencISO(b)||''));
   if (!parcelas.length) {
     el.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:8px 0;">Nenhuma parcela em aberto.</div>`;
@@ -11236,11 +11244,13 @@ async function confirmarVenda() {
       }
 
       for (const pc of parcelasCred) {
+        const _cliObj = getClientes().find(c => c.nome === cliente);
         const debitoCred = {
           id: contratoId + '_p' + pc.parcela,
           venda_id: vendaId,
           contrato_id: contratoId,
           cliente,
+          cliente_id: _cliObj?.id || null,
           data_venda: agora,
           total: pc.valor,
           vencimento: pc.vencimento,
@@ -11257,6 +11267,7 @@ async function confirmarVenda() {
         try {
           const criado = await sbPost('debitos', {
             cliente: debitoCred.cliente,
+            cliente_id: debitoCred.cliente_id || null,
             produto: prodLabel,
             valor_total: debitoCred.total,
             valor_pago: 0,
