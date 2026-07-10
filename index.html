@@ -9994,15 +9994,15 @@ function aplicarFeatureFlagsUI() {
 }
 
 function aplicarFlagCrediario() {
-  // Menu lateral: mostrar/ocultar Crediário
+  // Menu lateral — usa setProperty+important para vencer o CSS display:flex!important do #main-nav button
   const btnCred = document.getElementById('nav-btn-crediario');
-  if (btnCred) btnCred.style.display = LOJA_USA_CREDIARIO ? 'block' : 'none';
+  if (btnCred) btnCred.style.setProperty('display', LOJA_USA_CREDIARIO ? 'flex' : 'none', 'important');
 
   // PDV — botão Fiado vs Crediário
   const btnFiado = document.querySelector('.pdv-pag-btn[data-valor="A prazo"]');
   const btnCreditario = document.querySelector('.pdv-pag-btn[data-valor="Crediário"]');
-  if (btnFiado) btnFiado.style.display = LOJA_USA_CREDIARIO ? 'none' : 'flex';
-  if (btnCreditario) btnCreditario.style.display = LOJA_USA_CREDIARIO ? 'flex' : 'none';
+  if (btnFiado) btnFiado.style.setProperty('display', LOJA_USA_CREDIARIO ? 'none' : 'flex', 'important');
+  if (btnCreditario) btnCreditario.style.setProperty('display', LOJA_USA_CREDIARIO ? 'flex' : 'none', 'important');
 
   // Select de forma de pagamento — todas as ocorrências
   document.querySelectorAll('option[value="A prazo"]').forEach(opt => {
