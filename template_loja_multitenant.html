@@ -15560,6 +15560,15 @@ function popularListaClientesVenda() {
 }
 
 
+// Helper centralizado para CPF — verifica cpf e doc_numero
+function getCPFCliente(c) {
+  if (!c) return '';
+  return (c.cpf || c.doc_numero || '').trim();
+}
+function getCPFLimpo(c) {
+  return getCPFCliente(c).replace(/\D/g,'');
+}
+
 function filtrarClientesVenda(input) {
   const termo = input.value.trim();
   const termoLower = termo.toLowerCase();
