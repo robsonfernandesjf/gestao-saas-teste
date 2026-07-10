@@ -5964,7 +5964,12 @@ body.modo-vitrine-publica{
 
   <div id="cred-panel-clientes" class="cred-panel">
     <div class="cred-box">
-      <h3>👥 Carteira por cliente</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <h3 style="margin:0;">👥 Carteira por cliente</h3>
+        <input type="text" id="cred-clientes-busca" placeholder="🔍 Buscar cliente..."
+          oninput="renderCredClientes(getCredParcelas())"
+          style="padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface);min-width:200px;">
+      </div>
       <div class="table-wrap">
         <table id="crediario-clientes-table">
           <thead><tr><th>Cliente</th><th>Em aberto</th><th>Vencido</th><th>Pago</th><th>Parcelas</th><th>Limite</th><th>Disponível</th><th>Ações</th></tr></thead>
@@ -12705,9 +12710,9 @@ function renderCredListas(parcelas){
       <td>${p.parcela||'1'} / ${p.total_parcelas||'1'}</td><td><strong>${R(p.total)}</strong></td><td>${R(p.pago)}</td>
       <td><span class="cred-status ${p.statusCred}">${p.statusCred}</span></td>
       <td>${p.statusCred === 'vencido'
-        ? `<button class="btn btn-sm" onclick="abrirModalRenegociar('${(p.cliente||'').replace(/'/g,"\'")}')" style="background:var(--accent);color:#fff;font-size:11px;padding:3px 8px;">🔄 Renegociar</button>`
+        ? `<button class="btn btn-sm" data-reneg="${(p.cliente||'').replace(/"/g,'&quot;')}" onclick="abrirModalRenegociar(this.dataset.reneg)" style="background:var(--accent);color:#fff;font-size:11px;padding:3px 8px;">🔄 Renegociar</button>`
         : p.statusCred !== 'pago'
-          ? `<button class="btn btn-sm btn-outline" onclick="abrirModalRenegociar('${(p.cliente||'').replace(/'/g,"\'")}')" style="font-size:11px;padding:3px 8px;">Renegociar</button>`
+          ? `<button class="btn btn-sm btn-outline" data-reneg="${(p.cliente||'').replace(/"/g,'&quot;')}" onclick="abrirModalRenegociar(this.dataset.reneg)" style="font-size:11px;padding:3px 8px;">Renegociar</button>`
           : '—'}</td>
     </tr>`).join('') || '<tr><td colspan="8" class="empty">Nenhuma parcela de crediário encontrada.</td></tr>';
   const proximas = parcelas.filter(p=>p.statusCred!=='pago' && p.statusCred!=='vencido').slice(0,6);
@@ -12748,9 +12753,9 @@ function renderCredClientes(parcelas){
       <td>${dispStr}</td>
       <td style="white-space:nowrap;">
         ${c.vencido > 0
-          ? `<button class="btn btn-sm" onclick="abrirModalRenegociar('${c.cliente.replace(/'/g,"\'")}")" style="background:var(--accent);color:#fff;font-size:11px;margin-right:4px;">🔄 Renegociar</button>`
+          ? `<button class="btn btn-sm" data-reneg="${c.cliente.replace(/"/g,'&quot;')}" onclick="abrirModalRenegociar(this.dataset.reneg)" style="background:var(--accent);color:#fff;font-size:11px;margin-right:4px;">🔄 Renegociar</button>`
           : ''}
-        <button class="btn btn-sm btn-outline" onclick="imprimirExtratoCliente('${c.cliente.replace(/'/g,"\'")}')" style="font-size:11px;">📄 Extrato</button>
+        <button class="btn btn-sm btn-outline" data-extrato="${c.cliente.replace(/"/g,'&quot;')}" onclick="imprimirExtratoCliente(this.dataset.extrato)" style="font-size:11px;">📄 Extrato</button>
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="8" class="empty">Nenhum cliente com crediário.</td></tr>';
