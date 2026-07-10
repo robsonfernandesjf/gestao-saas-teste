@@ -5993,7 +5993,15 @@ body.modo-vitrine-publica{
       <div class="cred-form-grid">
         <div class="cred-form-row"><label>Limite padrão por cliente</label><input id="cred-conf-limite" inputmode="numeric" placeholder="0,00" oninput="mascaraMoeda(this)"></div>
         <div class="cred-form-row"><label>Máximo de parcelas</label><input id="cred-conf-parcelas" type="number" min="1" value="6"></div>
-        <div class="cred-form-row"><label>Bloquear venda com atraso?</label><select id="cred-conf-bloqueio"><option value="sim">Sim</option><option value="nao">Não, apenas alertar</option></select></div>
+        <div class="cred-form-row">
+          <label>Comportamento com parcela vencida</label>
+          <select id="cred-conf-bloqueio">
+            <option value="sim">🔒 Bloquear — impede nova venda no crediário enquanto houver vencida</option>
+            <option value="nao">⚠️ Alertar — avisa o lojista mas permite a venda</option>
+            <option value="livre">✅ Livre — permite venda sem nenhum aviso</option>
+          </select>
+          <small id="cred-bloqueio-desc" style="font-size:11px;color:var(--muted);margin-top:4px;display:block;"></small>
+        </div>
         <div class="cred-form-row"><label>Saldo inicial consome limite?</label><select id="cred-conf-saldo-limite"><option value="sim">Sim, recomendado</option><option value="nao">Não</option></select></div>
       </div>
       <button class="btn btn-primary" onclick="salvarCredConfig()">Salvar configurações</button>
@@ -11470,6 +11478,7 @@ function validarLimiteCrediarioVenda(cliente, valorNovo){
   const limite = getClienteLimiteCredito(cliente);
   const cart = getClienteCarteiraCrediario(cliente);
   if (cfg.bloqueio === 'sim' && cart.vencido > 0) return { ok:false, msg:`Cliente possui ${R(cart.vencido)} vencido no crediário. Receba/regularize antes de vender novamente.` };
+  if (cfg.bloqueio === 'nao' && cart.vencido > 0) return { ok:true, aviso:`⚠️ Cliente com ${R(cart.vencido)} vencido no crediário.`, limite, usado:cart.aberto, disponivel: limite ? Math.max(0, limite - cart.aberto) : 0, vencido:cart.vencido };
   if (limite > 0 && (cart.aberto + valorNovo) > limite + 0.01) {
     return { ok:false, msg:`Limite de crédito insuficiente. Limite: ${R(limite)} · usado: ${R(cart.aberto)} · disponível: ${R(Math.max(0,limite-cart.aberto))} · venda: ${R(valorNovo)}.` };
   }
@@ -11490,10 +11499,20 @@ function previewCredVenda(){
     if (!cliente) alertEl.innerHTML = 'Informe o cliente para consultar limite.';
     else {
       const lim = validarLimiteCrediarioVenda(cliente, financiado);
-      alertEl.style.borderColor = lim.ok ? '#BBF7D0' : '#FECACA';
-      alertEl.style.background = lim.ok ? '#F0FDF4' : '#FEF2F2';
-      alertEl.style.color = lim.ok ? '#166534' : '#991B1B';
-      alertEl.innerHTML = lim.ok ? `Limite: <strong>${lim.limite ? R(lim.limite) : 'não definido'}</strong> · usado: <strong>${R(lim.usado||0)}</strong> · nova venda: <strong>${R(financiado)}</strong>` : lim.msg;
+      if (lim.ok && lim.aviso) {
+        // Modo "alertar" — ok para vender mas tem aviso
+        alertEl.style.borderColor = '#FDE68A';
+        alertEl.style.background = '#FFFBEB';
+        alertEl.style.color = '#92400E';
+        alertEl.innerHTML = `${lim.aviso} · Limite: <strong>${lim.limite ? R(lim.limite) : 'não definido'}</strong> · disponível: <strong>${R(lim.disponivel||0)}</strong>`;
+      } else {
+        alertEl.style.borderColor = lim.ok ? '#BBF7D0' : '#FECACA';
+        alertEl.style.background = lim.ok ? '#F0FDF4' : '#FEF2F2';
+        alertEl.style.color = lim.ok ? '#166534' : '#991B1B';
+        alertEl.innerHTML = lim.ok
+          ? `Limite: <strong>${lim.limite ? R(lim.limite) : 'não definido'}</strong> · usado: <strong>${R(lim.usado||0)}</strong> · disponível: <strong>${R(lim.disponivel||0)}</strong>`
+          : lim.msg;
+      }
     }
   }
   if (!financiado || !venc) { el.innerHTML = 'Informe parcelas e vencimento para visualizar o carnê.'; return; }
@@ -11666,7 +11685,12 @@ function carregarCredConfig(){
   const cfg = getCredConfig();
   const lim = document.getElementById('cred-conf-limite'); if (lim) lim.value = cfg.limitePadrao ? String(cfg.limitePadrao.toFixed(2)).replace('.',',') : '';
   const max = document.getElementById('cred-conf-parcelas'); if (max) max.value = cfg.maxParcelas || 6;
-  const bloq = document.getElementById('cred-conf-bloqueio'); if (bloq) bloq.value = cfg.bloqueio || 'sim';
+  const bloq = document.getElementById('cred-conf-bloqueio');
+  if (bloq) {
+    bloq.value = cfg.bloqueio || 'sim';
+    bloq.onchange = atualizarDescBloqueio;
+    atualizarDescBloqueio();
+  }
   const sal = document.getElementById('cred-conf-saldo-limite'); if (sal) sal.value = cfg.saldoConsomeLimite || 'sim';
   carregarCarneConfig();
 }
