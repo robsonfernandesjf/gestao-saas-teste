@@ -12720,7 +12720,19 @@ function renderCrediario(){
 function renderCredListas(parcelas){
   const busca = (document.getElementById('cred-busca')?.value || '').toLowerCase();
   const st = document.getElementById('cred-status')?.value || '';
-  const filtradas = parcelas.filter(p => (!busca || [p.cliente,p.obs,p.contrato_id,p.id].join(' ').toLowerCase().includes(busca)) && (!st || p.statusCred === st));
+  const buscaDigitosParcelas = busca.replace(/\D/g,'');
+  const todosCliParcelas = getClientes();
+  const filtradas = parcelas.filter(p => {
+    if (st && p.statusCred !== st) return false;
+    if (!busca) return true;
+    if ([p.cliente,p.obs,p.contrato_id,p.id].join(' ').toLowerCase().includes(busca)) return true;
+    if (buscaDigitosParcelas.length >= 3) {
+      const cliObj = todosCliParcelas.find(x => x.nome === p.cliente);
+      const cpf = getCPFLimpo(cliObj);
+      if (cpf && cpf.includes(buscaDigitosParcelas)) return true;
+    }
+    return false;
+  });
   const tbody = document.getElementById('cred-parcelas-body');
   if (tbody) tbody.innerHTML = filtradas.map(p => `
     <tr>
@@ -12749,7 +12761,21 @@ function renderCredClientes(parcelas){
     if (p.statusCred !== 'pago') map[c].aberto += p.saldo;
     if (p.statusCred === 'vencido') map[c].vencido += p.saldo;
   });
-  const linhas = Object.values(map).sort((a,b)=>b.aberto-a.aberto);
+  const busca = (document.getElementById('cred-clientes-busca')?.value || '').toLowerCase().trim();
+  const buscaDigitos = busca.replace(/\D/g,'');
+  const todosClientes = getClientes();
+  const linhas = Object.values(map)
+    .filter(c => {
+      if (!busca) return true;
+      if ((c.cliente||'').toLowerCase().includes(busca)) return true;
+      if (buscaDigitos.length >= 3) {
+        const cliObj = todosClientes.find(x => x.nome === c.cliente);
+        const cpf = getCPFLimpo(cliObj);
+        if (cpf && cpf.includes(buscaDigitos)) return true;
+      }
+      return false;
+    })
+    .sort((a,b)=>b.aberto-a.aberto);
   const tbody = document.getElementById('cred-clientes-body');
   if (tbody) tbody.innerHTML = linhas.map(c => {
     const limite = getClienteLimiteCredito(c.cliente);
