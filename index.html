@@ -13866,6 +13866,24 @@ async function salvarCliente() {
   if (!nome) { alert('Informe o nome do cliente.'); return; }
   const clientes = getClientes();
   const id = document.getElementById('cli-id').value;
+
+  // Validação de CPF/doc duplicado
+  const docNumero = document.getElementById('cli-doc-numero').value.trim();
+  const docTipo = document.getElementById('cli-doc-tipo').value;
+  if (docNumero) {
+    const docLimpo = docNumero.replace(/\D/g,'');
+    const duplicado = clientes.find(c => {
+      if (id && c.id === id) return false; // editando o próprio
+      const cDocLimpo = (c.doc_numero||'').replace(/\D/g,'');
+      return cDocLimpo && cDocLimpo === docLimpo;
+    });
+    if (duplicado) {
+      alert(`⚠️ ${docTipo} já cadastrado para o cliente:\n\n"${duplicado.nome}"\n\nVerifique antes de continuar.`);
+      document.getElementById('cli-doc-numero').focus();
+      return;
+    }
+  }
+
   const dados = {
     nome,
     telefone: document.getElementById('cli-tel').value.trim(),
