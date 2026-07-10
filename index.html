@@ -4460,6 +4460,7 @@ body.modo-vitrine-publica{
   <button onclick="showPage('vendedores')">🧑‍💼 Vendedores</button>
   <button onclick="showPage('financeiro')">💰 Financeiro</button>
   <button onclick="showPage('crediario')" id="nav-btn-crediario" style="display:none;">💳 Crediário</button>
+  <button onclick="showPage('consignado')" id="nav-btn-consignado" style="display:none;">📦 Consignado</button>
   <button onclick="showPage('trocas')">🔄 Trocas</button>
   <button id="nav-empresa" onclick="showPage('empresa'); carregarDadosEmpresa();" style="display:none;">⚙️ Config. Empresa</button>
   <button class="btn-logout-mobile" onclick="fazerLogout()" style="display:none;margin-top:auto;color:var(--danger);border-color:var(--danger);">🚪 Sair</button>
@@ -5065,7 +5066,7 @@ body.modo-vitrine-publica{
         <div class="form-grid">
           <div class="form-row">
             <label>Referência</label>
-            <input type="text" id="cad-ref" placeholder="Ex: EB97">
+            <input type="text" id="cad-ref" placeholder="Ex: EB97 (deixe vazio para gerar automaticamente)">
           </div>
           <div class="form-row">
             <label>Código de Barras (EAN-13)</label>
@@ -6394,6 +6395,18 @@ body.modo-vitrine-publica{
 
   <!-- ===== TAXAS DE CARTÃO ===== -->
 
+</div>
+
+<!-- ===== PÁGINA: CONSIGNADO ===== -->
+<div id="page-consignado" class="page">
+  <div class="section-title">📦 Consignado</div>
+  <div id="consignado-conteudo">
+    <div style="text-align:center;padding:60px 20px;color:var(--muted);">
+      <div style="font-size:48px;margin-bottom:16px;">📦</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Módulo Consignado</div>
+      <div style="font-size:13px;">Em implementação — Sprint 1 em andamento.</div>
+    </div>
+  </div>
 </div>
 
 <!-- ===== PÁGINA: TROCAS E DEVOLUÇÕES ===== -->
@@ -7826,7 +7839,7 @@ function aplicarPermissoes(usuario) {
   const modulos = Array.isArray(usuario.modulos) ? usuario.modulos : (typeof usuario.modulos === 'string' ? JSON.parse(usuario.modulos||'[]') : []);
 
   // Modo PDV exclusivo: usuário 'user' que tem 'vendas' e NÃO tem módulos gerenciais
-  const MODULOS_GERENCIAIS = ['dashboard','estoque','relatorios','financeiro','vendedores','cadastro','clientes'];
+  const MODULOS_GERENCIAIS = ['dashboard','estoque','relatorios','financeiro','vendedores','cadastro','clientes','consignado'];
   const soVendas = !isMaster && !isAdmin
     && modulos.includes('vendas')
     && !MODULOS_GERENCIAIS.some(m => modulos.includes(m));
@@ -10133,7 +10146,7 @@ async function handleFotoProduto(event) {
 
   try {
     const blob = await comprimirImagem(file);
-    const ref = (document.getElementById('cad-ref').value.trim().toUpperCase()) || ('img' + Date.now());
+    const ref = (document.getElementById('cad-ref').value.trim().toUpperCase()) || gerarProximaRef();
     const nomeArquivo = `${LOJA_ID}/${ref}-${Date.now()}.jpg`;
 
     statusEl.textContent = 'Enviando foto...';
@@ -10614,6 +10627,8 @@ function aplicarFlagCrediario() {
   // Menu lateral — usa setProperty+important para vencer o CSS display:flex!important do #main-nav button
   const btnCred = document.getElementById('nav-btn-crediario');
   if (btnCred) btnCred.style.setProperty('display', LOJA_USA_CREDIARIO ? 'flex' : 'none', 'important');
+  const btnConsig = document.getElementById('nav-btn-consignado');
+  if (btnConsig) btnConsig.style.setProperty('display', LOJA_USA_CONSIGNADO ? 'flex' : 'none', 'important');
   const wrapCred = document.getElementById('pdv-receber-cred-wrap');
   if (wrapCred) wrapCred.style.display = LOJA_USA_CREDIARIO ? 'block' : 'none';
 
@@ -10696,10 +10711,33 @@ async function popularSelectFornecedores() {
   }
 }
 
+
+// Gera próxima referência sequencial (P0001, P0002, ...)
+function gerarProximaRef() {
+  const produtos = getProdutos();
+  // Encontrar refs numéricas no padrão P#### ou somente números
+  let maxNum = 0;
+  produtos.forEach(p => {
+    const ref = (p.ref || '').toUpperCase();
+    const match = ref.match(/^P?(\d+)$/);
+    if (match) {
+      const n = parseInt(match[1]);
+      if (n > maxNum) maxNum = n;
+    }
+  });
+  return 'P' + String(maxNum + 1).padStart(4, '0');
+}
+
 async function salvarCadastro() {
-  const ref = document.getElementById('cad-ref').value.trim().toUpperCase();
+  let ref = document.getElementById('cad-ref').value.trim().toUpperCase();
   const nome = document.getElementById('cad-nome').value.trim();
-  if (!ref || !nome) { document.getElementById('cad-msg').textContent = '⚠ Preencha ref. e nome.'; return; }
+  if (!nome) { document.getElementById('cad-msg').textContent = '⚠ Preencha o nome do produto.'; return; }
+  // Auto-gerar ref se vazio
+  if (!ref) {
+    ref = gerarProximaRef();
+    document.getElementById('cad-ref').value = ref;
+    document.getElementById('cad-msg').textContent = `ℹ Referência gerada automaticamente: ${ref}`;
+  }
   const produtos = getProdutos();
   if (produtos.find(p=>p.ref===ref)) { document.getElementById('cad-msg').textContent = '⚠ Ref. já existe.'; return; }
   if (LOJA_USA_NFCE) {
@@ -17802,6 +17840,7 @@ let LOJA_USA_NFCE = false;
 let LOJA_USA_GRADE = false;
 let LOJA_USA_CATALOGO = false;
 let LOJA_USA_CREDIARIO = false;
+let LOJA_USA_CONSIGNADO = false;
 let LOJA_CATALOGO_WHATSAPP = '';
 
 // ===== APLICAR CONFIG_LOJA NA INTERFACE =====
@@ -17815,7 +17854,7 @@ async function aplicarConfigLoja() {
   // Busca a configuração mais recente direto da tabela "lojas" no Supabase
   // (assim o Painel Admin pode editar nome/logo/cores sem precisar editar este arquivo)
   try {
-    const resp = await fetch(`${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,logo_base64,cor_accent,cor_accent2,cor_bg,usa_nfce,usa_grade,usa_catalogo,usa_crediario,catalogo_whatsapp`, { headers: SB_HEADS });
+    const resp = await fetch(`${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,logo_base64,cor_accent,cor_accent2,cor_bg,usa_nfce,usa_grade,usa_catalogo,usa_crediario,usa_consignado,catalogo_whatsapp`, { headers: SB_HEADS });
     if (resp.ok) {
       const rows = await resp.json();
       const loja = rows[0];
@@ -17836,6 +17875,7 @@ async function aplicarConfigLoja() {
         LOJA_USA_GRADE = !!loja.usa_grade;
         LOJA_USA_CATALOGO = !!loja.usa_catalogo;
         LOJA_USA_CREDIARIO = !!loja.usa_crediario;
+        LOJA_USA_CONSIGNADO = !!loja.usa_consignado;
         LOJA_CATALOGO_WHATSAPP = loja.catalogo_whatsapp || '';
         aplicarFeatureFlagsUI();
       }
