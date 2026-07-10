@@ -12208,6 +12208,7 @@ async function salvarConsignado() {
 
     // Criar consignado
     const consigResp = await sbPost('consignados', {
+      loja_id: LOJA_ID,
       numero,
       cliente_id: clienteId || null,
       cliente_nome: cliente,
@@ -12222,6 +12223,7 @@ async function salvarConsignado() {
     // Criar itens e baixar estoque
     for (const item of _consigItensModal) {
       await sbPost('consignado_itens', {
+        loja_id: LOJA_ID,
         consignado_id: consig.id,
         produto_ref: item.ref,
         produto_ean: item.ean || null,
