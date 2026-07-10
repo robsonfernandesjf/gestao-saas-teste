@@ -11239,7 +11239,7 @@ async function confirmarVenda() {
           parcela: pc.parcela,
           total_parcelas: pc.total_parcelas,
           imprimir_carne: !!document.getElementById('cred-venda-imprimir')?.checked,
-          cpf_cliente: (() => { const nomeCliente = document.getElementById('venda-cliente')?.value || document.getElementById('cliente-nome')?.value || ''; const cli = getClientes().find(c => c.nome === nomeCliente); return cli?.cpf || ''; })()
+          cpf_cliente: (() => { const nomeCliente = document.getElementById('venda-cliente')?.value || document.getElementById('cliente-nome')?.value || ''; const cli = getClientes().find(c => c.nome === nomeCliente); return getCPFCliente(cli); })()
         };
         debitos.unshift(debitoCred);
         try {
@@ -11975,7 +11975,8 @@ function gerarReciboCrediario(dados) {
 function imprimirExtratoCliente(cliente) {
   const debitos = getDebitos().filter(d => isCrediarioDebito(d) && (d.cliente||'') === cliente);
   const clientes = getClientes();
-  const cli = clientes.find(c => c.nome === cliente);
+  const cli = clientes.find(c => (c.nome||'') === cliente);
+  const cpfCliente = getCPFCliente(cli);
   const cfg = getCarneConfig();
   const nomeLoja = cfg.nome || window.LOJA_NOME || 'Loja';
   const endereco = cfg.endereco || '';
@@ -12052,7 +12053,7 @@ function imprimirExtratoCliente(cliente) {
       <div><div class="loja">${nomeLoja}</div>${endereco?`<div style="font-size:11px;color:#64748b">${endereco}</div>`:''}</div>
     </div>
     <div class="titulo">📄 Extrato de Crediário</div>
-    <div class="sub">Cliente: <strong>${cliente}</strong>${cli?.cpf?` · CPF: ${cli.cpf}`:''} · Emitido em: ${new Date().toLocaleString('pt-BR')}</div>
+    <div class="sub">Cliente: <strong>${cliente}</strong>${cpfCliente?` · CPF: ${cpfCliente}`:''} · Emitido em: ${new Date().toLocaleString('pt-BR')}</div>
   </div>
   <div class="kpis">
     <div class="kpi"><div class="label">Total em aberto</div><div class="val" style="color:#dc2626">${R(totalAberto)}</div></div>
@@ -12977,7 +12978,18 @@ function renderClientes() {
   }
 
   // Aplicar busca
-  if (busca) clientes = clientes.filter(c => c.nome.toLowerCase().includes(busca) || (c.tel||'').includes(busca));
+  if (busca) {
+    const buscaDigitos = busca.replace(/\D/g,'');
+    clientes = clientes.filter(c => {
+      if (c.nome.toLowerCase().includes(busca)) return true;
+      if ((c.tel||c.telefone||'').includes(busca)) return true;
+      if (buscaDigitos.length >= 3) {
+        const cpf = getCPFLimpo(c);
+        if (cpf && cpf.includes(buscaDigitos)) return true;
+      }
+      return false;
+    });
+  }
 
   // Banner aniversariantes
   const banner = document.getElementById('aniv-banner');
@@ -15673,25 +15685,41 @@ function popularListaClientesVenda() {
   // mas não faz mais nada — as sugestões agora vêm direto de getClientes().
 }
 
+
 function filtrarClientesVenda(input) {
-  const termo = input.value.trim().toLowerCase();
+  const termo = input.value.trim();
+  const termoLower = termo.toLowerCase();
+  const termoDigitos = termo.replace(/\D/g,'');
   const box = document.getElementById('venda-cliente-sugestoes');
   if (!box) return;
 
   const clientes = getClientes()
-    .filter(c => !termo || c.nome.toLowerCase().includes(termo))
+    .filter(c => {
+      if (!termo) return true;
+      if ((c.nome||'').toLowerCase().includes(termoLower)) return true;
+      if (termoDigitos.length >= 3) {
+        const cpf = getCPFLimpo(c);
+        if (cpf && cpf.includes(termoDigitos)) return true;
+        const tel = (c.tel||c.telefone||'').replace(/\D/g,'');
+        if (tel && tel.includes(termoDigitos)) return true;
+      }
+      return false;
+    })
     .sort((a, b) => a.nome.localeCompare(b.nome))
     .slice(0, 8);
 
   if (clientes.length === 0) { box.style.display = 'none'; box.innerHTML = ''; return; }
 
-  box.innerHTML = clientes.map(c => `
-    <div onmousedown="event.preventDefault();selecionarClienteVenda('${c.nome.replace(/'/g, "\\'")}')"
+  box.innerHTML = clientes.map(c => {
+    const cpf = getCPFCliente(c);
+    const tel = c.tel || c.telefone || '';
+    const info = [tel, cpf].filter(Boolean).join(' · ');
+    return `<div onmousedown="event.preventDefault();selecionarClienteVenda('${c.nome.replace(/'/g, "\\'")}')"
          style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
          onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
-      ${c.nome}${c.tel ? `<span style="color:var(--muted);font-size:11px;"> · ${c.tel}</span>` : ''}
-    </div>
-  `).join('');
+      ${c.nome}${info ? `<span style="color:var(--muted);font-size:11px;"> · ${info}</span>` : ''}
+    </div>`;
+  }).join('');
   box.style.display = 'block';
 }
 
