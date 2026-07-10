@@ -10228,15 +10228,19 @@ function pdvCredRenderParcelas(cliente) {
         <span style="font-size:11px;color:var(--muted);">Parc. ${parc} · ${vencFmt}${vencido?' <span style="color:#dc2626;font-weight:700;">vencida</span>':''}</span>
         <strong style="font-size:13px;color:${vencido?'#dc2626':'var(--accent)'};">${R(saldo)}</strong>
       </div>
-      <div style="display:flex;gap:6px;">
-        <select id="pdv-cred-forma-${i}" style="flex:1;font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <select id="pdv-cred-forma-${i}" style="flex:1;min-width:100px;font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
           <option value="Dinheiro">💵 Dinheiro</option>
           <option value="Pix">📱 Pix</option>
           <option value="Cartão débito">💳 Débito</option>
           <option value="Cartão crédito">💳 Crédito</option>
         </select>
+        <input type="text" id="pdv-cred-valor-${i}" value="${saldo.toFixed(2).replace('.',',')}"
+          inputmode="numeric" oninput="mascaraMoeda(this)"
+          style="width:80px;font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;text-align:right;font-weight:700;background:var(--surface);"
+          title="Valor a receber (pode ser parcial)">
         <button onclick="pdvCredReceberParcela('${d.id}','${i}',${saldo})"
-          style="background:var(--success);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">
+          style="background:var(--success);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">
           ✅ Receber
         </button>
       </div>
@@ -10244,9 +10248,19 @@ function pdvCredRenderParcelas(cliente) {
   }).join('');
 }
 
-async function pdvCredReceberParcela(debitoId, idx, saldo) {
+async function pdvCredReceberParcela(debitoId, idx, saldoTotal) {
   const forma = document.getElementById(`pdv-cred-forma-${idx}`)?.value || 'Dinheiro';
-  if (!confirm(`Receber ${R(saldo)} via ${forma}?`)) return;
+  // Pegar valor do campo (pode ser parcial)
+  const valorInput = document.getElementById(`pdv-cred-valor-${idx}`);
+  const valorStr = (valorInput?.value || '').replace(/\./g,'').replace(',','.');
+  const valorPagar = Math.min(parseFloat(valorStr) || saldoTotal, saldoTotal);
+  const eParcial = valorPagar < saldoTotal - 0.009;
+  const saldo = valorPagar;
+  if (valorPagar <= 0) { alert('Informe um valor válido.'); return; }
+  const msg = eParcial
+    ? `Baixa PARCIAL de ${R(valorPagar)} (saldo: ${R(saldoTotal - valorPagar)}) via ${forma}?`
+    : `Receber ${R(valorPagar)} via ${forma}?`;
+  if (!confirm(msg)) return;
   mostrarLoading(true);
   try {
     const debitos = getDebitos();
@@ -11912,6 +11926,120 @@ function gerarReciboCrediario(dados) {
   </body></html>`;
 }
 
+
+// ── EXTRATO DO CLIENTE ──
+function imprimirExtratoCliente(cliente) {
+  const debitos = getDebitos().filter(d => isCrediarioDebito(d) && (d.cliente||'') === cliente);
+  const clientes = getClientes();
+  const cli = clientes.find(c => c.nome === cliente);
+  const cfg = getCarneConfig();
+  const nomeLoja = cfg.nome || window.LOJA_NOME || 'Loja';
+  const endereco = cfg.endereco || '';
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#D4145A';
+  const logoHTML = (cfg.logo !== 'nao' && window.logoBase64)
+    ? `<img src="${window.logoBase64}" style="height:36px;object-fit:contain;">` : '';
+
+  function dSaldo(d) { return Number(d.total||d.valor_total||0) - (d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0); }
+  function credStatus(d) {
+    const saldo = dSaldo(d);
+    if (saldo <= 0.009) return 'pago';
+    const venc = d.vencimento || '';
+    let vISO = venc;
+    if (venc.includes('/')) { const [dd,mm,yy]=venc.split('/'); vISO=`${yy}-${mm}-${dd}`; }
+    return vISO && vISO < new Date().toISOString().slice(0,10) ? 'vencido' : 'aberto';
+  }
+
+  const sorted = [...debitos].sort((a,b) => {
+    const va = a.vencimento||'', vb = b.vencimento||'';
+    const toISO = v => v.includes('/') ? v.split('/').reverse().join('-') : v;
+    return toISO(va).localeCompare(toISO(vb));
+  });
+
+  const totalAberto = sorted.filter(d=>credStatus(d)!=='pago').reduce((s,d)=>s+dSaldo(d),0);
+  const totalVencido = sorted.filter(d=>credStatus(d)==='vencido').reduce((s,d)=>s+dSaldo(d),0);
+  const totalPago = sorted.reduce((s,d)=>s+Number(d.total||d.valor_total||0)-dSaldo(d),0);
+
+  const statusBadge = s => ({
+    pago: '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">PAGO</span>',
+    vencido: '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">VENCIDO</span>',
+    aberto: '<span style="background:#fef9c3;color:#713f12;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">EM ABERTO</span>'
+  }[s] || '');
+
+  const linhas = sorted.map(d => {
+    const st = credStatus(d);
+    const saldo = dSaldo(d);
+    const total = Number(d.total||d.valor_total||0);
+    const pago = total - saldo;
+    const parc = d.parcela && d.total_parcelas ? `${d.parcela}/${d.total_parcelas}` : '1/1';
+    return `<tr style="border-bottom:1px solid #f1f5f9;">
+      <td style="padding:7px 10px;">${d.vencimento||'—'}</td>
+      <td style="padding:7px 10px;">Parc. ${parc}</td>
+      <td style="padding:7px 10px;font-size:11px;color:#64748b;max-width:180px;">${(d.obs||d.contrato_id||'').replace(/\[CREDIARIO\]\s*/i,'').slice(0,60)}</td>
+      <td style="padding:7px 10px;text-align:right;">${R(total)}</td>
+      <td style="padding:7px 10px;text-align:right;color:#16a34a;">${pago > 0 ? R(pago) : '—'}</td>
+      <td style="padding:7px 10px;text-align:right;font-weight:700;color:${saldo>0?'#dc2626':'#16a34a'}">${saldo > 0.009 ? R(saldo) : '—'}</td>
+      <td style="padding:7px 10px;text-align:center;">${statusBadge(st)}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!doctype html><html><head>
+  <meta charset="utf-8"><title>Extrato · ${cliente}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;background:#f8fafc;padding:20px;color:#111827}
+    .card{background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+    .header{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:2px solid ${accent}}
+    .loja{font-size:14px;font-weight:800;color:${accent}}
+    .titulo{font-size:20px;font-weight:900;margin-bottom:4px}
+    .sub{font-size:13px;color:#64748b}
+    .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+    .kpi{background:#fff;border-radius:10px;padding:12px 14px;text-align:center;border:1px solid #e2e8f0}
+    .kpi .label{font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase}
+    .kpi .val{font-size:18px;font-weight:900;margin-top:4px}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    thead th{background:#f8fafc;padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em}
+    .btn-print{background:${accent};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:16px}
+    @media print{.btn-print{display:none}body{background:#fff;padding:0}.card{box-shadow:none}}
+  </style></head><body>
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimir Extrato</button>
+  <div class="card">
+    <div class="header">
+      ${logoHTML}
+      <div><div class="loja">${nomeLoja}</div>${endereco?`<div style="font-size:11px;color:#64748b">${endereco}</div>`:''}</div>
+    </div>
+    <div class="titulo">📄 Extrato de Crediário</div>
+    <div class="sub">Cliente: <strong>${cliente}</strong>${cli?.cpf?` · CPF: ${cli.cpf}`:''} · Emitido em: ${new Date().toLocaleString('pt-BR')}</div>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="label">Total em aberto</div><div class="val" style="color:#dc2626">${R(totalAberto)}</div></div>
+    <div class="kpi"><div class="label">Vencido</div><div class="val" style="color:#b91c1c">${R(totalVencido)}</div></div>
+    <div class="kpi"><div class="label">Total pago</div><div class="val" style="color:#16a34a">${R(totalPago)}</div></div>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr>
+        <th>Vencimento</th><th>Parcela</th><th>Descrição</th>
+        <th style="text-align:right">Total</th><th style="text-align:right">Pago</th>
+        <th style="text-align:right">Saldo</th><th style="text-align:center">Status</th>
+      </tr></thead>
+      <tbody>${linhas}</tbody>
+      <tfoot><tr style="border-top:2px solid #e2e8f0;background:#f8fafc">
+        <td colspan="3" style="padding:8px 10px;font-size:11px;color:#64748b">${sorted.length} registro(s)</td>
+        <td style="padding:8px 10px;text-align:right;font-weight:700">${R(sorted.reduce((s,d)=>s+Number(d.total||d.valor_total||0),0))}</td>
+        <td style="padding:8px 10px;text-align:right;font-weight:700;color:#16a34a">${R(totalPago)}</td>
+        <td style="padding:8px 10px;text-align:right;font-weight:700;color:#dc2626">${R(totalAberto)}</td>
+        <td></td>
+      </tr></tfoot>
+    </table>
+  </div>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { alert('Pop-up bloqueado. Permita pop-ups para esta página.'); return; }
+  w.document.write(html);
+  w.document.close();
+}
+
 function imprimirReciboCrediario(dados) {
   const w = window.open('', '_blank');
   if (!w) { alert('Pop-up bloqueado. Permita pop-ups para esta página.'); return; }
@@ -12085,10 +12213,11 @@ function renderCredClientes(parcelas){
       <td>${c.qtd}</td>
       <td>${limiteStr}</td>
       <td>${dispStr}</td>
-      <td>
+      <td style="white-space:nowrap;">
         ${c.vencido > 0
-          ? `<button class="btn btn-sm" onclick="abrirModalRenegociar('${c.cliente.replace(/'/g,"\'")}")" style="background:var(--accent);color:#fff;font-size:11px;">🔄 Renegociar</button>`
-          : `<span style="font-size:11px;color:var(--muted)">Em dia</span>`}
+          ? `<button class="btn btn-sm" onclick="abrirModalRenegociar('${c.cliente.replace(/'/g,"\'")}")" style="background:var(--accent);color:#fff;font-size:11px;margin-right:4px;">🔄 Renegociar</button>`
+          : ''}
+        <button class="btn btn-sm btn-outline" onclick="imprimirExtratoCliente('${c.cliente.replace(/'/g,"\'")}')" style="font-size:11px;">📄 Extrato</button>
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="8" class="empty">Nenhum cliente com crediário.</td></tr>';
