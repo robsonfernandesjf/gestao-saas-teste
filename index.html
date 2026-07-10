@@ -5943,6 +5943,17 @@ body.modo-vitrine-publica{
   </div>
 
   <div id="cred-panel-visao" class="cred-panel active">
+    <div class="cred-box" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <h3 style="margin:0;">📈 Previsão de Recebimentos</h3>
+        <select id="cred-fluxo-meses" onchange="renderFluxoCaixaCredito()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
+          <option value="3">Próximos 3 meses</option>
+          <option value="6" selected>Próximos 6 meses</option>
+          <option value="12">Próximos 12 meses</option>
+        </select>
+      </div>
+      <div id="cred-fluxo-grafico"></div>
+    </div>
     <div class="cred-grid-2">
       <div class="cred-box">
         <h3>📆 Próximas parcelas a vencer</h3>
@@ -6051,6 +6062,17 @@ body.modo-vitrine-publica{
           <small id="cred-bloqueio-desc" style="font-size:11px;color:var(--muted);margin-top:4px;display:block;"></small>
         </div>
         <div class="cred-form-row"><label>Saldo inicial consome limite?</label><select id="cred-conf-saldo-limite"><option value="sim">Sim, recomendado</option><option value="nao">Não</option></select></div>
+        <div class="cred-form-row">
+          <label>Bloqueio automático por atraso</label>
+          <select id="cred-conf-bloqueio-auto">
+            <option value="0">Desabilitado</option>
+            <option value="7">Após 7 dias de atraso</option>
+            <option value="15">Após 15 dias de atraso</option>
+            <option value="30">Após 30 dias de atraso</option>
+            <option value="60">Após 60 dias de atraso</option>
+          </select>
+          <small style="color:var(--muted);font-size:11px;margin-top:3px;display:block;">Marca automaticamente como "Bloqueado" no cadastro do cliente quando ele ultrapassa esse prazo de atraso.</small>
+        </div>
       </div>
       <button class="btn btn-primary" onclick="salvarCredConfig()">Salvar configurações</button>
       <span id="cred-conf-msg" style="font-size:12px;color:#64748b;margin-left:10px;"></span>
@@ -12122,6 +12144,7 @@ function salvarCredConfig(){
     limitePadrao: valorMoeda('cred-conf-limite'),
     maxParcelas: parseInt(document.getElementById('cred-conf-parcelas')?.value || '6',10) || 6,
     bloqueio: document.getElementById('cred-conf-bloqueio')?.value || 'sim',
+    bloqueioAutoDias: parseInt(document.getElementById('cred-conf-bloqueio-auto')?.value || '0') || 0,
     saldoConsomeLimite: document.getElementById('cred-conf-saldo-limite')?.value || 'sim'
   };
   localStorage.setItem(CRED_CONF_KEY, JSON.stringify(cfg));
@@ -12138,6 +12161,8 @@ function carregarCredConfig(){
     bloq.onchange = atualizarDescBloqueio;
     atualizarDescBloqueio();
   }
+  const bloqAuto = document.getElementById('cred-conf-bloqueio-auto');
+  if (bloqAuto) bloqAuto.value = String(cfg.bloqueioAutoDias || 0);
   const sal = document.getElementById('cred-conf-saldo-limite'); if (sal) sal.value = cfg.saldoConsomeLimite || 'sim';
   carregarCarneConfig();
 }
@@ -12190,6 +12215,137 @@ function getCredParcelas(){
     return { ...d, total, pago, saldo: Math.max(0,total-pago), statusCred: credStatusDebito(d), vencDate: credParseDataBR(d.vencimento) };
   }).sort((a,b)=>(a.vencDate?.getTime()||0)-(b.vencDate?.getTime()||0));
 }
+
+// ── FLUXO DE CAIXA DO CREDIÁRIO ──
+function renderFluxoCaixaCredito() {
+  const el = document.getElementById('cred-fluxo-grafico');
+  if (!el) return;
+
+  const meses = parseInt(document.getElementById('cred-fluxo-meses')?.value || '6');
+  const hoje = new Date();
+  const parcelas = getCredParcelas().filter(p => p.statusCred !== 'pago');
+
+  // Agrupar por mês/ano
+  const grupos = {};
+  const mesesLabel = [];
+
+  for (let i = 0; i < meses; i++) {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1);
+    const chave = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const label = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.','');
+    grupos[chave] = { label, total: 0, qtd: 0, vencido: 0 };
+    mesesLabel.push(chave);
+  }
+
+  // Incluir também meses passados com vencido
+  parcelas.forEach(p => {
+    const venc = p.vencimento || '';
+    let vencISO;
+    if (venc.includes('/')) {
+      const [dd,mm,yy] = venc.split('/');
+      vencISO = yy + '-' + mm.padStart(2,'0');
+    } else if (venc.length >= 7) {
+      vencISO = venc.slice(0,7);
+    } else return;
+
+    if (!grupos[vencISO]) return; // fora do range
+    grupos[vencISO].total += p.saldo;
+    grupos[vencISO].qtd++;
+    if (p.statusCred === 'vencido') grupos[vencISO].vencido += p.saldo;
+  });
+
+  const maxVal = Math.max(...mesesLabel.map(k => grupos[k].total), 1);
+  const totalGeral = mesesLabel.reduce((s,k) => s + grupos[k].total, 0);
+
+  // Gráfico de barras SVG simples
+  const W = 600, H = 160, PAD = 40, BAR_W = Math.min(50, (W - PAD*2) / meses - 8);
+  const slotW = (W - PAD*2) / meses;
+
+  const bars = mesesLabel.map((chave, i) => {
+    const g = grupos[chave];
+    const barH = g.total > 0 ? Math.max(4, (g.total / maxVal) * (H - 60)) : 0;
+    const x = PAD + i * slotW + (slotW - BAR_W) / 2;
+    const y = H - 30 - barH;
+    const cor = g.vencido > 0 ? '#fca5a5' : '#93c5fd';
+    const corFill = g.vencido > 0 ? '#ef4444' : '#3b82f6';
+    return `
+      <rect x="${x}" y="${y}" width="${BAR_W}" height="${barH}" rx="4" fill="${corFill}" opacity="0.85">
+        <title>${g.label}: ${R(g.total)} (${g.qtd} parcela${g.qtd!==1?'s':''})</title>
+      </rect>
+      ${g.total > 0 ? `<text x="${x + BAR_W/2}" y="${y-4}" text-anchor="middle" font-size="9" fill="#374151" font-weight="600">${R(g.total).replace('R$','').trim()}</text>` : ''}
+      <text x="${x + BAR_W/2}" y="${H-12}" text-anchor="middle" font-size="10" fill="#6b7280">${g.label}</text>
+      <text x="${x + BAR_W/2}" y="${H-2}" text-anchor="middle" font-size="9" fill="#9ca3af">${g.qtd > 0 ? g.qtd+'x' : ''}</text>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="overflow-x:auto;">
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:${H}px;">
+        <line x1="${PAD}" y1="${H-30}" x2="${W-PAD}" y2="${H-30}" stroke="#e5e7eb" stroke-width="1"/>
+        ${bars}
+      </svg>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:#6b7280;align-items:center;">
+      <span><span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;margin-right:4px;"></span>A receber</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#ef4444;border-radius:2px;margin-right:4px;"></span>Vencido</span>
+      <strong style="margin-left:auto;">Total previsto: ${R(totalGeral)}</strong>
+    </div>`;
+}
+
+// ── BLOQUEIO AUTOMÁTICO POR ATRASO ──
+async function executarBloqueioAutomatico() {
+  const cfg = getCredConfig();
+  const diasLimite = cfg.bloqueioAutoDias || 0;
+  if (!diasLimite) return; // desabilitado
+
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const debitos = getDebitos();
+  const clientes = getClientes();
+
+  function dSaldo(d) { return Number(d.total||d.valor_total||0) - (d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0); }
+
+  // Encontrar clientes com atraso >= diasLimite
+  const clientesBloqueados = new Set();
+  debitos.forEach(d => {
+    if (!isCrediarioDebito(d)) return;
+    if (dSaldo(d) <= 0.009) return;
+    const venc = d.vencimento || '';
+    if (!venc) return;
+    let vencDate;
+    if (venc.includes('/')) { const [dd,mm,yy]=venc.split('/'); vencDate=new Date(yy+'-'+mm.padStart(2,'0')+'-'+dd.padStart(2,'0')); }
+    else vencDate = new Date(venc);
+    vencDate.setHours(0,0,0,0);
+    const dias = Math.floor((hoje - vencDate) / 86400000);
+    if (dias >= diasLimite) clientesBloqueados.add(d.cliente||'');
+  });
+
+  if (!clientesBloqueados.size) return;
+
+  // Bloquear clientes que ainda não estão bloqueados
+  let bloqueados = 0;
+  const clientesAtualizados = clientes.map(c => {
+    if (clientesBloqueados.has(c.nome) && !c.crediario_bloqueado) {
+      bloqueados++;
+      return { ...c, crediario_bloqueado: true };
+    }
+    return c;
+  });
+
+  if (!bloqueados) return;
+
+  saveClientes(clientesAtualizados);
+
+  // Sincronizar com Supabase
+  for (const c of clientesAtualizados.filter(c => clientesBloqueados.has(c.nome))) {
+    const ehIdReal = c.id && !String(c.id).startsWith('cli_');
+    if (ehIdReal) {
+      await sbPatch('clientes', c.id, { crediario_bloqueado: true }).catch(e => console.warn('Bloqueio auto:', e.message));
+    }
+  }
+
+  console.log(`Bloqueio automático: ${bloqueados} cliente(s) bloqueado(s) por atraso >= ${diasLimite} dias`);
+  mostrarNotificacao(`⚠️ ${bloqueados} cliente(s) bloqueado(s) automaticamente por atraso de ${diasLimite}+ dias.`);
+}
+
 function renderCrediario(){
   if (!document.getElementById('page-crediario')) return;
   const parcelas = getCredParcelas();
@@ -12205,6 +12361,10 @@ function renderCrediario(){
     <div class="cred-kpi"><small>Parcelas vencidas</small><strong>${qtdVenc}</strong></div>`;
   renderCredListas(parcelas);
   renderCredClientes(parcelas);
+  // Renderizar fluxo de caixa se na aba visão
+  if (!credAbaAtual || credAbaAtual === 'visao') renderFluxoCaixaCredito();
+  // Executar bloqueio automático em background
+  executarBloqueioAutomatico().catch(e => console.warn(e));
 }
 function renderCredListas(parcelas){
   const busca = (document.getElementById('cred-busca')?.value || '').toLowerCase();
