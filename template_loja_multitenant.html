@@ -8013,6 +8013,7 @@ function showPage(id) {
   if (id === 'vendedores') { renderVendedores(); }
   if (id === 'financeiro') { renderFinanceiroUnificado(); }
   if (id === 'crediario') { renderCrediario(); }
+  aplicarFlagCrediario();
   if (id === 'trocas') { renderTrocas(); }
   if (id === 'usuarios') { renderUsuarios(); }
   if (id === 'vendas') { popularListaClientesVenda(); popularSelectVendedores(); atualizarWidgetCaixa(); if (!document.getElementById('venda-data').value) { const t = new Date(); document.getElementById('venda-data').value = t.toISOString().slice(0,10); } }
@@ -9759,6 +9760,24 @@ function aplicarFeatureFlagsUI() {
   const secXml = document.getElementById('secao-import-xml');
   if (secXml) secXml.style.display = 'block';
   popularSelectFornecedores();
+  aplicarFlagCrediario();
+}
+
+function aplicarFlagCrediario() {
+  const btnCred = document.querySelector('button[onclick="showPage('crediario')"]');
+  if (btnCred) btnCred.style.display = LOJA_USA_CREDIARIO ? 'block' : 'none';
+  const btnFiado = document.querySelector('.pdv-pag-btn[data-valor="A prazo"]');
+  const btnCreditario = document.querySelector('.pdv-pag-btn[data-valor="Crediário"]');
+  if (btnFiado) btnFiado.style.display = LOJA_USA_CREDIARIO ? 'none' : 'flex';
+  if (btnCreditario) btnCreditario.style.display = LOJA_USA_CREDIARIO ? 'flex' : 'none';
+  document.querySelectorAll('option[value="A prazo"]').forEach(opt => {
+    opt.style.display = LOJA_USA_CREDIARIO ? 'none' : '';
+    opt.disabled = LOJA_USA_CREDIARIO;
+  });
+  document.querySelectorAll('option[value="Crediário"]').forEach(opt => {
+    opt.style.display = LOJA_USA_CREDIARIO ? '' : 'none';
+    opt.disabled = !LOJA_USA_CREDIARIO;
+  });
 }
 
 // ===== GRADE DE PRODUTO (tamanho × cor) =====
@@ -15884,6 +15903,7 @@ document.addEventListener('click', function(e) {
 let LOJA_USA_NFCE = false;
 let LOJA_USA_GRADE = false;
 let LOJA_USA_CATALOGO = false;
+let LOJA_USA_CREDIARIO = false;
 let LOJA_CATALOGO_WHATSAPP = '';
 
   }
@@ -15900,7 +15920,7 @@ async function aplicarConfigLoja() {
   // Busca a configuração mais recente direto da tabela "lojas" no Supabase
   // (assim o Painel Admin pode editar nome/logo/cores sem precisar editar este arquivo)
   try {
-    const resp = await fetch(`${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,logo_base64,cor_accent,cor_accent2,cor_bg,usa_nfce,usa_grade,usa_catalogo,catalogo_whatsapp`, { headers: SB_HEADS });
+    const resp = await fetch(`${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,logo_base64,cor_accent,cor_accent2,cor_bg,usa_nfce,usa_grade,usa_catalogo,usa_crediario,catalogo_whatsapp`, { headers: SB_HEADS });
     if (resp.ok) {
       const rows = await resp.json();
       const loja = rows[0];
@@ -15920,6 +15940,7 @@ async function aplicarConfigLoja() {
         LOJA_USA_NFCE = !!loja.usa_nfce;
         LOJA_USA_GRADE = !!loja.usa_grade;
         LOJA_USA_CATALOGO = !!loja.usa_catalogo;
+        LOJA_USA_CREDIARIO = !!loja.usa_crediario;
         LOJA_CATALOGO_WHATSAPP = loja.catalogo_whatsapp || '';
         aplicarFeatureFlagsUI();
       }
