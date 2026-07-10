@@ -11946,13 +11946,20 @@ async function renderConsignados() {
   await carregarConsignados();
 
   const busca = (document.getElementById('consig-busca')?.value || '').toLowerCase();
+  const buscaD = busca.replace(/\D/g,'');
   const status = document.getElementById('consig-status')?.value || '';
+  const todosClientes = getClientes();
 
   let lista = _consignados.filter(c => {
     if (status && c.status !== status) return false;
     if (busca) {
-      return String(c.numero).includes(busca) ||
-             (c.cliente_nome||'').toLowerCase().includes(busca);
+      if (String(c.numero).includes(busca)) return true;
+      if ((c.cliente_nome||'').toLowerCase().includes(busca)) return true;
+      if (buscaD.length >= 3) {
+        const cliObj = todosClientes.find(x => x.nome === c.cliente_nome);
+        if (getCPFLimpo(cliObj).includes(buscaD)) return true;
+      }
+      return false;
     }
     return true;
   });
