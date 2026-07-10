@@ -11724,7 +11724,7 @@ function renderInadimplencia() {
 
   // Filtrar só parcelas de crediário vencidas com saldo
   const vencidas = debitos.filter(d => {
-    if (!d.origem_crediario) return false;
+    if (!isCrediarioDebito(d)) return false;
     const saldo = dSaldo(d);
     if (saldo <= 0.009) return false;
     const venc = d.vencimento || '';
@@ -11847,7 +11847,7 @@ function exportarInadimplenciaCSV() {
   const rows = [['Cliente','Contrato','Parcela','Vencimento','Dias de Atraso','Saldo Devedor']];
 
   debitos.filter(d => {
-    if (!d.origem_crediario) return false;
+    if (!isCrediarioDebito(d)) return false;
     if (dSaldo(d) <= 0.009) return false;
     const venc = d.vencimento || '';
     let vencDate;
@@ -16470,50 +16470,6 @@ function renderFluxoCaixa() {
           <td><strong>${R(saldo)}</strong></td>
         </tr>`;
       }).join('')}</tbody>
-    </table></div>
-  `;
-}
-
-// Inadimplência: débitos com saldo em aberto E vencimento já passado.
-function renderInadimplencia() {
-  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-  const inadimplentes = getDebitos().filter(d => {
-    const pago = (d.pagamentos || []).reduce((s, p) => s + p.valor, 0);
-    const saldo = (d.total || 0) - pago;
-    if (saldo <= 0.01) return false;
-    if (!d.vencimento) return false;
-    const [dd, mm, yy] = d.vencimento.split('/');
-    if (!dd || !mm || !yy) return false;
-    const venc = new Date(`${yy}-${mm}-${dd}T00:00:00`);
-    return venc < hoje;
-  }).map(d => {
-    const pago = (d.pagamentos || []).reduce((s, p) => s + p.valor, 0);
-    const [dd, mm, yy] = d.vencimento.split('/');
-    const venc = new Date(`${yy}-${mm}-${dd}T00:00:00`);
-    const diasAtraso = Math.floor((hoje - venc) / (1000 * 60 * 60 * 24));
-    return { ...d, saldo: (d.total || 0) - pago, diasAtraso };
-  }).sort((a, b) => b.diasAtraso - a.diasAtraso);
-
-  const cont = document.getElementById('ger-conteudo');
-  if (!inadimplentes.length) { cont.innerHTML = '<div class="empty">Nenhum cliente inadimplente no momento. 🎉</div>'; return; }
-
-  const totalInadimplente = inadimplentes.reduce((s, d) => s + d.saldo, 0);
-  cont.innerHTML = `
-    <div class="cards" style="margin-bottom:16px;">
-      <div class="card"><div class="card-label">Clientes inadimplentes</div><div class="card-value">${inadimplentes.length}</div></div>
-      <div class="card"><div class="card-label">Total em atraso</div><div class="card-value" style="color:var(--danger);">${R(totalInadimplente)}</div></div>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Cliente</th><th>Descrição</th><th>Vencimento</th><th>Dias em atraso</th><th>Saldo devedor</th></tr></thead>
-      <tbody>${inadimplentes.map(d => `
-        <tr>
-          <td><strong>${d.cliente || '—'}</strong></td>
-          <td style="font-size:12px;">${d.obs || d.produto || '—'}</td>
-          <td>${d.vencimento}</td>
-          <td style="color:var(--danger);font-weight:700;">${d.diasAtraso} dia${d.diasAtraso === 1 ? '' : 's'}</td>
-          <td><strong>${R(d.saldo)}</strong></td>
-        </tr>
-      `).join('')}</tbody>
     </table></div>
   `;
 }
