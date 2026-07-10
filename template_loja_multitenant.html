@@ -6366,12 +6366,118 @@ body.modo-vitrine-publica{
 
 <!-- ===== PÁGINA: CONSIGNADO ===== -->
 <div id="page-consignado" class="page">
-  <div class="section-title">📦 Consignado</div>
-  <div id="consignado-conteudo">
-    <div style="text-align:center;padding:60px 20px;color:var(--muted);">
-      <div style="font-size:48px;margin-bottom:16px;">📦</div>
-      <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Módulo Consignado</div>
-      <div style="font-size:13px;">Em implementação — Sprint 1 em andamento.</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+    <div class="section-title" style="margin:0;">📦 Consignado</div>
+    <button class="btn btn-primary" onclick="abrirModalNovoConsignado()">+ Novo Consignado</button>
+  </div>
+
+  <!-- Filtros -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+    <input type="text" id="consig-busca" placeholder="🔍 Buscar por nº, cliente..."
+      oninput="renderConsignados()"
+      style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface);min-width:220px;">
+    <select id="consig-status" onchange="renderConsignados()"
+      style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface);">
+      <option value="">Todos os status</option>
+      <option value="aberto">Aberto</option>
+      <option value="parcial">Parcial</option>
+      <option value="finalizado">Finalizado</option>
+      <option value="cancelado">Cancelado</option>
+    </select>
+  </div>
+
+  <!-- KPIs -->
+  <div id="consig-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;"></div>
+
+  <!-- Lista -->
+  <div class="table-wrap">
+    <table id="consig-tabela">
+      <thead><tr>
+        <th>Nº</th>
+        <th>Cliente</th>
+        <th>Saída</th>
+        <th>Prev. devolução</th>
+        <th>Itens</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr></thead>
+      <tbody id="consig-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL: Novo Consignado -->
+<div class="modal-bg" id="modal-consignado">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header">
+      <h2 id="modal-consig-titulo">📦 Novo Consignado</h2>
+      <button class="modal-close" onclick="fecharModal('modal-consignado')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="consig-id">
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Cliente</label>
+          <div style="position:relative;">
+            <input type="text" id="consig-cliente" placeholder="Nome ou CPF do cliente..." autocomplete="off"
+              oninput="consigBuscarCliente(this.value)"
+              style="width:100%;">
+            <input type="hidden" id="consig-cliente-id">
+            <div id="consig-cliente-sug" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);max-height:160px;overflow-y:auto;margin-top:2px;"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Data de saída</label>
+          <input type="date" id="consig-data-saida">
+        </div>
+        <div class="form-row">
+          <label>Previsão de devolução</label>
+          <input type="date" id="consig-data-prevista">
+        </div>
+        <div class="form-row" style="grid-column:1/-1;">
+          <label>Observações</label>
+          <input type="text" id="consig-obs" placeholder="Opcional...">
+        </div>
+      </div>
+
+      <!-- Itens -->
+      <div style="margin-top:16px;">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.04em;margin-bottom:8px;">Produtos</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input type="text" id="consig-prod-busca" placeholder="Ref., nome ou código de barras..."
+            oninput="consigBuscarProduto(this.value)"
+            style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface);"
+            autocomplete="off">
+          <div style="position:relative;flex:1;">
+            <div id="consig-prod-sug" style="display:none;position:absolute;top:0;left:0;right:0;z-index:300;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);max-height:160px;overflow-y:auto;"></div>
+          </div>
+        </div>
+        <div id="consig-itens-lista" style="border:1px solid var(--border);border-radius:var(--radius-sm);min-height:80px;background:var(--bg);">
+          <div id="consig-itens-empty" style="padding:20px;text-align:center;color:var(--muted);font-size:13px;">Nenhum produto adicionado</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-consignado')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarConsignado()">✅ Confirmar saída</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Retorno/Conferência -->
+<div class="modal-bg" id="modal-consig-retorno">
+  <div class="modal" style="max-width:580px;">
+    <div class="modal-header">
+      <h2 id="modal-retorno-titulo">🔄 Retorno — Consignado #<span id="modal-retorno-num"></span></h2>
+      <button class="modal-close" onclick="fecharModal('modal-consig-retorno')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Informe quantas peças foram devolvidas. O restante será enviado para o carrinho do PDV.</p>
+      <div id="modal-retorno-itens"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-consig-retorno')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarRetornoConsignado()">✅ Confirmar retorno</button>
     </div>
   </div>
 </div>
@@ -8254,6 +8360,8 @@ function showPage(id) {
   if (id === 'vendedores') { renderVendedores(); }
   if (id === 'financeiro') { renderFinanceiroUnificado(); }
   if (id === 'crediario') { renderCrediario(); }
+  if (id === 'consignado') { renderConsignados(); }
+  if (id === 'consignado') { renderConsignados(); }
   aplicarFlagCrediario();
   if (id === 'trocas') { renderTrocas(); }
   if (id === 'usuarios') { renderUsuarios(); }
@@ -11794,6 +11902,561 @@ function imprimirCarneCrediario(dadosCarne) {
   w.document.close();
 }
 
+
+
+// ══════════════════════════════════════════════════════════
+// MÓDULO CONSIGNADO
+// ══════════════════════════════════════════════════════════
+
+let _consignados = [];
+let _consigItensModal = []; // itens em edição no modal
+let _consigRetornoId = null;
+
+// ── CACHE E CARREGAMENTO ──
+async function carregarConsignados() {
+  try {
+    _consignados = await sbGet('consignados', 'order=numero.desc&limit=200') || [];
+  } catch(e) { console.warn('Consignados:', e.message); _consignados = []; }
+}
+
+async function carregarItensConsignado(consignadoId) {
+  try {
+    return await sbGet('consignado_itens', 'consignado_id=eq.' + consignadoId) || [];
+  } catch(e) { return []; }
+}
+
+// ── RENDERIZAÇÃO PRINCIPAL ──
+async function renderConsignados() {
+  if (!document.getElementById('page-consignado')) return;
+  await carregarConsignados();
+
+  const busca = (document.getElementById('consig-busca')?.value || '').toLowerCase();
+  const status = document.getElementById('consig-status')?.value || '';
+
+  let lista = _consignados.filter(c => {
+    if (status && c.status !== status) return false;
+    if (busca) {
+      return String(c.numero).includes(busca) ||
+             (c.cliente_nome||'').toLowerCase().includes(busca);
+    }
+    return true;
+  });
+
+  // KPIs
+  const kpisEl = document.getElementById('consig-kpis');
+  const abertos = _consignados.filter(c => c.status === 'aberto' || c.status === 'parcial');
+  const vencidos = abertos.filter(c => c.data_prevista && c.data_prevista < new Date().toISOString().slice(0,10));
+  if (kpisEl) kpisEl.innerHTML = [
+    { l:'Em aberto', v: abertos.length, cor:'#3b82f6', bg:'#eff6ff' },
+    { l:'Vencidos', v: vencidos.length, cor:'#dc2626', bg:'#fef2f2' },
+    { l:'Finalizados', v: _consignados.filter(c=>c.status==='finalizado').length, cor:'#16a34a', bg:'#f0fdf4' },
+    { l:'Total', v: _consignados.length, cor:'#6b7280', bg:'#f8fafc' },
+  ].map(k=>`<div style="background:${k.bg};border:1px solid ${k.cor}20;border-radius:10px;padding:12px 14px;">
+    <div style="font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;">${k.l}</div>
+    <div style="font-size:22px;font-weight:900;color:${k.cor};margin-top:3px;">${k.v}</div>
+  </div>`).join('');
+
+  // Tabela
+  const tbody = document.getElementById('consig-tbody');
+  if (!tbody) return;
+
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--muted);">Nenhum consignado encontrado.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = lista.map(c => {
+    const hoje = new Date().toISOString().slice(0,10);
+    const vencido = c.data_prevista && c.data_prevista < hoje && c.status !== 'finalizado' && c.status !== 'cancelado';
+    const statusBadge = {
+      aberto: `<span style="background:#dbeafe;color:#1e40af;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">Aberto</span>`,
+      parcial: `<span style="background:#fef9c3;color:#854d0e;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">Parcial</span>`,
+      finalizado: `<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">Finalizado</span>`,
+      cancelado: `<span style="background:#f1f5f9;color:#64748b;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">Cancelado</span>`,
+    }[c.status] || c.status;
+    const dtSaida = c.data_saida ? c.data_saida.split('-').reverse().join('/') : '—';
+    const dtPrev = c.data_prevista ? c.data_prevista.split('-').reverse().join('/') : '—';
+    return `<tr style="${vencido?'background:#fff5f5':''}">
+      <td><strong>#${String(c.numero).padStart(4,'0')}</strong></td>
+      <td>${c.cliente_nome||'—'}</td>
+      <td>${dtSaida}</td>
+      <td style="${vencido?'color:#dc2626;font-weight:700;':''}">${dtPrev}${vencido?' ⚠️':''}</td>
+      <td><span id="consig-qtd-itens-${c.id}">—</span></td>
+      <td>${statusBadge}</td>
+      <td style="white-space:nowrap;display:flex;gap:4px;">
+        ${c.status === 'aberto' || c.status === 'parcial' ? `
+          <button class="btn btn-sm" data-cid="${c.id}" onclick="abrirRetornoConsignado(this.dataset.cid)" style="background:var(--accent);color:#fff;font-size:11px;">🔄 Retorno</button>
+          <button class="btn btn-sm btn-outline" data-cid="${c.id}" onclick="imprimirComprovanteConsignado(this.dataset.cid)" style="font-size:11px;">🖨️</button>
+          <button class="btn btn-sm btn-outline" data-cid="${c.id}" onclick="cancelarConsignado(this.dataset.cid)" style="font-size:11px;color:#dc2626;">✕</button>
+        ` : `
+          <button class="btn btn-sm btn-outline" data-cid="${c.id}" onclick="imprimirComprovanteConsignado(this.dataset.cid)" style="font-size:11px;">🖨️</button>
+        `}
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Carregar qtd itens assincronamente
+  lista.forEach(async c => {
+    const el = document.getElementById('consig-qtd-itens-' + c.id);
+    if (!el) return;
+    const itens = await carregarItensConsignado(c.id);
+    const total = itens.reduce((s,i)=>s+i.quantidade_saida,0);
+    const pendente = itens.reduce((s,i)=>s+(i.quantidade_saida-i.quantidade_devolvida-i.quantidade_vendida),0);
+    el.textContent = `${itens.length} prod. (${pendente} pendente${pendente!==1?'s':''})`;
+  });
+}
+
+// ── MODAL NOVO CONSIGNADO ──
+function abrirModalNovoConsignado() {
+  document.getElementById('consig-id').value = '';
+  document.getElementById('consig-cliente').value = '';
+  document.getElementById('consig-cliente-id').value = '';
+  document.getElementById('consig-obs').value = '';
+  document.getElementById('consig-prod-busca').value = '';
+  const hoje = new Date().toISOString().slice(0,10);
+  document.getElementById('consig-data-saida').value = hoje;
+  // Previsão padrão: 7 dias
+  const prev = new Date(); prev.setDate(prev.getDate()+7);
+  document.getElementById('consig-data-prevista').value = prev.toISOString().slice(0,10);
+  _consigItensModal = [];
+  renderItensModal();
+  document.getElementById('modal-consig-titulo').textContent = '📦 Novo Consignado';
+  document.getElementById('modal-consignado').classList.add('open');
+}
+
+// ── AUTOCOMPLETE CLIENTE ──
+function consigBuscarCliente(busca) {
+  const sug = document.getElementById('consig-cliente-sug');
+  if (!busca || busca.length < 2) { sug.style.display='none'; return; }
+  const buscaD = busca.replace(/\D/g,'');
+  const clientes = getClientes().filter(c => {
+    if ((c.nome||'').toLowerCase().includes(busca.toLowerCase())) return true;
+    if (buscaD.length >= 3 && getCPFLimpo(c).includes(buscaD)) return true;
+    return false;
+  }).slice(0,8);
+  if (!clientes.length) { sug.style.display='none'; return; }
+  sug.innerHTML = clientes.map(c => {
+    const cpf = getCPFCliente(c);
+    return `<div onclick="consigSelecionarCliente('${c.nome.replace(/'/g,"\\'")}','${c.id||''}')"
+      style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
+      onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+      ${c.nome}${cpf?`<span style="font-size:11px;color:var(--muted);margin-left:6px;">${cpf}</span>`:''}
+    </div>`;
+  }).join('');
+  sug.style.display = 'block';
+}
+
+function consigSelecionarCliente(nome, id) {
+  document.getElementById('consig-cliente').value = nome;
+  document.getElementById('consig-cliente-id').value = id;
+  document.getElementById('consig-cliente-sug').style.display = 'none';
+}
+
+// ── BUSCA DE PRODUTO ──
+function consigBuscarProduto(busca) {
+  const sug = document.getElementById('consig-prod-sug');
+  if (!busca || busca.length < 2) { sug.style.display='none'; return; }
+  const buscaL = busca.toLowerCase();
+  const produtos = getProdutos().filter(p =>
+    (p.ref||'').toLowerCase().includes(buscaL) ||
+    (p.produto||'').toLowerCase().includes(buscaL) ||
+    (p.ean||'').includes(busca)
+  ).slice(0,8);
+  if (!produtos.length) { sug.style.display='none'; return; }
+  sug.innerHTML = produtos.map(p => `
+    <div onclick="consigAdicionarProduto('${p.ref}')"
+      style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;"
+      onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+      <span><strong>${p.ref}</strong> · ${p.produto}</span>
+      <span style="color:var(--muted);">Est: ${p.estoque||0} · ${R(p.preco||0)}</span>
+    </div>`).join('');
+  sug.style.display = 'block';
+}
+
+function consigAdicionarProduto(ref) {
+  document.getElementById('consig-prod-busca').value = '';
+  document.getElementById('consig-prod-sug').style.display = 'none';
+  const produto = getProdutos().find(p => p.ref === ref);
+  if (!produto) return;
+  const existe = _consigItensModal.find(i => i.ref === ref);
+  if (existe) { existe.qtd++; }
+  else {
+    _consigItensModal.push({
+      ref: produto.ref,
+      ean: produto.ean || '',
+      nome: produto.produto,
+      qtd: 1,
+      valor: produto.preco || 0,
+      estoque: produto.estoque || 0
+    });
+  }
+  renderItensModal();
+}
+
+function renderItensModal() {
+  const el = document.getElementById('consig-itens-lista');
+  const empty = document.getElementById('consig-itens-empty');
+  if (!_consigItensModal.length) {
+    if (empty) empty.style.display = 'block';
+    const rows = el.querySelectorAll('.consig-item-row');
+    rows.forEach(r => r.remove());
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  el.innerHTML = `
+    <table style="width:100%;font-size:13px;border-collapse:collapse;">
+      <thead><tr style="background:var(--bg);">
+        <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--muted);">Produto</th>
+        <th style="padding:8px 10px;text-align:center;font-size:11px;color:var(--muted);">Qtd</th>
+        <th style="padding:8px 10px;text-align:right;font-size:11px;color:var(--muted);">Valor ref.</th>
+        <th style="padding:8px 10px;"></th>
+      </tr></thead>
+      <tbody>${_consigItensModal.map((item,i) => `
+        <tr class="consig-item-row" style="border-top:1px solid var(--border);">
+          <td style="padding:8px 10px;"><strong>${item.ref}</strong> · ${item.nome}</td>
+          <td style="padding:8px 10px;text-align:center;">
+            <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
+              <button onclick="_consigItensModal[${i}].qtd=Math.max(1,_consigItensModal[${i}].qtd-1);renderItensModal()" style="background:var(--border);border:none;border-radius:4px;width:24px;height:24px;cursor:pointer;font-size:14px;">−</button>
+              <span style="min-width:24px;text-align:center;font-weight:700;">${item.qtd}</span>
+              <button onclick="_consigItensModal[${i}].qtd++;renderItensModal()" style="background:var(--border);border:none;border-radius:4px;width:24px;height:24px;cursor:pointer;font-size:14px;">+</button>
+            </div>
+          </td>
+          <td style="padding:8px 10px;text-align:right;">${R(item.valor)}</td>
+          <td style="padding:8px 10px;text-align:right;">
+            <button onclick="_consigItensModal.splice(${i},1);renderItensModal()" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;">×</button>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div style="padding:8px 10px;text-align:right;font-size:12px;color:var(--muted);border-top:1px solid var(--border);">
+      Total: <strong>${_consigItensModal.reduce((s,i)=>s+i.qtd,0)} peça(s)</strong>
+    </div>`;
+}
+
+// ── SALVAR CONSIGNADO ──
+async function salvarConsignado() {
+  const cliente = document.getElementById('consig-cliente').value.trim();
+  const clienteId = document.getElementById('consig-cliente-id').value;
+  const dataSaida = document.getElementById('consig-data-saida').value;
+  const dataPrevista = document.getElementById('consig-data-prevista').value;
+  const obs = document.getElementById('consig-obs').value.trim();
+
+  if (!cliente) { alert('Informe o cliente.'); return; }
+  if (!_consigItensModal.length) { alert('Adicione ao menos um produto.'); return; }
+  if (!dataSaida) { alert('Informe a data de saída.'); return; }
+
+  // Validar estoque
+  const produtos = getProdutos();
+  for (const item of _consigItensModal) {
+    const p = produtos.find(x => x.ref === item.ref);
+    if (!p || (p.estoque||0) < item.qtd) {
+      alert(`Estoque insuficiente para ${item.ref} — ${item.nome}\nDisponível: ${p?.estoque||0} · Solicitado: ${item.qtd}`);
+      return;
+    }
+  }
+
+  mostrarLoading(true);
+  try {
+    // Obter próximo número sequencial via RPC
+    const seqResp = await fetch(`${SB_URL}/rest/v1/rpc/proximo_numero_consignado`, {
+      method: 'POST',
+      headers: { ...SB_HEADS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_loja_id: LOJA_ID })
+    });
+    const numero = await seqResp.json();
+
+    // Criar consignado
+    const consigResp = await sbPost('consignados', {
+      numero,
+      cliente_id: clienteId || null,
+      cliente_nome: cliente,
+      data_saida: dataSaida,
+      data_prevista: dataPrevista || null,
+      status: 'aberto',
+      observacoes: obs || null
+    });
+    const consig = Array.isArray(consigResp) ? consigResp[0] : consigResp;
+    if (!consig?.id) throw new Error('Erro ao criar consignado');
+
+    // Criar itens e baixar estoque
+    for (const item of _consigItensModal) {
+      await sbPost('consignado_itens', {
+        consignado_id: consig.id,
+        produto_ref: item.ref,
+        produto_ean: item.ean || null,
+        produto_nome: item.nome,
+        quantidade_saida: item.qtd,
+        quantidade_devolvida: 0,
+        quantidade_vendida: 0,
+        valor_referencia: item.valor
+      });
+      // Baixar estoque
+      const p = produtos.find(x => x.ref === item.ref);
+      if (p) {
+        const novoEst = (p.estoque||0) - item.qtd;
+        await sbPatchWhere('produtos', 'ref', item.ref, { estoque: novoEst });
+        p.estoque = novoEst;
+      }
+    }
+    saveProdutos(produtos);
+    invalidarCache('produtos');
+
+    fecharModal('modal-consignado');
+    mostrarNotificacao(`✅ Consignado #${String(numero).padStart(4,'0')} criado! Estoque baixado.`);
+
+    // Imprimir comprovante automaticamente
+    setTimeout(() => imprimirComprovanteConsignado(consig.id), 500);
+
+    await renderConsignados();
+  } catch(e) {
+    console.error(e);
+    alert('Erro ao salvar consignado: ' + e.message);
+  } finally { mostrarLoading(false); }
+}
+
+// ── RETORNO / CONFERÊNCIA ──
+async function abrirRetornoConsignado(id) {
+  _consigRetornoId = id;
+  const consig = _consignados.find(c => c.id === id);
+  if (!consig) return;
+  document.getElementById('modal-retorno-num').textContent = String(consig.numero).padStart(4,'0');
+  mostrarLoading(true);
+  const itens = await carregarItensConsignado(id);
+  mostrarLoading(false);
+
+  const el = document.getElementById('modal-retorno-itens');
+  el.innerHTML = itens.map((item,i) => {
+    const pendente = item.quantidade_saida - item.quantidade_devolvida - item.quantidade_vendida;
+    if (pendente <= 0) return '';
+    return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <strong>${item.produto_ref} · ${item.produto_nome}</strong>
+        <span style="font-size:12px;color:var(--muted);">${pendente} pendente${pendente!==1?'s':''}</span>
+      </div>
+      <div style="display:flex;gap:12px;font-size:12px;">
+        <label style="flex:1;">Devolvidas
+          <input type="number" id="ret-dev-${item.id}" min="0" max="${pendente}" value="${pendente}"
+            onchange="atualizarRetornoCalc(${i})"
+            style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;margin-top:4px;font-size:13px;font-weight:700;">
+        </label>
+        <label style="flex:1;">Vendidas (calculado)
+          <input type="number" id="ret-vend-${item.id}" min="0" max="${pendente}" value="0"
+            style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;margin-top:4px;font-size:13px;font-weight:700;background:var(--bg);" readonly>
+        </label>
+      </div>
+      <input type="hidden" id="ret-id-${i}" value="${item.id}">
+      <input type="hidden" id="ret-pendente-${i}" value="${pendente}">
+      <input type="hidden" id="ret-ref-${i}" value="${item.produto_ref}">
+    </div>`;
+  }).join('') || '<p style="color:var(--muted);text-align:center;padding:20px;">Todos os itens já foram resolvidos.</p>';
+
+  // Calcular vendidas = pendentes - devolvidas
+  itens.forEach((item,i) => {
+    const pendente = item.quantidade_saida - item.quantidade_devolvida - item.quantidade_vendida;
+    if (pendente <= 0) return;
+    const devEl = document.getElementById(`ret-dev-${item.id}`);
+    const vendEl = document.getElementById(`ret-vend-${item.id}`);
+    if (devEl && vendEl) {
+      devEl.oninput = () => {
+        const dev = Math.min(Math.max(0, parseInt(devEl.value)||0), pendente);
+        devEl.value = dev;
+        vendEl.value = pendente - dev;
+      };
+    }
+  });
+
+  document.getElementById('modal-consig-retorno').classList.add('open');
+}
+
+async function confirmarRetornoConsignado() {
+  const id = _consigRetornoId;
+  if (!id) return;
+  const consig = _consignados.find(c => c.id === id);
+  const itens = await carregarItensConsignado(id);
+  const produtos = getProdutos();
+  const carrinhoItens = [];
+  let totalPendente = 0;
+  let totalResolvido = 0;
+
+  mostrarLoading(true);
+  try {
+    for (let i = 0; i < itens.length; i++) {
+      const item = itens[i];
+      const pendente = item.quantidade_saida - item.quantidade_devolvida - item.quantidade_vendida;
+      if (pendente <= 0) { totalPendente += 0; continue; }
+
+      const devEl = document.getElementById(`ret-dev-${item.id}`);
+      const dev = Math.min(Math.max(0, parseInt(devEl?.value)||0), pendente);
+      const vend = pendente - dev;
+
+      totalPendente += pendente;
+      totalResolvido += (dev + vend);
+
+      // Atualizar item
+      await sbPatch('consignado_itens', item.id, {
+        quantidade_devolvida: item.quantidade_devolvida + dev,
+        quantidade_vendida: item.quantidade_vendida + vend
+      });
+
+      // Devolvidas: retornar ao estoque
+      if (dev > 0) {
+        const p = produtos.find(x => x.ref === item.produto_ref);
+        if (p) {
+          await sbPatchWhere('produtos', 'ref', item.produto_ref, { estoque: (p.estoque||0) + dev });
+          p.estoque = (p.estoque||0) + dev;
+        }
+      }
+
+      // Vendidas: adicionar ao carrinho
+      if (vend > 0) {
+        carrinhoItens.push({ ref: item.produto_ref, nome: item.produto_nome, qtd: vend, preco: item.valor_referencia });
+      }
+    }
+
+    // Atualizar status do consignado
+    const novoStatus = totalResolvido >= totalPendente ? 'finalizado' : 'parcial';
+    await sbPatch('consignados', id, { status: novoStatus, updated_at: new Date().toISOString() });
+
+    saveProdutos(produtos);
+    invalidarCache('produtos');
+    fecharModal('modal-consig-retorno');
+
+    // Enviar para carrinho do PDV se houver itens vendidos
+    if (carrinhoItens.length) {
+      if (confirm(`${carrinhoItens.reduce((s,i)=>s+i.qtd,0)} peça(s) serão enviadas para o carrinho do PDV.\nDeseja ir para o PDV agora?`)) {
+        // Preencher carrinho
+        carrinhoItens.forEach(item => {
+          const prod = produtos.find(p => p.ref === item.ref);
+          if (prod) adicionarAoCarrinho(prod, item.qtd, item.preco);
+        });
+        // Registrar cliente
+        if (consig?.cliente_nome) {
+          const el = document.getElementById('venda-cliente');
+          if (el) { el.value = consig.cliente_nome; }
+        }
+        showPage('vendas');
+      }
+    }
+
+    mostrarNotificacao(`✅ Retorno registrado! Status: ${novoStatus}.`);
+    await renderConsignados();
+  } catch(e) {
+    console.error(e);
+    alert('Erro no retorno: ' + e.message);
+  } finally { mostrarLoading(false); }
+}
+
+// ── CANCELAR ──
+async function cancelarConsignado(id) {
+  const consig = _consignados.find(c => c.id === id);
+  if (!consig) return;
+  const itens = await carregarItensConsignado(id);
+  const comVendas = itens.some(i => i.quantidade_vendida > 0);
+  if (comVendas) { alert('Não é possível cancelar: já existem itens vendidos neste consignado.'); return; }
+  if (!confirm(`Cancelar Consignado #${String(consig.numero).padStart(4,'0')}?\nTodos os itens retornarão ao estoque.`)) return;
+
+  mostrarLoading(true);
+  try {
+    const produtos = getProdutos();
+    for (const item of itens) {
+      const devolvidas = item.quantidade_devolvida;
+      const pendente = item.quantidade_saida - devolvidas;
+      if (pendente > 0) {
+        const p = produtos.find(x => x.ref === item.produto_ref);
+        if (p) {
+          await sbPatchWhere('produtos', 'ref', item.produto_ref, { estoque: (p.estoque||0) + pendente });
+          p.estoque = (p.estoque||0) + pendente;
+        }
+      }
+    }
+    await sbPatch('consignados', id, { status: 'cancelado', updated_at: new Date().toISOString() });
+    saveProdutos(produtos);
+    invalidarCache('produtos');
+    mostrarNotificacao('✅ Consignado cancelado. Estoque restaurado.');
+    await renderConsignados();
+  } catch(e) {
+    console.error(e);
+    alert('Erro ao cancelar: ' + e.message);
+  } finally { mostrarLoading(false); }
+}
+
+// ── COMPROVANTE ──
+async function imprimirComprovanteConsignado(id) {
+  const consig = _consignados.find(c => c.id === id) ||
+    (await sbGet('consignados', 'id=eq.' + id))?.[0];
+  if (!consig) return;
+  const itens = await carregarItensConsignado(id);
+  const cfg = getCarneConfig ? getCarneConfig() : {};
+  const nomeLoja = cfg.nome || window.LOJA_NOME || 'Loja';
+  const endereco = cfg.endereco || '';
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#D4145A';
+  const logoHTML = (cfg.logo !== 'nao' && window.logoBase64)
+    ? `<img src="${window.logoBase64}" style="height:40px;object-fit:contain;">` : '';
+  const numFmt = '#' + String(consig.numero).padStart(4,'0');
+  const fmtDate = s => s ? s.split('-').reverse().join('/') : '—';
+  const totalPecas = itens.reduce((s,i)=>s+i.quantidade_saida,0);
+
+  const html = `<!doctype html><html><head>
+  <meta charset="utf-8"><title>Consignado ${numFmt}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;padding:24px;color:#111827;font-size:13px;}
+    .btn-print{background:${accent};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:20px;}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid ${accent};padding-bottom:12px;margin-bottom:16px;}
+    .loja-nome{font-size:15px;font-weight:800;color:${accent};}
+    .titulo{font-size:18px;font-weight:900;text-align:center;margin:12px 0 4px;}
+    .num{text-align:center;font-size:13px;color:#64748b;margin-bottom:16px;}
+    .campo{display:flex;gap:8px;margin-bottom:6px;font-size:12px;}
+    .campo label{font-weight:700;min-width:140px;}
+    .campo span{border-bottom:1px solid #cbd5e1;flex:1;}
+    table{width:100%;border-collapse:collapse;font-size:12px;margin:12px 0;}
+    th{background:#f8fafc;padding:7px 10px;text-align:left;border:1px solid #e5e7eb;font-size:11px;text-transform:uppercase;}
+    td{padding:7px 10px;border:1px solid #e5e7eb;}
+    .assinatura{margin-top:30px;display:grid;grid-template-columns:1fr 1fr;gap:40px;}
+    .assinatura-linha{border-top:1px solid #374151;margin-top:40px;padding-top:6px;font-size:10px;text-align:center;}
+    .aviso{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;font-size:11px;color:#92400e;margin-top:16px;}
+    @media print{.btn-print{display:none}}
+  </style></head><body>
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
+  <div class="header">
+    <div>${logoHTML}<div class="loja-nome">${nomeLoja}</div>${endereco?`<div style="font-size:11px;color:#64748b;">${endereco}</div>`:''}</div>
+    <div style="text-align:right;font-size:11px;color:#64748b;">
+      <div>Data: ${fmtDate(consig.data_saida)}</div>
+      <div style="margin-top:4px;">Consignado ${numFmt}</div>
+    </div>
+  </div>
+  <div class="titulo">📦 Comprovante de Consignado</div>
+  <div class="num">${numFmt}</div>
+  <div class="campo"><label>Cliente:</label><span>${consig.cliente_nome||'—'}</span></div>
+  <div class="campo"><label>Data de saída:</label><span>${fmtDate(consig.data_saida)}</span></div>
+  <div class="campo"><label>Previsão de devolução:</label><span>${fmtDate(consig.data_prevista)}</span></div>
+  ${consig.observacoes?`<div class="campo"><label>Observações:</label><span>${consig.observacoes}</span></div>`:''}
+  <table>
+    <thead><tr><th>#</th><th>Ref.</th><th>Produto</th><th>Qtd</th><th>Valor Ref.</th></tr></thead>
+    <tbody>${itens.map((item,i)=>`<tr>
+      <td>${i+1}</td><td>${item.produto_ref}</td><td>${item.produto_nome||'—'}</td>
+      <td style="text-align:center;font-weight:700;">${item.quantidade_saida}</td>
+      <td style="text-align:right;">${R(item.valor_referencia)}</td>
+    </tr>`).join('')}
+    <tr style="background:#f8fafc;font-weight:700;">
+      <td colspan="3" style="text-align:right;">Total</td>
+      <td style="text-align:center;">${totalPecas} peça${totalPecas!==1?'s':''}</td>
+      <td style="text-align:right;">${R(itens.reduce((s,i)=>s+i.valor_referencia*i.quantidade_saida,0))}</td>
+    </tr>
+    </tbody>
+  </table>
+  <div class="aviso">⚠️ As peças acima foram retiradas em consignado. O cliente se compromete a devolvê-las ou efetuar o pagamento até ${fmtDate(consig.data_prevista)||'a combinar'}.</div>
+  <div class="assinatura">
+    <div class="assinatura-linha">${nomeLoja}<br><span style="font-size:10px;color:#64748b;">LOJA</span></div>
+    <div class="assinatura-linha">${consig.cliente_nome||'Cliente'}<br><span style="font-size:10px;color:#64748b;">CLIENTE</span></div>
+  </div>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { alert('Pop-up bloqueado.'); return; }
+  w.document.write(html);
+  w.document.close();
+}
 
 // ── RELATÓRIO DE INADIMPLÊNCIA ──
 function renderInadimplencia() {
