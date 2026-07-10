@@ -10888,7 +10888,7 @@ async function confirmarVenda() {
           parcela: pc.parcela,
           total_parcelas: pc.total_parcelas,
           imprimir_carne: !!document.getElementById('cred-venda-imprimir')?.checked,
-          cpf_cliente: (() => { const cli = getClientes().find(c => c.nome === nomeClienteVenda); return cli?.cpf || ''; })()
+          cpf_cliente: (() => { const nomeCliente = document.getElementById('venda-cliente')?.value || document.getElementById('cliente-nome')?.value || ''; const cli = getClientes().find(c => c.nome === nomeCliente); return cli?.cpf || ''; })()
         };
         debitos.unshift(debitoCred);
         try {
