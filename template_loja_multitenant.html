@@ -11976,6 +11976,7 @@ function mostrarCredAba(aba){
   document.getElementById('cred-panel-' + aba)?.classList.add('active');
   if (aba === 'config') carregarCredConfig();
   if (aba === 'importar') previewCredImportacao();
+  if (aba === 'inadimplencia') { renderInadimplencia(); return; }
   renderCrediario();
 }
 function credParseDataBR(s){
