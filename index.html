@@ -12525,6 +12525,8 @@ function mostrarCredAba(aba){
   if (aba === 'importar') previewCredImportacao();
   if (aba === 'inadimplencia') { renderInadimplencia(); return; }
   if (aba === 'relatorios') { renderRelatoriosCrediario(); return; }
+  if (aba === 'clientes') { renderCredClientes(getCredParcelas()); return; }
+  if (aba === 'clientes') { renderCredClientes(getCredParcelas()); return; }
   renderCrediario();
 }
 function credParseDataBR(s){
@@ -12734,7 +12736,8 @@ function renderCrediario(){
     <div class="cred-kpi ok"><small>Recebido</small><strong>${R(recebido)}</strong></div>
     <div class="cred-kpi"><small>Parcelas vencidas</small><strong>${qtdVenc}</strong></div>`;
   renderCredListas(parcelas);
-  renderCredClientes(parcelas);
+  // Só renderiza clientes se não houver busca ativa (para não perder o filtro)
+  if (!document.getElementById('cred-clientes-busca')?.value) renderCredClientes(parcelas);
   // Renderizar fluxo de caixa se na aba visão
   if (!credAbaAtual || credAbaAtual === 'visao') renderFluxoCaixaCredito();
   // Executar bloqueio automático em background
