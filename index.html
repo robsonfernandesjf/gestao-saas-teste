@@ -1830,7 +1830,7 @@
 /* compacta área geral somente na tela de venda */
 #page-vendas.active,
 #page-vendas{
-  --pdv-right: 260px;
+  --pdv-right: 380px;
   --pdv-gap: 18px;
 }
 
@@ -2155,7 +2155,7 @@
   }
 
   #page-vendas{
-    --pdv-right: 240px !important;
+    --pdv-right: 360px !important;
     --pdv-gap: 12px !important;
   }
 
@@ -4987,6 +4987,18 @@ body.modo-vitrine-publica{
 
       <div class="pdv-finalizar-bar">
         <button class="pdv-btn-limpar" onclick="limparCarrinho()">🗑 Limpar</button>
+      </div>
+
+      <!-- RECEBER CREDIÁRIO — só aparece se loja tem crediário habilitado -->
+      <div id="pdv-receber-cred-wrap" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">💳 Receber Crediário</div>
+        <div style="position:relative;">
+          <input type="text" id="pdv-cred-busca-cliente" placeholder="Buscar cliente..." autocomplete="off"
+            oninput="pdvCredBuscarCliente(this.value)"
+            style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface);">
+          <div id="pdv-cred-sugestoes" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);max-height:150px;overflow-y:auto;margin-top:2px;"></div>
+        </div>
+        <div id="pdv-cred-parcelas" style="margin-top:8px;"></div>
       </div>
 
     </div>
@@ -10005,10 +10017,135 @@ function aplicarFeatureFlagsUI() {
   aplicarFlagCrediario();
 }
 
+// ── RECEBIMENTO DE CREDIÁRIO NO PDV ──
+function pdvCredBuscarCliente(busca) {
+  const sug = document.getElementById('pdv-cred-sugestoes');
+  const parcelas = document.getElementById('pdv-cred-parcelas');
+  if (!busca || busca.length < 2) { sug.style.display = 'none'; return; }
+  const debitos = getDebitos();
+  function dStatus(d) {
+    return (d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0) >= Number(d.total||d.valor_total||0) ? 'pago' : 'aberto';
+  }
+  const clientes = [...new Set(
+    debitos.filter(d => d.origem_crediario && dStatus(d) !== 'pago' &&
+      (d.cliente||'').toLowerCase().includes(busca.toLowerCase()))
+    .map(d => d.cliente)
+  )];
+  if (!clientes.length) { sug.style.display = 'none'; return; }
+  sug.innerHTML = clientes.map(c =>
+    `<div onclick="pdvCredSelecionarCliente('${c.replace(/'/g,"\'")}")"
+      style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
+      onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">${c}</div>`
+  ).join('');
+  sug.style.display = 'block';
+}
+
+function pdvCredSelecionarCliente(nome) {
+  document.getElementById('pdv-cred-busca-cliente').value = nome;
+  document.getElementById('pdv-cred-sugestoes').style.display = 'none';
+  pdvCredRenderParcelas(nome);
+}
+
+function pdvCredRenderParcelas(cliente) {
+  const el = document.getElementById('pdv-cred-parcelas');
+  if (!el) return;
+  const debitos = getDebitos();
+  const hoje = new Date().toISOString().slice(0,10);
+  function dSaldo(d) { return Number(d.total||d.valor_total||0) - (d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0); }
+  function dStatus(d) { return dSaldo(d) <= 0 ? 'pago' : 'aberto'; }
+  function vencISO(d) {
+    const v = d.vencimento||'';
+    if (v.includes('/')) { const p=v.split('/'); return p.length===3?`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`:''; }
+    return v;
+  }
+  const parcelas = debitos
+    .filter(d => d.origem_crediario && (d.cliente||'') === cliente && dStatus(d) === 'aberto')
+    .sort((a,b) => (vencISO(a)||'').localeCompare(vencISO(b)||''));
+  if (!parcelas.length) {
+    el.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:8px 0;">Nenhuma parcela em aberto.</div>`;
+    return;
+  }
+  el.innerHTML = parcelas.map((d,i) => {
+    const saldo = dSaldo(d);
+    const vISO = vencISO(d);
+    const vencido = vISO && vISO < hoje;
+    const parc = d.parcela && d.total_parcelas ? `${d.parcela}/${d.total_parcelas}` : '1/1';
+    const [y,m,dd] = (vISO||'').split('-');
+    const vencFmt = y ? `${dd}/${m}/${y}` : d.vencimento || '—';
+    return `<div style="background:${vencido?'#fff5f5':'var(--bg)'};border:1px solid ${vencido?'#fca5a5':'var(--border)'};border-radius:8px;padding:8px 10px;margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:11px;color:var(--muted);">Parc. ${parc} · ${vencFmt}${vencido?' <span style="color:#dc2626;font-weight:700;">vencida</span>':''}</span>
+        <strong style="font-size:13px;color:${vencido?'#dc2626':'var(--accent)'};">${R(saldo)}</strong>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <select id="pdv-cred-forma-${i}" style="flex:1;font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
+          <option value="Dinheiro">💵 Dinheiro</option>
+          <option value="Pix">📱 Pix</option>
+          <option value="Cartão débito">💳 Débito</option>
+          <option value="Cartão crédito">💳 Crédito</option>
+        </select>
+        <button onclick="pdvCredReceberParcela('${d.id}','${i}',${saldo})"
+          style="background:var(--success);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">
+          ✅ Receber
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function pdvCredReceberParcela(debitoId, idx, saldo) {
+  const forma = document.getElementById(`pdv-cred-forma-${idx}`)?.value || 'Dinheiro';
+  if (!confirm(`Receber ${R(saldo)} via ${forma}?`)) return;
+  mostrarLoading(true);
+  try {
+    const debitos = getDebitos();
+    const d = debitos.find(x => String(x.id) === String(debitoId));
+    if (!d) { alert('Parcela não encontrada.'); return; }
+    const hoje = new Date();
+    const hojeISO = hoje.toISOString().slice(0,10);
+    const [y,m,dd] = hojeISO.split('-');
+    const hojeStr = `${dd}/${m}/${y}`;
+    d.pagamentos = d.pagamentos || [];
+    d.pagamentos.push({ data: hojeISO, valor: saldo, forma, obs: 'Recebido no PDV' });
+    // Registrar entrada no caixa
+    const sessoes = getCaixaSessoes();
+    const sessaoAtual = sessoes.find(s => s.status === 'aberto');
+    if (sessaoAtual) {
+      sessaoAtual.movimentos = sessaoAtual.movimentos || [];
+      sessaoAtual.movimentos.push({
+        tipo: 'entrada',
+        descricao: `Crediário · ${d.cliente} parc. ${d.parcela||1}/${d.total_parcelas||1}`,
+        valor: saldo,
+        forma,
+        data: hojeStr,
+        hora: hoje.toTimeString().slice(0,5)
+      });
+      saveCaixaSessoes(sessoes);
+    }
+    // Salvar débito
+    const ehIdReal = d.id && !String(d.id).startsWith('cred_imp_') && !String(d.id).startsWith('cartao_');
+    if (ehIdReal) {
+      await sbPatch('debitos', d.id, { pagamentos: d.pagamentos }).catch(e => console.warn(e));
+    }
+    saveDebitos(debitos);
+    invalidarCache('debitos');
+    mostrarNotificacao(`✅ ${R(saldo)} recebido e lançado no caixa!`);
+    // Atualizar widget do caixa
+    atualizarWidgetCaixa();
+    // Recarregar parcelas do cliente
+    pdvCredRenderParcelas(d.cliente);
+  } catch(e) {
+    console.error(e);
+    alert('Erro: ' + e.message);
+  } finally { mostrarLoading(false); }
+}
+
 function aplicarFlagCrediario() {
   // Menu lateral — usa setProperty+important para vencer o CSS display:flex!important do #main-nav button
   const btnCred = document.getElementById('nav-btn-crediario');
   if (btnCred) btnCred.style.setProperty('display', LOJA_USA_CREDIARIO ? 'flex' : 'none', 'important');
+  const wrapCred = document.getElementById('pdv-receber-cred-wrap');
+  if (wrapCred) wrapCred.style.display = LOJA_USA_CREDIARIO ? 'block' : 'none';
 
   // PDV — botão Fiado vs Crediário
   const btnFiado = document.querySelector('.pdv-pag-btn[data-valor="A prazo"]');
