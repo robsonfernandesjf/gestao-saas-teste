@@ -5956,7 +5956,7 @@ body.modo-vitrine-publica{
 
   <div id="cred-panel-config" class="cred-panel">
     <div class="cred-box">
-      <h3>⚙️ Configurações iniciais</h3>
+      <h3>⚙️ Configurações do Crediário</h3>
       <div class="cred-form-grid">
         <div class="cred-form-row"><label>Limite padrão por cliente</label><input id="cred-conf-limite" inputmode="numeric" placeholder="0,00" oninput="mascaraMoeda(this)"></div>
         <div class="cred-form-row"><label>Máximo de parcelas</label><input id="cred-conf-parcelas" type="number" min="1" value="6"></div>
@@ -5965,6 +5965,47 @@ body.modo-vitrine-publica{
       </div>
       <button class="btn btn-primary" onclick="salvarCredConfig()">Salvar configurações</button>
       <span id="cred-conf-msg" style="font-size:12px;color:#64748b;margin-left:10px;"></span>
+    </div>
+
+    <!-- PERSONALIZAÇÃO DO CARNÊ -->
+    <div class="cred-box" style="margin-top:16px;">
+      <h3>🖨️ Personalização do Carnê</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Estas informações aparecem em cada coupom do carnê impresso.</p>
+      <div class="cred-form-grid">
+        <div class="cred-form-row">
+          <label>Nome da loja no carnê</label>
+          <input type="text" id="carne-conf-nome" placeholder="Ex: Fátima Cigani Modas">
+          <small style="color:var(--muted);font-size:11px;">Se vazio, usa o nome cadastrado no sistema.</small>
+        </div>
+        <div class="cred-form-row">
+          <label>Endereço / Telefone</label>
+          <input type="text" id="carne-conf-endereco" placeholder="Ex: Rua das Flores, 123 · (32) 99999-0000">
+        </div>
+        <div class="cred-form-row" style="grid-column:1/-1;">
+          <label>Mensagem de rodapé</label>
+          <input type="text" id="carne-conf-rodape" placeholder='Ex: "Não pague sem carimbo. Guarde este coupom."'>
+        </div>
+        <div class="cred-form-row">
+          <label>Layout de impressão</label>
+          <select id="carne-conf-layout">
+            <option value="2col">2 coupons por linha (padrão)</option>
+            <option value="1col">1 coupon por linha (maior)</option>
+            <option value="3col">3 coupons por linha (compacto)</option>
+          </select>
+        </div>
+        <div class="cred-form-row">
+          <label>Usar logo da loja</label>
+          <select id="carne-conf-logo">
+            <option value="sim">Sim, incluir logo</option>
+            <option value="nao">Não, somente texto</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;">
+        <button class="btn btn-primary" onclick="salvarCarneConfig()">💾 Salvar configurações do carnê</button>
+        <button class="btn btn-outline" onclick="previewCarneDemo()">👁 Visualizar modelo</button>
+        <span id="carne-conf-msg" style="font-size:12px;color:#64748b;"></span>
+      </div>
     </div>
   </div>
 </div>
@@ -10045,21 +10086,47 @@ function abrirModalReceberCrediario() {
 function modalCredBuscar(busca) {
   const sug = document.getElementById('modal-cred-sugestoes');
   if (!busca || busca.length < 2) { sug.style.display = 'none'; return; }
+
   const debitos = getDebitos();
+  const clientes = getClientes(); // para cruzar CPF
+  const buscaLower = busca.toLowerCase().replace(/\D/g,'') || busca.toLowerCase();
+  const ehCPF = /^\d{3,}$/.test(busca.replace(/\D/g,'')) && busca.replace(/\D/g,'').length >= 3;
+
   function dStatus(d) {
     return (d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0) >= Number(d.total||d.valor_total||0) ? 'pago' : 'aberto';
   }
-  const clientes = [...new Set(
-    debitos.filter(d => d.origem_crediario && dStatus(d) !== 'pago' &&
-      (d.cliente||'').toLowerCase().includes(busca.toLowerCase()))
-    .map(d => d.cliente)
+
+  // Nomes únicos com parcelas em aberto
+  const nomesComDebito = [...new Set(
+    debitos.filter(d => d.origem_crediario && dStatus(d) !== 'pago').map(d => d.cliente)
   )];
-  if (!clientes.length) { sug.style.display = 'none'; return; }
-  sug.innerHTML = clientes.map(c =>
-    `<div onclick="modalCredSelecionarCliente('${c.replace(/'/g,"\'")}')"
-      style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
-      onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">${c}</div>`
-  ).join('');
+
+  // Filtrar por nome OU por CPF (cruzando com tabela clientes)
+  const resultados = nomesComDebito.filter(nome => {
+    if ((nome||'').toLowerCase().includes(busca.toLowerCase())) return true;
+    if (ehCPF) {
+      const cli = clientes.find(c => (c.nome||'') === nome);
+      const cpfLimpo = (cli?.cpf||'').replace(/\D/g,'');
+      return cpfLimpo.includes(busca.replace(/\D/g,''));
+    }
+    return false;
+  });
+
+  if (!resultados.length) {
+    sug.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:var(--muted);">Nenhum cliente encontrado com parcelas em aberto.</div>';
+    sug.style.display = 'block';
+    return;
+  }
+
+  sug.innerHTML = resultados.map(nome => {
+    const cli = clientes.find(c => (c.nome||'') === nome);
+    const cpf = cli?.cpf ? `<span style="font-size:11px;color:var(--muted);margin-left:6px;">${cli.cpf}</span>` : '';
+    return `<div onclick="modalCredSelecionarCliente('${nome.replace(/'/g,"\'")}')"
+      style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;align-items:center;"
+      onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+      <span>${nome}</span>${cpf}
+    </div>`;
+  }).join('');
   sug.style.display = 'block';
 }
 
@@ -10865,7 +10932,8 @@ async function confirmarVenda() {
           origem_crediario: 'venda',
           parcela: pc.parcela,
           total_parcelas: pc.total_parcelas,
-          imprimir_carne: !!document.getElementById('cred-venda-imprimir')?.checked
+          imprimir_carne: !!document.getElementById('cred-venda-imprimir')?.checked,
+          cpf_cliente: (() => { const cli = getClientes().find(c => c.nome === nomeClienteVenda); return cli?.cpf || ''; })()
         };
         debitos.unshift(debitoCred);
         try {
@@ -11202,23 +11270,149 @@ function previewCredVenda(){
   const arr = gerarParcelasCredVenda(financiado, qtd, venc, intervalo);
   el.innerHTML = `<div style="margin-bottom:8px;"><strong>Total:</strong> ${R(total)} · <strong>Entrada:</strong> ${R(entrada)} · <strong>Financiado:</strong> ${R(financiado)}</div><div class="table-wrap"><table><thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th></tr></thead><tbody>${arr.map(p=>`<tr><td>${p.parcela}/${p.total_parcelas}</td><td>${p.vencimento}</td><td><strong>${R(p.valor)}</strong></td></tr>`).join('')}</tbody></table></div>`;
 }
-function imprimirCarneCrediario(){
-  const c = _ultimoCarneCrediario;
-  if (!c) { alert('Nenhum carnê disponível para imprimir.'); return; }
+// ── CONFIGURAÇÃO DO CARNÊ ──
+const CARNE_CONF_KEY = 'legado_carne_config';
+
+function getCarneConfig() {
+  try {
+    return JSON.parse(localStorage.getItem(CARNE_CONF_KEY) || '{}');
+  } catch { return {}; }
+}
+
+function salvarCarneConfig() {
+  const cfg = {
+    nome: document.getElementById('carne-conf-nome')?.value.trim() || '',
+    endereco: document.getElementById('carne-conf-endereco')?.value.trim() || '',
+    rodape: document.getElementById('carne-conf-rodape')?.value.trim() || '',
+    layout: document.getElementById('carne-conf-layout')?.value || '2col',
+    logo: document.getElementById('carne-conf-logo')?.value || 'sim'
+  };
+  localStorage.setItem(CARNE_CONF_KEY, JSON.stringify(cfg));
+  const msg = document.getElementById('carne-conf-msg');
+  if (msg) { msg.textContent = '✅ Salvo!'; setTimeout(() => msg.textContent = '', 2000); }
+}
+
+function carregarCarneConfig() {
+  const cfg = getCarneConfig();
+  const f = id => document.getElementById(id);
+  if (f('carne-conf-nome')) f('carne-conf-nome').value = cfg.nome || '';
+  if (f('carne-conf-endereco')) f('carne-conf-endereco').value = cfg.endereco || '';
+  if (f('carne-conf-rodape')) f('carne-conf-rodape').value = cfg.rodape || '';
+  if (f('carne-conf-layout')) f('carne-conf-layout').value = cfg.layout || '2col';
+  if (f('carne-conf-logo')) f('carne-conf-logo').value = cfg.logo || 'sim';
+}
+
+function gerarHTMLCarne(c) {
+  const cfg = getCarneConfig();
+  const cols = cfg.layout === '1col' ? 1 : cfg.layout === '3col' ? 3 : 2;
+  const nomeLoja = cfg.nome || c.loja || 'Loja';
+  const endereco = cfg.endereco || '';
+  const rodape = cfg.rodape || 'Não pague sem carimbo. Guarde este coupom.';
+  const usaLogo = cfg.logo !== 'nao';
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#D4145A';
+
+  const logoHTML = usaLogo && window.logoBase64
+    ? `<img src="${window.logoBase64}" style="height:36px;object-fit:contain;margin-bottom:4px;">`
+    : '';
+
   const htmlParcelas = c.parcelas.map(p => `
-    <div class="carne-parcela">
-      <div><strong>${c.loja}</strong><br><small>Contrato: ${c.contratoId}</small></div>
-      <div><strong>Cliente:</strong> ${c.cliente}</div>
-      <div><strong>Parcela:</strong> ${p.parcela}/${p.total_parcelas}</div>
-      <div><strong>Vencimento:</strong> ${p.vencimento}</div>
-      <div class="valor">${R(p.valor)}</div>
-      <div class="linha">Assinatura / baixa</div>
+    <div class="coupon">
+      <div class="coupon-header">
+        ${logoHTML}
+        <div>
+          <div class="coupon-loja">${nomeLoja}</div>
+          ${endereco ? `<div class="coupon-end">${endereco}</div>` : ''}
+        </div>
+      </div>
+      <div class="coupon-divider"></div>
+      <div class="coupon-info">
+        <div class="coupon-row"><span>Cliente</span><strong>${c.cliente}</strong></div>
+        ${c.cpf ? `<div class="coupon-row"><span>CPF</span><strong>${c.cpf}</strong></div>` : ''}
+        <div class="coupon-row"><span>Contrato</span><strong>${c.contratoId}</strong></div>
+        <div class="coupon-row"><span>Parcela</span><strong>${p.parcela} de ${p.total_parcelas}</strong></div>
+        <div class="coupon-row"><span>Vencimento</span><strong>${p.vencimento}</strong></div>
+      </div>
+      <div class="coupon-valor">${R(p.valor)}</div>
+      <div class="coupon-rodape">${rodape}</div>
+      <div class="coupon-assinatura">
+        <span>Assinatura</span>
+        <div class="coupon-linha"></div>
+      </div>
     </div>`).join('');
+
+  return `<!doctype html><html><head>
+  <meta charset="utf-8">
+  <title>Carnê · ${c.cliente}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f1f5f9; padding: 16px; color: #111827; }
+    .topo { background: #fff; border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; border-left: 4px solid ${accent}; display: flex; justify-content: space-between; align-items: center; }
+    .topo h1 { font-size: 18px; color: ${accent}; }
+    .topo-info { font-size: 12px; color: #64748b; text-align: right; }
+    .btn-print { background: ${accent}; color: #fff; border: none; border-radius: 8px; padding: 10px 24px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .grade { display: grid; grid-template-columns: repeat(${cols}, 1fr); gap: 10px; }
+    .coupon { background: #fff; border: 1.5px dashed #cbd5e1; border-radius: 10px; padding: 14px; page-break-inside: avoid; break-inside: avoid; }
+    .coupon-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .coupon-loja { font-size: 13px; font-weight: 800; color: ${accent}; }
+    .coupon-end { font-size: 10px; color: #64748b; margin-top: 2px; }
+    .coupon-divider { border-top: 1px dashed #e2e8f0; margin: 8px 0; }
+    .coupon-info { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+    .coupon-row { display: flex; justify-content: space-between; font-size: 11px; }
+    .coupon-row span { color: #64748b; }
+    .coupon-row strong { color: #111827; }
+    .coupon-valor { font-size: 26px; font-weight: 900; color: ${accent}; text-align: center; padding: 8px 0; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; margin: 8px 0; }
+    .coupon-rodape { font-size: 9px; color: #94a3b8; text-align: center; margin-bottom: 8px; }
+    .coupon-assinatura { display: flex; flex-direction: column; gap: 4px; }
+    .coupon-assinatura span { font-size: 9px; color: #94a3b8; }
+    .coupon-linha { border-top: 1px solid #cbd5e1; margin-top: 18px; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .topo { display: none; }
+      .grade { gap: 6px; }
+    }
+  </style>
+  </head><body>
+  <div class="topo">
+    <div>
+      <h1>🖨️ Carnê de Crediário</h1>
+      <div style="font-size:12px;color:#64748b;margin-top:4px;">
+        Cliente: <strong>${c.cliente}</strong> ·
+        Total: <strong>${R(c.totalVenda)}</strong> ·
+        ${c.parcelas.length} parcela(s) de <strong>${R(c.parcelas[0]?.valor||0)}</strong>
+      </div>
+    </div>
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
+  </div>
+  <div class="grade">${htmlParcelas}</div>
+  </body></html>`;
+}
+
+function imprimirCarneCrediario(dadosCarne) {
+  const c = dadosCarne || _ultimoCarneCrediario;
+  if (!c) { alert('Nenhum carnê disponível para imprimir.'); return; }
   const w = window.open('', '_blank');
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Carnê Crediário</title><style>
-    body{font-family:Arial,sans-serif;margin:20px;color:#111827}.topo{margin-bottom:16px;border-bottom:2px solid #111827;padding-bottom:10px}.topo h1{margin:0;font-size:22px}.topo p{margin:4px 0;color:#475569}.grade{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.carne-parcela{border:1px dashed #334155;border-radius:10px;padding:12px;min-height:150px;page-break-inside:avoid}.carne-parcela .valor{font-size:22px;font-weight:800;margin:10px 0}.linha{border-top:1px solid #CBD5E1;margin-top:18px;padding-top:6px;font-size:11px;color:#64748b}@media print{button{display:none}.grade{grid-template-columns:repeat(2,1fr)}}
-  </style></head><body><button onclick="print()">Imprimir</button><div class="topo"><h1>Carnê de Crediário</h1><p><strong>${c.loja}</strong> · Cliente: ${c.cliente}</p><p>Total venda: ${R(c.totalVenda)} · Entrada: ${R(c.entrada)} · Financiado: ${R(c.valorFinanciado)}</p><p>Produtos: ${c.produtos}</p></div><div class="grade">${htmlParcelas}</div></body></html>`);
+  if (!w) { alert('Pop-up bloqueado. Permita pop-ups para esta página.'); return; }
+  w.document.write(gerarHTMLCarne(c));
   w.document.close();
+}
+
+function previewCarneDemo() {
+  const demo = {
+    loja: document.getElementById('carne-conf-nome')?.value || 'Minha Loja',
+    cliente: 'Maria da Silva',
+    cpf: '123.456.789-00',
+    contratoId: 'CRED-2026-001',
+    totalVenda: 300,
+    entrada: 0,
+    valorFinanciado: 300,
+    produtos: 'Blusa Floral, Calça Jeans',
+    parcelas: [1,2,3].map(i => ({
+      parcela: i, total_parcelas: 3,
+      vencimento: `${String(new Date().getDate()).padStart(2,'0')}/${String(new Date().getMonth()+1+i-1).padStart(2,'0')}/${new Date().getFullYear()}`,
+      valor: 100
+    }))
+  };
+  imprimirCarneCrediario(demo);
 }
 
 // ===== MÓDULO CREDIÁRIO MVP =====
@@ -11244,6 +11438,7 @@ function carregarCredConfig(){
   const max = document.getElementById('cred-conf-parcelas'); if (max) max.value = cfg.maxParcelas || 6;
   const bloq = document.getElementById('cred-conf-bloqueio'); if (bloq) bloq.value = cfg.bloqueio || 'sim';
   const sal = document.getElementById('cred-conf-saldo-limite'); if (sal) sal.value = cfg.saldoConsomeLimite || 'sim';
+  carregarCarneConfig();
 }
 function mostrarCredAba(aba){
   credAbaAtual = aba;
@@ -16292,7 +16487,7 @@ async function aplicarConfigLoja() {
           nomeSistema = `${loja.nome} · Gestão`;
           tituloAba = `Gestão de Estoque · ${loja.nome}`;
         }
-        if (loja.logo_base64) logoBase64 = loja.logo_base64;
+        if (loja.logo_base64) { logoBase64 = loja.logo_base64; window.logoBase64 = loja.logo_base64; }
         if (loja.cor_accent) cores.accent = loja.cor_accent;
         if (loja.cor_accent2) cores.accent2 = loja.cor_accent2;
         if (loja.cor_bg) {
