@@ -4447,7 +4447,7 @@ body.modo-vitrine-publica{
   <button onclick="showPage('clientes')">👥 Clientes/Fornecedores</button>
   <button onclick="showPage('vendedores')">🧑‍💼 Vendedores</button>
   <button onclick="showPage('financeiro')">💰 Financeiro</button>
-  <button onclick="showPage('crediario')">💳 Crediário</button>
+  <button onclick="showPage('crediario')" id="nav-btn-crediario" style="display:none;">💳 Crediário</button>
   <button onclick="showPage('trocas')">🔄 Trocas</button>
   <button id="nav-empresa" onclick="showPage('empresa'); carregarDadosEmpresa();" style="display:none;">⚙️ Config. Empresa</button>
   <button class="btn-logout-mobile" onclick="fazerLogout()" style="display:none;margin-top:auto;color:var(--danger);border-color:var(--danger);">🚪 Sair</button>
@@ -4944,7 +4944,7 @@ body.modo-vitrine-publica{
         <button type="button" class="pdv-pag-btn" data-valor="Cartão débito" onclick="selecionarFormaPagamento(this)">💳 Débito</button>
         <button type="button" class="pdv-pag-btn" data-valor="Cartão crédito" onclick="selecionarFormaPagamento(this)">💳 Crédito</button>
         <button type="button" class="pdv-pag-btn" data-valor="A prazo" onclick="selecionarFormaPagamento(this)">📄 Fiado</button>
-        <button type="button" class="pdv-pag-btn" data-valor="Crediário" onclick="selecionarFormaPagamento(this)">💳 Crediário</button>
+        <button type="button" class="pdv-pag-btn" data-valor="Crediário" onclick="selecionarFormaPagamento(this)" style="display:none;">💳 Crediário</button>
         <button type="button" class="pdv-pag-btn" data-valor="Voucher" onclick="selecionarFormaPagamento(this)">🎫 Voucher</button>
       </div>
 
@@ -9995,7 +9995,7 @@ function aplicarFeatureFlagsUI() {
 
 function aplicarFlagCrediario() {
   // Menu lateral: mostrar/ocultar Crediário
-  const btnCred = document.querySelector("button[onclick=\"showPage('crediario')\"]");
+  const btnCred = document.getElementById('nav-btn-crediario');
   if (btnCred) btnCred.style.display = LOJA_USA_CREDIARIO ? 'block' : 'none';
 
   // PDV — botão Fiado vs Crediário
