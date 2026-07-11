@@ -5940,7 +5940,6 @@ body.modo-vitrine-publica{
     <button class="cred-tab" id="cred-tab-clientes" onclick="mostrarCredAba('clientes')">👥 Clientes</button>
     <button class="cred-tab" id="cred-tab-importar" onclick="mostrarCredAba('importar')">⬆️ Saldo Inicial</button>
     <button class="cred-tab" id="cred-tab-inadimplencia" onclick="mostrarCredAba('inadimplencia')">🚨 Inadimplência</button>
-    <button class="cred-tab" id="cred-tab-historico" onclick="mostrarCredAba('historico')">📜 Histórico</button>
     <button class="cred-tab" id="cred-tab-relatorios" onclick="mostrarCredAba('relatorios')">📊 Relatórios</button>
     <button class="cred-tab" id="cred-tab-config" onclick="mostrarCredAba('config')">⚙️ Configurações</button>
   </div>
@@ -6052,23 +6051,6 @@ body.modo-vitrine-publica{
       <div id="inadimpl-lista"></div>
     </div>
   </div>
-
-  <!-- ===== PAINEL: HISTÓRICO DE RENEGOCIAÇÕES ===== -->
-  <div id="cred-panel-historico" class="cred-panel">
-    <div class="cred-box" style="margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
-        <h3 style="margin:0;">📜 Histórico de Renegociações</h3>
-        <input type="text" id="hist-reneg-busca"
-          placeholder="🔍 Buscar por cliente..."
-          oninput="renderHistoricoRenegociacoes()"
-          style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface);min-width:220px;">
-      </div>
-      <div id="hist-reneg-lista">
-        <div style="text-align:center;color:var(--muted);font-size:13px;padding:32px 0;">Carregando...</div>
-      </div>
-    </div>
-  </div>
-  <!-- FIM PAINEL HISTÓRICO -->
 
   <div id="cred-panel-relatorios" class="cred-panel">
     <div class="cred-box" style="margin-bottom:16px;">
@@ -10542,8 +10524,7 @@ Total: ${R(totalComJuros)}${juros > 0 ? ` (inclui ${juros}% de juros/multa)` : '
         data: new Date().toISOString().slice(0,10),
         valor: p.saldo,
         forma: 'Renegociação',
-        obs: obs,
-        renegociado_para: contratoId   // vínculo explícito com o novo contrato
+        obs: obs
       });
       const ehIdReal = d.id && !String(d.id).startsWith('cred_') && !String(d.id).startsWith('cartao_');
       if (ehIdReal) {
@@ -11346,6 +11327,19 @@ async function confirmarVenda() {
     }
   }
 
+  // Pré-validar bloqueio/limite do crediário ANTES de gravar qualquer dado.
+  const legCrediario = pagamentos.find(p => p.forma === 'Crediário');
+  if (legCrediario) {
+    const entradaPreVal = valorMoeda('cred-venda-entrada');
+    const financiadoPreVal = Math.max(0, legCrediario.valor - entradaPreVal);
+    const preVal = validarLimiteCrediarioVenda(cliente, financiadoPreVal);
+    if (!preVal.ok) {
+      alert(preVal.msg);
+      if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = '✓ Finalizar Venda'; }
+      return;
+    }
+  }
+
   // Voucher: não dá pra fechar a venda sem informar o número — precisa estar
   // vinculado a um voucher de verdade, com saldo suficiente. Não é receita
   // nova (é resgate de crédito já concedido), por isso não gera débito.
@@ -11480,7 +11474,7 @@ async function confirmarVenda() {
       if (!vencInput) { alert('Informe o primeiro vencimento do crediário.'); return; }
       if (entradaVal >= valorLeg) { alert('A entrada não pode ser maior ou igual ao total da venda.'); return; }
       const limiteOk = validarLimiteCrediarioVenda(cliente, valorLeg - entradaVal);
-      if (!limiteOk.ok) { alert(limiteOk.msg); return; }
+      if (!limiteOk.ok) { alert(limiteOk.msg); return false; }
 
       const contratoId = 'cred_venda_' + vendaId + sufixoId;
       const valorFinanciado = Math.max(0, valorLeg - entradaVal);
@@ -11695,7 +11689,15 @@ async function confirmarVenda() {
 
   for (let i = 0; i < pagamentos.length; i++) {
     const leg = pagamentos[i];
-    await processarFormaPagamento(leg.forma, leg.valor, leg.parcelas, pagamentos.length > 1 ? '_' + (i + 1) : '', leg.voucherNumero);
+  for (let i = 0; i < pagamentos.length; i++) {
+    const leg = pagamentos[i];
+    const ok = await processarFormaPagamento(leg.forma, leg.valor, leg.parcelas, pagamentos.length > 1 ? '_' + (i + 1) : '', leg.voucherNumero);
+    if (ok === false) {
+      if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = '✓ Finalizar Venda'; }
+      mostrarLoading && mostrarLoading(false);
+      return;
+    }
+  }
   }
   
   // Modal confirmação
@@ -13194,145 +13196,6 @@ function imprimirContratoCrediario(dadosCarne) {
   w.document.close();
 }
 
-// ── HISTÓRICO DE RENEGOCIAÇÕES ──
-function renderHistoricoRenegociacoes() {
-  const lista = document.getElementById('hist-reneg-lista');
-  if (!lista) return;
-
-  const busca = (document.getElementById('hist-reneg-busca')?.value || '').toLowerCase().trim();
-  const debitos = getDebitos();
-
-  // ── 1. Coletar todos os contratos de renegociação ──────────────────────
-  const mapaReneg = {};
-
-  debitos.forEach(d => {
-    if (d.origem_crediario !== 'renegociacao') return;
-    const cid = d.contrato_id || '';
-    if (!cid) return;
-    if (!mapaReneg[cid]) {
-      const ts = parseInt(cid.replace('cred_reneg_', '')) || 0;
-      mapaReneg[cid] = {
-        contratoId: cid,
-        cliente: d.cliente || '—',
-        dataTs: ts,
-        dataFmt: ts ? new Date(ts).toLocaleString('pt-BR') : '—',
-        novasParcelas: [],
-        originais: [],
-        totalNovo: 0,
-      };
-    }
-    mapaReneg[cid].novasParcelas.push(d);
-    mapaReneg[cid].totalNovo += d.total || 0;
-  });
-
-  // ── 2. Cruzar parcelas originais ───────────────────────────────────────
-  debitos.forEach(d => {
-    if (!d.pagamentos || !d.pagamentos.length) return;
-    d.pagamentos.forEach(pg => {
-      if (pg.forma !== 'Renegociação') return;
-      const cid = pg.renegociado_para;
-      if (cid && mapaReneg[cid]) {
-        const jaExiste = mapaReneg[cid].originais.find(x => String(x.id) === String(d.id));
-        if (!jaExiste) mapaReneg[cid].originais.push(d);
-      } else {
-        Object.values(mapaReneg).forEach(r => {
-          if (r.cliente !== d.cliente) return;
-          const diff = Math.abs(new Date(pg.data).getTime() - r.dataTs);
-          if (diff < 86400000) {
-            const jaExiste2 = r.originais.find(x => String(x.id) === String(d.id));
-            if (!jaExiste2) r.originais.push(d);
-          }
-        });
-      }
-    });
-  });
-
-  // ── 3. Filtrar e ordenar ───────────────────────────────────────────────
-  let grupos = Object.values(mapaReneg);
-  if (busca) grupos = grupos.filter(g => g.cliente.toLowerCase().includes(busca));
-  grupos.sort((a, b) => b.dataTs - a.dataTs);
-
-  if (grupos.length === 0) {
-    lista.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:13px;padding:32px 0;">
-      ${busca ? 'Nenhuma renegociação encontrada para "' + busca + '".' : 'Nenhuma renegociação registrada ainda.'}
-    </div>`;
-    return;
-  }
-
-  // ── 4. Renderizar linha do tempo ───────────────────────────────────────
-  lista.innerHTML = grupos.map(g => {
-    const totalOriginal = g.originais.reduce((s, d) => {
-      const pg = (d.pagamentos || []).find(p => p.forma === 'Renegociação');
-      return s + (pg?.valor || d.total || 0);
-    }, 0);
-    const jurosAplicado = totalOriginal > 0 && g.totalNovo > totalOriginal
-      ? ((g.totalNovo / totalOriginal - 1) * 100).toFixed(1) + '%'
-      : null;
-
-    const parcelasOriginaisHtml = g.originais.length
-      ? g.originais.map(d => {
-          const pg = (d.pagamentos || []).find(p => p.forma === 'Renegociação');
-          return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #f1f5f9;">
-            <span style="color:#64748b;">Parcela ${d.parcela || '—'}/${d.total_parcelas || '—'} · venc. ${d.vencimento || '—'}</span>
-            <span style="color:#9f1239;font-weight:700;">${R(pg?.valor || d.total || 0)}</span>
-          </div>`;
-        }).join('')
-      : `<div style="font-size:12px;color:var(--muted);padding:4px 0;">Parcelas originais não identificadas (renegociação anterior ao vínculo explícito).</div>`;
-
-    const parcelasNovasHtml = g.novasParcelas
-      .sort((a, b) => (a.parcela || 0) - (b.parcela || 0))
-      .map(d => {
-        const pago = (d.pagamentos || []).reduce((s, p) => s + (p.valor || 0), 0);
-        const saldo = Math.max(0, d.total - pago);
-        const status = saldo <= 0
-          ? `<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:#dcfce7;color:#166534;font-weight:700;">Pago</span>`
-          : credStatusDebito(d) === 'vencido'
-            ? `<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:#fee2e2;color:#991b1b;font-weight:700;">Vencido</span>`
-            : `<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:#eff6ff;color:#1e40af;font-weight:700;">Em aberto</span>`;
-        return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px solid #f1f5f9;">
-          <span style="color:#374151;">Parcela ${d.parcela || '—'}/${d.total_parcelas || '—'} · venc. ${d.vencimento || '—'}</span>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-weight:700;">${R(d.total || 0)}</span>
-            ${status}
-          </div>
-        </div>`;
-      }).join('');
-
-    return `
-      <div class="cred-box" style="margin-bottom:14px;border-left:4px solid #9f1239;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-          <div>
-            <div style="font-size:14px;font-weight:800;color:#111827;">🔄 ${g.cliente}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${g.dataFmt} · Contrato ${g.contratoId}</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-size:12px;color:var(--muted);">Total renegociado</div>
-            <div style="font-size:16px;font-weight:800;color:#9f1239;">${R(g.totalNovo)}</div>
-            ${jurosAplicado ? `<div style="font-size:11px;color:#d97706;">+ ${jurosAplicado} juros/multa</div>` : ''}
-          </div>
-        </div>
-
-        <div style="margin-bottom:12px;">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:6px;">
-            📋 Parcelas originais renegociadas (${g.originais.length})
-          </div>
-          ${parcelasOriginaisHtml}
-          ${g.originais.length ? `<div style="text-align:right;font-size:12px;font-weight:700;color:#9f1239;margin-top:4px;">Total: ${R(totalOriginal)}</div>` : ''}
-        </div>
-
-        <div style="text-align:center;font-size:18px;color:#9f1239;margin:8px 0;">↓</div>
-
-        <div>
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:6px;">
-            ✨ Novas parcelas geradas (${g.novasParcelas.length})
-          </div>
-          ${parcelasNovasHtml}
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
 // ── RELATÓRIOS DO CREDIÁRIO ──
 function renderRelatoriosCrediario() {
   const kpisEl = document.getElementById('cred-rel-kpis');
@@ -13569,7 +13432,6 @@ function mostrarCredAba(aba){
   if (aba === 'importar') previewCredImportacao();
   if (aba === 'inadimplencia') { renderInadimplencia(); return; }
   if (aba === 'relatorios') { renderRelatoriosCrediario(); return; }
-  if (aba === 'historico') { renderHistoricoRenegociacoes(); return; }
   if (aba === 'clientes') {
     renderCredClientes(getCredParcelas());
     // Reconectar listener toda vez (painel estava oculto, oninput HTML pode não funcionar)
