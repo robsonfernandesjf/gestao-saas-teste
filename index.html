@@ -4824,20 +4824,30 @@ body.modo-vitrine-publica{
 <div id="page-vendas" class="page">
   <div class="section-title">Registrar nova venda · carrinho</div>
 
-  <!-- WIDGET DE CAIXA (abertura/sangria/suprimento/fechamento) -->
-  <div id="caixa-widget-fechado" style="display:none;background:var(--warn-light);border:1px solid var(--warn);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-    <span style="font-size:14px;font-weight:600;color:var(--warn);">🔒 Nenhum caixa aberto</span>
-    <span style="font-size:12px;color:var(--muted);">Abra o caixa antes de registrar vendas.</span>
-    <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="abrirModalAbrirCaixa()">🔓 Abrir Caixa</button>
+  <!-- WIDGET DE CAIXA — redesign moderno -->
+  <div id="caixa-widget-fechado" style="display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.04);">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:20px;">🔒</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#c2410c;">Nenhum caixa aberto</div>
+        <div style="font-size:11px;color:#9a3412;">Abra o caixa antes de registrar vendas.</div>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-sm" style="margin-left:auto;border-radius:10px;" onclick="abrirModalAbrirCaixa()">🔓 Abrir Caixa</button>
   </div>
 
-  <div id="caixa-widget-aberto" style="display:none;background:var(--success-light);border:1px solid #B8D9C0;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-    <span style="font-size:14px;font-weight:600;color:var(--success);">🔓 Caixa Aberto</span>
-    <span id="caixa-widget-info" style="font-size:12px;color:var(--muted);"></span>
+  <div id="caixa-widget-aberto" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.04);">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:20px;">🟢</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#15803d;">Caixa Aberto</div>
+        <span id="caixa-widget-info" style="font-size:11px;color:#166534;"></span>
+      </div>
+    </div>
     <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-outline btn-sm" onclick="abrirModalMovimentoCaixa('sangria')">💸 Sangria</button>
-      <button class="btn btn-outline btn-sm" onclick="abrirModalMovimentoCaixa('suprimento')">➕ Suprimento</button>
-      <button class="btn btn-secondary btn-sm" onclick="abrirModalFecharCaixa()">🔒 Fechar Caixa</button>
+      <button class="btn btn-outline btn-sm" style="border-radius:10px;font-size:12px;" onclick="abrirModalMovimentoCaixa('sangria')">💸 Sangria</button>
+      <button class="btn btn-outline btn-sm" style="border-radius:10px;font-size:12px;" onclick="abrirModalMovimentoCaixa('suprimento')">+ Suprimento</button>
+      <button class="btn btn-secondary btn-sm" style="border-radius:10px;font-size:12px;" onclick="abrirModalFecharCaixa()">🔒 Fechar Caixa</button>
     </div>
   </div>
 
@@ -4846,16 +4856,17 @@ body.modo-vitrine-publica{
     <!-- COLUNA ESQUERDA: busca + produto + carrinho -->
     <div class="pdv-col-esquerda">
 
-      <!-- BUSCA DESTACADA ESTILO PDV -->
-      <div class="pdv-busca-card">
-        <label for="busca-venda">🔍 Buscar produto (ref., nome ou código de barras)</label>
-        <input type="text" id="busca-venda" placeholder="Ex: EC04, Calça xadrez ou código de barras..." oninput="filtrarProdutosVenda()" onkeydown="if(event.key==='Enter')buscaVendaEnter()" autocomplete="off">
+      <!-- BUSCA MODERNA -->
+      <div class="pdv-busca-card" style="border-radius:16px;padding:12px 16px;border:2px solid var(--border);background:var(--surface);box-shadow:0 2px 8px rgba(0,0,0,.04);">
+        <label for="busca-venda" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px;display:block;">🔍 BUSCAR PRODUTO (REF., NOME OU CÓDIGO DE BARRAS)</label>
+        <input type="text" id="busca-venda" placeholder="Ex: EC04, Calça xadrez ou código de barras..." oninput="filtrarProdutosVenda()" onkeydown="if(event.key==='Enter')buscaVendaEnter()" autocomplete="off"
+          style="width:100%;border:none;outline:none;font-size:15px;background:transparent;padding:4px 0;color:var(--text);">
         <div id="sugestoes-venda" style="position:relative;z-index:100;"></div>
       </div>
 
       <!-- PRODUTO SELECIONADO -->
       <div id="produto-selecionado-info" style="display:none;">
-        <div class="pdv-produto-card">
+        <div class="pdv-produto-card" style="border-radius:16px;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.04);">
           <div class="pdv-produto-header">
             <div>
               <div class="pdv-produto-nome" id="pv-nome"></div>
@@ -4893,19 +4904,19 @@ body.modo-vitrine-publica{
               </div>
             </div>
             <div id="lucro-preview-box" class="lucro-preview" style="display:none;margin-bottom:14px;"></div>
-            <button class="pdv-btn-add" onclick="adicionarAoCarrinho()">🛒 Adicionar ao Carrinho</button>
+            <button class="pdv-btn-add" onclick="adicionarAoCarrinho()" style="border-radius:14px;">🛒 Adicionar ao Carrinho</button>
           </div>
         </div>
       </div>
 
       <div id="sem-produto-msg" class="pdv-empty-state">
-        <div class="icon">🏷️</div>
-        <p>Digite para buscar um produto acima.</p>
+        <div class="icon">🛒</div>
+        <p>Adicione produtos para iniciar uma venda.</p>
       </div>
 
-      <!-- CARRINHO (tabela estilo PDV) -->
-      <div class="pdv-carrinho-tabela">
-        <div class="pdv-carrinho-tabela-head">
+      <!-- CARRINHO MODERNO -->
+      <div class="pdv-carrinho-tabela" style="border-radius:16px;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.04);overflow:hidden;">
+        <div class="pdv-carrinho-tabela-head" style="background:var(--bg);padding:10px 16px;">
           <span>Produto</span>
           <span>Qtd</span>
           <span>Preço</span>
@@ -4913,55 +4924,72 @@ body.modo-vitrine-publica{
           <span></span>
         </div>
         <div id="carrinho-body-wrap">
-          <div id="carrinho-vazio-msg" class="pdv-carrinho-vazio">Carrinho vazio</div>
+          <div id="carrinho-vazio-msg" class="pdv-carrinho-vazio" style="padding:32px;text-align:center;color:var(--muted);">Carrinho vazio</div>
           <table style="display:none;" id="carrinho-tabela-real">
             <tbody id="carrinho-body"></tbody>
           </table>
         </div>
       </div>
 
-      <div style="display:flex;align-items:center;gap:10px;margin-top:14px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding:0 4px;">
         <label style="font-size:13px;color:var(--muted);white-space:nowrap;">Desconto (R$):</label>
-        <input type="text" inputmode="numeric" id="venda-desconto" placeholder="0,00" oninput="mascaraMoeda(this);renderCarrinho()" style="max-width:140px;">
+        <input type="text" inputmode="numeric" id="venda-desconto" placeholder="0,00" oninput="mascaraMoeda(this);renderCarrinho()" style="max-width:140px;border-radius:10px;">
       </div>
 
     </div>
 
-    <!-- COLUNA DIREITA: cliente, pagamento, resumo, finalizar -->
-    <div class="pdv-col-direita">
+    <!-- COLUNA DIREITA: dados da venda, pagamento, resumo -->
+    <div class="pdv-col-direita" style="border-radius:18px;border:1px solid var(--border);box-shadow:0 4px 20px rgba(0,0,0,.06);">
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:14px;">Dados da Venda</div>
 
       <div class="form-row" style="position:relative;">
         <label>Cliente (opcional)</label>
         <input type="text" id="venda-cliente" placeholder="Nome da cliente..." autocomplete="off"
-               oninput="filtrarClientesVenda(this);checarCreditoCliente();" onfocus="filtrarClientesVenda(this)" onblur="setTimeout(()=>{fecharSugestoesClienteVenda();checarCreditoCliente();},150)">
+               oninput="filtrarClientesVenda(this);checarCreditoCliente();" onfocus="filtrarClientesVenda(this)" onblur="setTimeout(()=>{fecharSugestoesClienteVenda();checarCreditoCliente();},150)"
+               style="border-radius:10px;">
         <div id="venda-cliente-sugestoes" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);max-height:200px;overflow-y:auto;margin-top:2px;"></div>
         <div id="venda-cliente-credito" style="display:none;margin-top:6px;padding:8px 10px;background:var(--success-light);border:1px solid #B8D9C0;border-radius:6px;font-size:12px;"></div>
       </div>
 
       <div class="form-row">
         <label>Vendedor (opcional)</label>
-        <select id="venda-vendedor" class="select-vendedor">
+        <select id="venda-vendedor" class="select-vendedor" style="border-radius:10px;">
           <option value="">Sem vendedor</option>
         </select>
       </div>
 
       <div class="form-row">
         <label>Data da venda</label>
-        <input type="date" id="venda-data">
+        <input type="date" id="venda-data" style="border-radius:10px;">
       </div>
 
-      <div class="pdv-pagamento-label">Pagamento</div>
+      <div class="pdv-pagamento-label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:14px 0 10px;">Pagamento</div>
       <div class="pdv-pagamento-grid">
-        <button type="button" class="pdv-pag-btn" data-valor="À vista" onclick="selecionarFormaPagamento(this)">💵 Dinheiro</button>
-        <button type="button" class="pdv-pag-btn" data-valor="Pix" onclick="selecionarFormaPagamento(this)">📱 Pix</button>
-        <button type="button" class="pdv-pag-btn" data-valor="Cartão débito" onclick="selecionarFormaPagamento(this)">💳 Débito</button>
-        <button type="button" class="pdv-pag-btn" data-valor="Cartão crédito" onclick="selecionarFormaPagamento(this)">💳 Crédito</button>
-        <button type="button" class="pdv-pag-btn pdv-pag-btn-full" data-valor="A prazo" onclick="selecionarFormaPagamento(this)">📄 Fiado</button>
-        <button type="button" class="pdv-pag-btn pdv-pag-btn-full" data-valor="Crediário" onclick="selecionarFormaPagamento(this)" style="display:none;">💳 Crediário</button>
-        <button type="button" class="pdv-pag-btn" data-valor="Voucher" onclick="selecionarFormaPagamento(this)">🎫 Voucher</button>
+        <button type="button" class="pdv-pag-btn" data-valor="À vista" onclick="selecionarFormaPagamento(this)">
+          <span style="font-size:18px;">💵</span> Dinheiro
+        </button>
+        <button type="button" class="pdv-pag-btn" data-valor="Pix" onclick="selecionarFormaPagamento(this)">
+          <span style="font-size:18px;">📱</span> Pix
+        </button>
+        <button type="button" class="pdv-pag-btn" data-valor="Cartão débito" onclick="selecionarFormaPagamento(this)">
+          <span style="font-size:18px;">💳</span> Débito
+        </button>
+        <button type="button" class="pdv-pag-btn" data-valor="Cartão crédito" onclick="selecionarFormaPagamento(this)">
+          <span style="font-size:18px;">💳</span> Crédito
+        </button>
+        <button type="button" class="pdv-pag-btn pdv-pag-btn-full" data-valor="A prazo" onclick="selecionarFormaPagamento(this)">
+          <span style="font-size:18px;">📄</span> Fiado
+        </button>
+        <button type="button" class="pdv-pag-btn pdv-pag-btn-full" data-valor="Crediário" onclick="selecionarFormaPagamento(this)" style="display:none;">
+          <span style="font-size:18px;">💳</span> Crediário
+        </button>
+        <button type="button" class="pdv-pag-btn" data-valor="Voucher" onclick="selecionarFormaPagamento(this)">
+          <span style="font-size:18px;">🎫</span> Voucher
+        </button>
       </div>
 
-      <!-- Select real (mantido para a lógica existente, oculto visualmente) -->
+      <!-- Select real mantido para a lógica existente -->
       <select id="venda-pagamento" onchange="togglePrazoFields()" style="display:none;">
         <option>À vista</option>
         <option>Cartão crédito</option>
@@ -4972,13 +5000,13 @@ body.modo-vitrine-publica{
         <option value="Voucher">Voucher (crédito de troca)</option>
       </select>
 
-      <div class="pdv-forma-selecionada">
-        <span style="color:var(--muted);">Forma selecionada</span>
-        <strong id="pdv-forma-texto">— selecione acima —</strong>
+      <div class="pdv-forma-selecionada" style="background:var(--bg);border-radius:10px;padding:10px 14px;margin-top:12px;">
+        <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);">Forma Selecionada</span>
+        <strong id="pdv-forma-texto" style="display:block;margin-top:2px;color:var(--accent);">— selecione acima —</strong>
       </div>
 
-      <div class="form-row" style="margin:10px 0 0;">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400;">
+      <div class="form-row" style="margin:12px 0 0;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500;font-size:12px;color:var(--muted);">
           <input type="checkbox" id="venda-pag-misto" onchange="togglePagamentoMisto()" style="width:auto;">
           Dividir em até 2 formas de pagamento
         </label>
@@ -4986,14 +5014,14 @@ body.modo-vitrine-publica{
 
       <div class="pdv-resumo-lateral" id="carrinho-resumo"></div>
 
-      <div class="pdv-finalizar-bar">
-        <button class="pdv-btn-limpar" onclick="limparCarrinho()">🗑 Limpar</button>
+      <div class="pdv-finalizar-bar" style="margin-top:12px;">
+        <button class="pdv-btn-limpar" onclick="limparCarrinho()" style="border-radius:10px;">🗑 Limpar</button>
       </div>
 
-      <!-- RECEBER CREDIÁRIO — só aparece se loja tem crediário habilitado -->
+      <!-- RECEBER CREDIÁRIO -->
       <div id="pdv-receber-cred-wrap" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
         <button onclick="abrirModalReceberCrediario()"
-          style="width:100%;padding:12px;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(59,130,246,0.3);transition:.15s ease;"
+          style="width:100%;padding:14px;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;border:none;border-radius:14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(59,130,246,0.3);transition:.15s ease;"
           onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform=''">
           💳 Receber Crediário
         </button>
@@ -5003,7 +5031,7 @@ body.modo-vitrine-publica{
 
   </div>
 
-  <!-- Mantido oculto: usado pela lógica original para saber se há itens no carrinho -->
+  <!-- Mantido oculto: usado pela lógica original -->
   <div id="carrinho-wrap" style="display:none;"></div>
 </div>
 
