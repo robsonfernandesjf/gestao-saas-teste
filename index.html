@@ -5940,6 +5940,7 @@ body.modo-vitrine-publica{
     <button class="cred-tab" id="cred-tab-clientes" onclick="mostrarCredAba('clientes')">👥 Clientes</button>
     <button class="cred-tab" id="cred-tab-importar" onclick="mostrarCredAba('importar')">⬆️ Saldo Inicial</button>
     <button class="cred-tab" id="cred-tab-inadimplencia" onclick="mostrarCredAba('inadimplencia')">🚨 Inadimplência</button>
+    <button class="cred-tab" id="cred-tab-historico" onclick="mostrarCredAba('historico')">📜 Histórico</button>
     <button class="cred-tab" id="cred-tab-relatorios" onclick="mostrarCredAba('relatorios')">📊 Relatórios</button>
     <button class="cred-tab" id="cred-tab-config" onclick="mostrarCredAba('config')">⚙️ Configurações</button>
   </div>
@@ -6051,6 +6052,23 @@ body.modo-vitrine-publica{
       <div id="inadimpl-lista"></div>
     </div>
   </div>
+
+  <!-- ===== PAINEL: HISTÓRICO DE RENEGOCIAÇÕES ===== -->
+  <div id="cred-panel-historico" class="cred-panel">
+    <div class="cred-box" style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <h3 style="margin:0;">📜 Histórico de Renegociações</h3>
+        <input type="text" id="hist-reneg-busca"
+          placeholder="🔍 Buscar por cliente..."
+          oninput="renderHistoricoRenegociacoes()"
+          style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface);min-width:220px;">
+      </div>
+      <div id="hist-reneg-lista">
+        <div style="text-align:center;color:var(--muted);font-size:13px;padding:32px 0;">Carregando...</div>
+      </div>
+    </div>
+  </div>
+  <!-- FIM PAINEL HISTÓRICO -->
 
   <div id="cred-panel-relatorios" class="cred-panel">
     <div class="cred-box" style="margin-bottom:16px;">
@@ -10524,7 +10542,8 @@ Total: ${R(totalComJuros)}${juros > 0 ? ` (inclui ${juros}% de juros/multa)` : '
         data: new Date().toISOString().slice(0,10),
         valor: p.saldo,
         forma: 'Renegociação',
-        obs: obs
+        obs: obs,
+        renegociado_para: contratoId   // vínculo explícito com o novo contrato
       });
       const ehIdReal = d.id && !String(d.id).startsWith('cred_') && !String(d.id).startsWith('cartao_');
       if (ehIdReal) {
@@ -11466,164 +11485,68 @@ async function confirmarVenda() {
       const contratoId = 'cred_venda_' + vendaId + sufixoId;
       const valorFinanciado = Math.max(0, valorLeg - entradaVal);
       const parcelasCred = gerarParcelasCredVenda(valorFinanciado, qtdCred, vencInput, intervaloCred);
+      const debitos = getDebitos();
       const prodLabel = carrinho.map(c => c.produto).join(', ');
-      const _cliObj = getClientes().find(c => c.nome === cliente);
-
-      // ── Montar lista de débitos para a transação ──────────────────────
-      const debitosPayload = [];
 
       if (entradaVal > 0) {
         const dataBase = dataInput || new Date().toISOString().slice(0,10);
         const [ey, em, ed] = dataBase.split('-');
         const dataFmt = ed + '/' + em + '/' + ey;
-        debitosPayload.push({
+        debitos.unshift({
+          id: 'cred_ent_' + vendaId + sufixoId,
+          venda_id: vendaId,
           contrato_id: contratoId,
           cliente: 'Entrada Crediário · ' + cliente,
-          cliente_id: _cliObj?.id || null,
-          produto: prodLabel,
-          valor_total: entradaVal,
-          valor_pago: entradaVal,
+          data_venda: agora,
+          total: entradaVal,
           vencimento: dataFmt,
-          vencimento_iso: dataBase,
           obs: '[CREDIARIO] Entrada recebida no ato da venda — ' + prodLabel,
+          itens: carrinho.map(c=>({produto:c.produto, qtd:c.qtd, valor:c.valor_unit*c.qtd})),
           pagamentos: [{ valor: entradaVal, forma: 'Entrada Crediário', data: dataFmt, horaISO: new Date().toISOString() }],
-          origem_crediario: 'entrada_venda',
-          parcela: null,
-          total_parcelas: null,
+          origem_crediario: 'entrada_venda'
         });
       }
 
       for (const pc of parcelasCred) {
-        debitosPayload.push({
+        const _cliObj = getClientes().find(c => c.nome === cliente);
+        const debitoCred = {
+          id: contratoId + '_p' + pc.parcela,
+          venda_id: vendaId,
           contrato_id: contratoId,
           cliente,
           cliente_id: _cliObj?.id || null,
-          produto: prodLabel,
-          valor_total: pc.valor,
-          valor_pago: 0,
+          data_venda: agora,
+          total: pc.valor,
           vencimento: pc.vencimento,
-          vencimento_iso: credDataISO(pc.vencimento),
           obs: '[CREDIARIO] Venda parcelada' + (obsCred ? ' — ' + obsCred : ''),
+          itens: carrinho.map(c=>({produto:c.produto, qtd:c.qtd, valor:(c.valor_unit*c.qtd) / qtdCred})),
           pagamentos: [],
           origem_crediario: 'venda',
           parcela: pc.parcela,
           total_parcelas: pc.total_parcelas,
-        });
-      }
-
-      // ── Montar itens de venda para a transação ────────────────────────
-      const itensPayload = carrinho.map(item => {
-        const valorUnitLiq = item.valor_unit * fatorDesconto;
-        const lucroItem = (valorUnitLiq - item.custo_unit) * item.qtd;
-        const margemItem = valorUnitLiq > 0 ? (lucroItem / (valorUnitLiq * item.qtd) * 100) : 0;
-        return {
-          ref: item.ref, produto: item.produto, categoria: item.categoria,
-          custo: item.custo_unit, custo_unit: item.custo_unit,
-          qtd: item.qtd, valor: valorUnitLiq, valor_unit: valorUnitLiq,
-          valor_total: valorUnitLiq * item.qtd,
-          lucro: lucroItem, margem: margemItem,
-          cliente, vendedor, pagamento: pag, data: agora,
+          imprimir_carne: !!document.getElementById('cred-venda-imprimir')?.checked,
+          cpf_cliente: (() => { const nomeCliente = document.getElementById('venda-cliente')?.value || document.getElementById('cliente-nome')?.value || ''; const cli = getClientes().find(c => c.nome === nomeCliente); return getCPFCliente(cli); })()
         };
-      });
-
-      // ── Chamar Edge Function transacional ─────────────────────────────
-      try {
-        const efUrl = `${SB_URL}/functions/v1/venda-crediario`;
-        const efResp = await fetch(efUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': SB_HEADS.Authorization },
-          body: JSON.stringify({ loja_id: LOJA_ID, itens: itensPayload, debitos: debitosPayload }),
-        });
-        if (!efResp.ok) {
-          const errTxt = await efResp.text();
-          throw new Error(errTxt);
-        }
-        const efData = await efResp.json();
-
-        // Atualizar IDs reais no cache local com os retornados pelo banco
-        const debitos = getDebitos();
-        const debitosRetornados = efData.debitos || [];
-
-        if (entradaVal > 0 && debitosRetornados[0]) {
-          debitos.unshift({
-            id: debitosRetornados[0].id,
-            contrato_id: contratoId,
-            cliente: 'Entrada Crediário · ' + cliente,
-            data_venda: agora, total: entradaVal,
-            vencimento: debitosPayload[0].vencimento,
-            pagamentos: debitosPayload[0].pagamentos,
-            origem_crediario: 'entrada_venda',
-          });
-        }
-        const offsetEntrada = entradaVal > 0 ? 1 : 0;
-        parcelasCred.forEach((pc, i) => {
-          const reg = debitosRetornados[offsetEntrada + i];
-          debitos.unshift({
-            id: reg?.id || (contratoId + '_p' + pc.parcela),
-            contrato_id: contratoId, cliente,
-            cliente_id: _cliObj?.id || null,
-            data_venda: agora, total: pc.valor,
-            vencimento: pc.vencimento,
-            obs: debitosPayload[offsetEntrada + i].obs,
+        debitos.unshift(debitoCred);
+        try {
+          const criado = await sbPost('debitos', {
+            cliente: debitoCred.cliente,
+            cliente_id: debitoCred.cliente_id || null,
+            produto: prodLabel,
+            valor_total: debitoCred.total,
+            valor_pago: 0,
+            vencimento: debitoCred.vencimento,
+            vencimento_iso: credDataISO(debitoCred.vencimento),
+            obs: debitoCred.obs,
             pagamentos: [],
-            origem_crediario: 'venda',
-            parcela: pc.parcela, total_parcelas: pc.total_parcelas,
+            parcela: debitoCred.parcela,
+            total_parcelas: debitoCred.total_parcelas
           });
-        });
-
-        const vendas = getVendas();
-        const produtos = getProdutos();
-        (efData.vendas || []).forEach(v => {
-          vendas.unshift({ ...v });
-          const pidx = produtos.findIndex(p => p.ref === v.ref);
-          if (pidx >= 0) produtos[pidx].estoque -= v.qtd;
-        });
-        saveProdutos(produtos); saveVendas(vendas);
-        saveDebitos(debitos);
-        invalidarCache('debitos'); invalidarCache('vendas'); invalidarCache('produtos');
-
-      } catch(e) {
-        // Fallback: inserts individuais (comportamento anterior)
-        console.warn('[crediário] Edge Function indisponível, fallback local:', e.message);
-        const debitos = getDebitos();
-        if (entradaVal > 0) {
-          const dataBase = dataInput || new Date().toISOString().slice(0,10);
-          const [ey, em, ed] = dataBase.split('-');
-          const dataFmt = ed + '/' + em + '/' + ey;
-          const entObj = { id: 'cred_ent_' + vendaId + sufixoId, contrato_id: contratoId,
-            cliente: 'Entrada Crediário · ' + cliente, data_venda: agora, total: entradaVal,
-            vencimento: dataFmt, pagamentos: [{ valor: entradaVal, forma: 'Entrada Crediário', data: dataFmt, horaISO: new Date().toISOString() }],
-            origem_crediario: 'entrada_venda' };
-          debitos.unshift(entObj);
-          try {
-            const cr = await sbPost('debitos', { cliente: entObj.cliente, cliente_id: _cliObj?.id || null,
-              produto: prodLabel, valor_total: entradaVal, valor_pago: entradaVal,
-              vencimento: entObj.vencimento, vencimento_iso: dataBase,
-              obs: entObj.obs, pagamentos: entObj.pagamentos, origem_crediario: 'entrada_venda',
-              contrato_id: contratoId });
-            const r = Array.isArray(cr) ? cr[0] : cr;
-            if (r?.id) entObj.id = r.id;
-          } catch(e2) { console.warn('Entrada crediário local:', e2.message); }
-        }
-        for (const pc of parcelasCred) {
-          const deb = { id: contratoId + '_p' + pc.parcela, contrato_id: contratoId,
-            cliente, cliente_id: _cliObj?.id || null, data_venda: agora, total: pc.valor,
-            vencimento: pc.vencimento, obs: '[CREDIARIO] Venda parcelada' + (obsCred ? ' — ' + obsCred : ''),
-            pagamentos: [], origem_crediario: 'venda', parcela: pc.parcela, total_parcelas: pc.total_parcelas };
-          debitos.unshift(deb);
-          try {
-            const cr = await sbPost('debitos', { cliente: deb.cliente, cliente_id: deb.cliente_id,
-              produto: prodLabel, valor_total: deb.total, valor_pago: 0,
-              vencimento: deb.vencimento, vencimento_iso: credDataISO(deb.vencimento),
-              obs: deb.obs, pagamentos: [], parcela: deb.parcela, total_parcelas: deb.total_parcelas,
-              contrato_id: contratoId, origem_crediario: 'venda' });
-            const r = Array.isArray(cr) ? cr[0] : cr;
-            if (r?.id) deb.id = r.id;
-          } catch(e2) { console.warn('Parcela crediário local:', e2.message); }
-        }
-        saveDebitos(debitos); invalidarCache('debitos');
+          const registro = Array.isArray(criado) ? criado[0] : criado;
+          if (registro && registro.id) debitoCred.id = registro.id;
+        } catch(e) { console.warn('Parcela de crediário salva localmente:', e.message); }
       }
-
+      saveDebitos(debitos); invalidarCache('debitos');
       _ultimoCarneCrediario = {
         contratoId, cliente, totalVenda: valorLeg, entrada: entradaVal, valorFinanciado, parcelas: parcelasCred,
         dataVenda: agora, loja: (window.CONFIG_LOJA?.nome || document.title || 'LegadoERP'), produtos: prodLabel
@@ -13271,6 +13194,145 @@ function imprimirContratoCrediario(dadosCarne) {
   w.document.close();
 }
 
+// ── HISTÓRICO DE RENEGOCIAÇÕES ──
+function renderHistoricoRenegociacoes() {
+  const lista = document.getElementById('hist-reneg-lista');
+  if (!lista) return;
+
+  const busca = (document.getElementById('hist-reneg-busca')?.value || '').toLowerCase().trim();
+  const debitos = getDebitos();
+
+  // ── 1. Coletar todos os contratos de renegociação ──────────────────────
+  const mapaReneg = {};
+
+  debitos.forEach(d => {
+    if (d.origem_crediario !== 'renegociacao') return;
+    const cid = d.contrato_id || '';
+    if (!cid) return;
+    if (!mapaReneg[cid]) {
+      const ts = parseInt(cid.replace('cred_reneg_', '')) || 0;
+      mapaReneg[cid] = {
+        contratoId: cid,
+        cliente: d.cliente || '—',
+        dataTs: ts,
+        dataFmt: ts ? new Date(ts).toLocaleString('pt-BR') : '—',
+        novasParcelas: [],
+        originais: [],
+        totalNovo: 0,
+      };
+    }
+    mapaReneg[cid].novasParcelas.push(d);
+    mapaReneg[cid].totalNovo += d.total || 0;
+  });
+
+  // ── 2. Cruzar parcelas originais ───────────────────────────────────────
+  debitos.forEach(d => {
+    if (!d.pagamentos || !d.pagamentos.length) return;
+    d.pagamentos.forEach(pg => {
+      if (pg.forma !== 'Renegociação') return;
+      const cid = pg.renegociado_para;
+      if (cid && mapaReneg[cid]) {
+        const jaExiste = mapaReneg[cid].originais.find(x => String(x.id) === String(d.id));
+        if (!jaExiste) mapaReneg[cid].originais.push(d);
+      } else {
+        Object.values(mapaReneg).forEach(r => {
+          if (r.cliente !== d.cliente) return;
+          const diff = Math.abs(new Date(pg.data).getTime() - r.dataTs);
+          if (diff < 86400000) {
+            const jaExiste2 = r.originais.find(x => String(x.id) === String(d.id));
+            if (!jaExiste2) r.originais.push(d);
+          }
+        });
+      }
+    });
+  });
+
+  // ── 3. Filtrar e ordenar ───────────────────────────────────────────────
+  let grupos = Object.values(mapaReneg);
+  if (busca) grupos = grupos.filter(g => g.cliente.toLowerCase().includes(busca));
+  grupos.sort((a, b) => b.dataTs - a.dataTs);
+
+  if (grupos.length === 0) {
+    lista.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:13px;padding:32px 0;">
+      ${busca ? 'Nenhuma renegociação encontrada para "' + busca + '".' : 'Nenhuma renegociação registrada ainda.'}
+    </div>`;
+    return;
+  }
+
+  // ── 4. Renderizar linha do tempo ───────────────────────────────────────
+  lista.innerHTML = grupos.map(g => {
+    const totalOriginal = g.originais.reduce((s, d) => {
+      const pg = (d.pagamentos || []).find(p => p.forma === 'Renegociação');
+      return s + (pg?.valor || d.total || 0);
+    }, 0);
+    const jurosAplicado = totalOriginal > 0 && g.totalNovo > totalOriginal
+      ? ((g.totalNovo / totalOriginal - 1) * 100).toFixed(1) + '%'
+      : null;
+
+    const parcelasOriginaisHtml = g.originais.length
+      ? g.originais.map(d => {
+          const pg = (d.pagamentos || []).find(p => p.forma === 'Renegociação');
+          return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #f1f5f9;">
+            <span style="color:#64748b;">Parcela ${d.parcela || '—'}/${d.total_parcelas || '—'} · venc. ${d.vencimento || '—'}</span>
+            <span style="color:#9f1239;font-weight:700;">${R(pg?.valor || d.total || 0)}</span>
+          </div>`;
+        }).join('')
+      : `<div style="font-size:12px;color:var(--muted);padding:4px 0;">Parcelas originais não identificadas (renegociação anterior ao vínculo explícito).</div>`;
+
+    const parcelasNovasHtml = g.novasParcelas
+      .sort((a, b) => (a.parcela || 0) - (b.parcela || 0))
+      .map(d => {
+        const pago = (d.pagamentos || []).reduce((s, p) => s + (p.valor || 0), 0);
+        const saldo = Math.max(0, d.total - pago);
+        const status = saldo <= 0
+          ? `<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:#dcfce7;color:#166534;font-weight:700;">Pago</span>`
+          : credStatusDebito(d) === 'vencido'
+            ? `<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:#fee2e2;color:#991b1b;font-weight:700;">Vencido</span>`
+            : `<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:#eff6ff;color:#1e40af;font-weight:700;">Em aberto</span>`;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px solid #f1f5f9;">
+          <span style="color:#374151;">Parcela ${d.parcela || '—'}/${d.total_parcelas || '—'} · venc. ${d.vencimento || '—'}</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-weight:700;">${R(d.total || 0)}</span>
+            ${status}
+          </div>
+        </div>`;
+      }).join('');
+
+    return `
+      <div class="cred-box" style="margin-bottom:14px;border-left:4px solid #9f1239;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:14px;font-weight:800;color:#111827;">🔄 ${g.cliente}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${g.dataFmt} · Contrato ${g.contratoId}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:12px;color:var(--muted);">Total renegociado</div>
+            <div style="font-size:16px;font-weight:800;color:#9f1239;">${R(g.totalNovo)}</div>
+            ${jurosAplicado ? `<div style="font-size:11px;color:#d97706;">+ ${jurosAplicado} juros/multa</div>` : ''}
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:6px;">
+            📋 Parcelas originais renegociadas (${g.originais.length})
+          </div>
+          ${parcelasOriginaisHtml}
+          ${g.originais.length ? `<div style="text-align:right;font-size:12px;font-weight:700;color:#9f1239;margin-top:4px;">Total: ${R(totalOriginal)}</div>` : ''}
+        </div>
+
+        <div style="text-align:center;font-size:18px;color:#9f1239;margin:8px 0;">↓</div>
+
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:6px;">
+            ✨ Novas parcelas geradas (${g.novasParcelas.length})
+          </div>
+          ${parcelasNovasHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 // ── RELATÓRIOS DO CREDIÁRIO ──
 function renderRelatoriosCrediario() {
   const kpisEl = document.getElementById('cred-rel-kpis');
@@ -13507,6 +13569,7 @@ function mostrarCredAba(aba){
   if (aba === 'importar') previewCredImportacao();
   if (aba === 'inadimplencia') { renderInadimplencia(); return; }
   if (aba === 'relatorios') { renderRelatoriosCrediario(); return; }
+  if (aba === 'historico') { renderHistoricoRenegociacoes(); return; }
   if (aba === 'clientes') {
     renderCredClientes(getCredParcelas());
     // Reconectar listener toda vez (painel estava oculto, oninput HTML pode não funcionar)
