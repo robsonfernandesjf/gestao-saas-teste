@@ -4383,6 +4383,40 @@ body.modo-vitrine-publica{
 #crediario-parcelas-table th,#crediario-parcelas-table td,#crediario-clientes-table th,#crediario-clientes-table td{font-size:12px;}
 .cred-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 @media(max-width:900px){.cred-flow,.cred-kpis,.cred-grid-2,.cred-form-grid{grid-template-columns:1fr}.cred-flow-step{text-align:left}.cred-flow-step .ico{margin-left:0}}
+
+/* ===== CENTRAL DE SEGURANÇA ===== */
+.seg-hero{background:linear-gradient(135deg,#fff 0%,#f0f4ff 55%,#fff 100%);border:1px solid var(--border);border-radius:22px;padding:18px;box-shadow:0 14px 42px rgba(15,23,42,.06);margin-bottom:16px;}
+.seg-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;}
+.seg-tab{border:1px solid var(--border);background:#fff;color:#475569;border-radius:999px;padding:9px 14px;font-size:12px;font-weight:800;cursor:pointer;}
+.seg-tab.active{background:linear-gradient(135deg,#1e3a8a,#3b5fc0);color:#fff;border-color:transparent;box-shadow:0 10px 24px rgba(30,58,138,.18);}
+.seg-panel{display:none}.seg-panel.active{display:block}
+.seg-box{background:#fff;border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:0 10px 26px rgba(15,23,42,.04);margin-bottom:14px;}
+.seg-box h3{font-size:15px;margin:0 0 10px;color:#111827;}
+.seg-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px;}
+.seg-kpi{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center;}
+.seg-kpi .val{font-size:22px;font-weight:800;color:#1e3a8a;display:block;margin-bottom:2px;}
+.seg-kpi .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+.seg-check-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.seg-check-item{display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;cursor:pointer;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:#fafafa;transition:background .15s,border-color .15s;}
+.seg-check-item:hover{background:#eff6ff;border-color:#93c5fd;}
+.seg-check-item input[type=checkbox]{accent-color:#1e3a8a;width:15px;height:15px;flex-shrink:0;}
+.seg-progress-wrap{margin:12px 0;display:none;}
+.seg-progress-bar{height:8px;border-radius:99px;background:#e5e7eb;overflow:hidden;}
+.seg-progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#1e3a8a,#3b82f6);transition:width .3s;}
+.seg-log{background:#0f172a;border-radius:12px;padding:14px;font-family:monospace;font-size:12px;color:#94a3b8;max-height:220px;overflow-y:auto;margin-top:12px;display:none;}
+.seg-log .ok{color:#4ade80;}.seg-log .err{color:#f87171;}.seg-log .inf{color:#60a5fa;}
+.seg-restore-mod{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:#fafafa;}
+.seg-restore-mod .ico{font-size:20px;flex-shrink:0;}
+.seg-restore-mod .inf{flex:1;font-size:13px;}
+.seg-restore-mod .inf strong{display:block;color:#111827;}
+.seg-restore-mod .inf span{color:var(--muted);font-size:11px;}
+.seg-restore-mod.disabled{opacity:.45;}
+.seg-restore-mod .seg-badge{font-size:10px;padding:2px 8px;border-radius:99px;font-weight:700;}
+.seg-badge-ok{background:#dcfce7;color:#166534;}
+.seg-badge-warn{background:#fef9c3;color:#854d0e;}
+.seg-badge-err{background:#fee2e2;color:#991b1b;}
+.seg-badge-ext{background:#ede9fe;color:#5b21b6;}
+@media(max-width:700px){.seg-check-grid{grid-template-columns:1fr}.seg-kpis{grid-template-columns:1fr 1fr}}
 </style>
 
 </head>
@@ -4462,6 +4496,7 @@ body.modo-vitrine-publica{
   <button onclick="showPage('crediario')" id="nav-btn-crediario" style="display:none;">💳 Crediário</button>
   <button onclick="showPage('consignado')" id="nav-btn-consignado" style="display:none;">📦 Consignado</button>
   <button onclick="showPage('trocas')">🔄 Trocas</button>
+  <button onclick="showPage('seguranca')" id="nav-btn-seguranca">🔐 Central de Segurança</button>
   <button id="nav-empresa" onclick="showPage('empresa'); carregarDadosEmpresa();" style="display:none;">⚙️ Config. Empresa</button>
   <button class="btn-logout-mobile" onclick="fazerLogout()" style="display:none;margin-top:auto;color:var(--danger);border-color:var(--danger);">🚪 Sair</button>
 </nav>
@@ -4824,30 +4859,20 @@ body.modo-vitrine-publica{
 <div id="page-vendas" class="page">
   <div class="section-title">Registrar nova venda · carrinho</div>
 
-  <!-- WIDGET DE CAIXA — redesign moderno -->
-  <div id="caixa-widget-fechado" style="display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.04);">
-    <div style="display:flex;align-items:center;gap:8px;">
-      <span style="font-size:20px;">🔒</span>
-      <div>
-        <div style="font-size:13px;font-weight:700;color:#c2410c;">Nenhum caixa aberto</div>
-        <div style="font-size:11px;color:#9a3412;">Abra o caixa antes de registrar vendas.</div>
-      </div>
-    </div>
-    <button class="btn btn-primary btn-sm" style="margin-left:auto;border-radius:10px;" onclick="abrirModalAbrirCaixa()">🔓 Abrir Caixa</button>
+  <!-- WIDGET DE CAIXA (abertura/sangria/suprimento/fechamento) -->
+  <div id="caixa-widget-fechado" style="display:none;background:var(--warn-light);border:1px solid var(--warn);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <span style="font-size:14px;font-weight:600;color:var(--warn);">🔒 Nenhum caixa aberto</span>
+    <span style="font-size:12px;color:var(--muted);">Abra o caixa antes de registrar vendas.</span>
+    <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="abrirModalAbrirCaixa()">🔓 Abrir Caixa</button>
   </div>
 
-  <div id="caixa-widget-aberto" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.04);">
-    <div style="display:flex;align-items:center;gap:8px;">
-      <span style="font-size:20px;">🟢</span>
-      <div>
-        <div style="font-size:13px;font-weight:700;color:#15803d;">Caixa Aberto</div>
-        <span id="caixa-widget-info" style="font-size:11px;color:#166534;"></span>
-      </div>
-    </div>
+  <div id="caixa-widget-aberto" style="display:none;background:var(--success-light);border:1px solid #B8D9C0;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <span style="font-size:14px;font-weight:600;color:var(--success);">🔓 Caixa Aberto</span>
+    <span id="caixa-widget-info" style="font-size:12px;color:var(--muted);"></span>
     <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-outline btn-sm" style="border-radius:10px;font-size:12px;" onclick="abrirModalMovimentoCaixa('sangria')">💸 Sangria</button>
-      <button class="btn btn-outline btn-sm" style="border-radius:10px;font-size:12px;" onclick="abrirModalMovimentoCaixa('suprimento')">+ Suprimento</button>
-      <button class="btn btn-secondary btn-sm" style="border-radius:10px;font-size:12px;" onclick="abrirModalFecharCaixa()">🔒 Fechar Caixa</button>
+      <button class="btn btn-outline btn-sm" onclick="abrirModalMovimentoCaixa('sangria')">💸 Sangria</button>
+      <button class="btn btn-outline btn-sm" onclick="abrirModalMovimentoCaixa('suprimento')">➕ Suprimento</button>
+      <button class="btn btn-secondary btn-sm" onclick="abrirModalFecharCaixa()">🔒 Fechar Caixa</button>
     </div>
   </div>
 
@@ -4856,17 +4881,16 @@ body.modo-vitrine-publica{
     <!-- COLUNA ESQUERDA: busca + produto + carrinho -->
     <div class="pdv-col-esquerda">
 
-      <!-- BUSCA MODERNA -->
-      <div class="pdv-busca-card" style="border-radius:16px;padding:12px 16px;border:2px solid var(--border);background:var(--surface);box-shadow:0 2px 8px rgba(0,0,0,.04);">
-        <label for="busca-venda" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px;display:block;">🔍 BUSCAR PRODUTO (REF., NOME OU CÓDIGO DE BARRAS)</label>
-        <input type="text" id="busca-venda" placeholder="Ex: EC04, Calça xadrez ou código de barras..." oninput="filtrarProdutosVenda()" onkeydown="if(event.key==='Enter')buscaVendaEnter()" autocomplete="off"
-          style="width:100%;border:none;outline:none;font-size:15px;background:transparent;padding:4px 0;color:var(--text);">
+      <!-- BUSCA DESTACADA ESTILO PDV -->
+      <div class="pdv-busca-card">
+        <label for="busca-venda">🔍 Buscar produto (ref., nome ou código de barras)</label>
+        <input type="text" id="busca-venda" placeholder="Ex: EC04, Calça xadrez ou código de barras..." oninput="filtrarProdutosVenda()" onkeydown="if(event.key==='Enter')buscaVendaEnter()" autocomplete="off">
         <div id="sugestoes-venda" style="position:relative;z-index:100;"></div>
       </div>
 
       <!-- PRODUTO SELECIONADO -->
       <div id="produto-selecionado-info" style="display:none;">
-        <div class="pdv-produto-card" style="border-radius:16px;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.04);">
+        <div class="pdv-produto-card">
           <div class="pdv-produto-header">
             <div>
               <div class="pdv-produto-nome" id="pv-nome"></div>
@@ -4904,19 +4928,19 @@ body.modo-vitrine-publica{
               </div>
             </div>
             <div id="lucro-preview-box" class="lucro-preview" style="display:none;margin-bottom:14px;"></div>
-            <button class="pdv-btn-add" onclick="adicionarAoCarrinho()" style="border-radius:14px;">🛒 Adicionar ao Carrinho</button>
+            <button class="pdv-btn-add" onclick="adicionarAoCarrinho()">🛒 Adicionar ao Carrinho</button>
           </div>
         </div>
       </div>
 
       <div id="sem-produto-msg" class="pdv-empty-state">
-        <div class="icon">🛒</div>
-        <p>Adicione produtos para iniciar uma venda.</p>
+        <div class="icon">🏷️</div>
+        <p>Digite para buscar um produto acima.</p>
       </div>
 
-      <!-- CARRINHO MODERNO -->
-      <div class="pdv-carrinho-tabela" style="border-radius:16px;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.04);overflow:hidden;">
-        <div class="pdv-carrinho-tabela-head" style="background:var(--bg);padding:10px 16px;">
+      <!-- CARRINHO (tabela estilo PDV) -->
+      <div class="pdv-carrinho-tabela">
+        <div class="pdv-carrinho-tabela-head">
           <span>Produto</span>
           <span>Qtd</span>
           <span>Preço</span>
@@ -4924,72 +4948,55 @@ body.modo-vitrine-publica{
           <span></span>
         </div>
         <div id="carrinho-body-wrap">
-          <div id="carrinho-vazio-msg" class="pdv-carrinho-vazio" style="padding:32px;text-align:center;color:var(--muted);">Carrinho vazio</div>
+          <div id="carrinho-vazio-msg" class="pdv-carrinho-vazio">Carrinho vazio</div>
           <table style="display:none;" id="carrinho-tabela-real">
             <tbody id="carrinho-body"></tbody>
           </table>
         </div>
       </div>
 
-      <div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding:0 4px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-top:14px;">
         <label style="font-size:13px;color:var(--muted);white-space:nowrap;">Desconto (R$):</label>
-        <input type="text" inputmode="numeric" id="venda-desconto" placeholder="0,00" oninput="mascaraMoeda(this);renderCarrinho()" style="max-width:140px;border-radius:10px;">
+        <input type="text" inputmode="numeric" id="venda-desconto" placeholder="0,00" oninput="mascaraMoeda(this);renderCarrinho()" style="max-width:140px;">
       </div>
 
     </div>
 
-    <!-- COLUNA DIREITA: dados da venda, pagamento, resumo -->
-    <div class="pdv-col-direita" style="border-radius:18px;border:1px solid var(--border);box-shadow:0 4px 20px rgba(0,0,0,.06);">
-
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:14px;">Dados da Venda</div>
+    <!-- COLUNA DIREITA: cliente, pagamento, resumo, finalizar -->
+    <div class="pdv-col-direita">
 
       <div class="form-row" style="position:relative;">
         <label>Cliente (opcional)</label>
         <input type="text" id="venda-cliente" placeholder="Nome da cliente..." autocomplete="off"
-               oninput="filtrarClientesVenda(this);checarCreditoCliente();" onfocus="filtrarClientesVenda(this)" onblur="setTimeout(()=>{fecharSugestoesClienteVenda();checarCreditoCliente();},150)"
-               style="border-radius:10px;">
+               oninput="filtrarClientesVenda(this);checarCreditoCliente();" onfocus="filtrarClientesVenda(this)" onblur="setTimeout(()=>{fecharSugestoesClienteVenda();checarCreditoCliente();},150)">
         <div id="venda-cliente-sugestoes" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);max-height:200px;overflow-y:auto;margin-top:2px;"></div>
         <div id="venda-cliente-credito" style="display:none;margin-top:6px;padding:8px 10px;background:var(--success-light);border:1px solid #B8D9C0;border-radius:6px;font-size:12px;"></div>
       </div>
 
       <div class="form-row">
         <label>Vendedor (opcional)</label>
-        <select id="venda-vendedor" class="select-vendedor" style="border-radius:10px;">
+        <select id="venda-vendedor" class="select-vendedor">
           <option value="">Sem vendedor</option>
         </select>
       </div>
 
       <div class="form-row">
         <label>Data da venda</label>
-        <input type="date" id="venda-data" style="border-radius:10px;">
+        <input type="date" id="venda-data">
       </div>
 
-      <div class="pdv-pagamento-label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:14px 0 10px;">Pagamento</div>
+      <div class="pdv-pagamento-label">Pagamento</div>
       <div class="pdv-pagamento-grid">
-        <button type="button" class="pdv-pag-btn" data-valor="À vista" onclick="selecionarFormaPagamento(this)">
-          <span style="font-size:18px;">💵</span> Dinheiro
-        </button>
-        <button type="button" class="pdv-pag-btn" data-valor="Pix" onclick="selecionarFormaPagamento(this)">
-          <span style="font-size:18px;">📱</span> Pix
-        </button>
-        <button type="button" class="pdv-pag-btn" data-valor="Cartão débito" onclick="selecionarFormaPagamento(this)">
-          <span style="font-size:18px;">💳</span> Débito
-        </button>
-        <button type="button" class="pdv-pag-btn" data-valor="Cartão crédito" onclick="selecionarFormaPagamento(this)">
-          <span style="font-size:18px;">💳</span> Crédito
-        </button>
-        <button type="button" class="pdv-pag-btn pdv-pag-btn-full" data-valor="A prazo" onclick="selecionarFormaPagamento(this)">
-          <span style="font-size:18px;">📄</span> Fiado
-        </button>
-        <button type="button" class="pdv-pag-btn pdv-pag-btn-full" data-valor="Crediário" onclick="selecionarFormaPagamento(this)" style="display:none;">
-          <span style="font-size:18px;">💳</span> Crediário
-        </button>
-        <button type="button" class="pdv-pag-btn" data-valor="Voucher" onclick="selecionarFormaPagamento(this)">
-          <span style="font-size:18px;">🎫</span> Voucher
-        </button>
+        <button type="button" class="pdv-pag-btn" data-valor="À vista" onclick="selecionarFormaPagamento(this)">💵 Dinheiro</button>
+        <button type="button" class="pdv-pag-btn" data-valor="Pix" onclick="selecionarFormaPagamento(this)">📱 Pix</button>
+        <button type="button" class="pdv-pag-btn" data-valor="Cartão débito" onclick="selecionarFormaPagamento(this)">💳 Débito</button>
+        <button type="button" class="pdv-pag-btn" data-valor="Cartão crédito" onclick="selecionarFormaPagamento(this)">💳 Crédito</button>
+        <button type="button" class="pdv-pag-btn pdv-pag-btn-full" data-valor="A prazo" onclick="selecionarFormaPagamento(this)">📄 Fiado</button>
+        <button type="button" class="pdv-pag-btn pdv-pag-btn-full" data-valor="Crediário" onclick="selecionarFormaPagamento(this)" style="display:none;">💳 Crediário</button>
+        <button type="button" class="pdv-pag-btn" data-valor="Voucher" onclick="selecionarFormaPagamento(this)">🎫 Voucher</button>
       </div>
 
-      <!-- Select real mantido para a lógica existente -->
+      <!-- Select real (mantido para a lógica existente, oculto visualmente) -->
       <select id="venda-pagamento" onchange="togglePrazoFields()" style="display:none;">
         <option>À vista</option>
         <option>Cartão crédito</option>
@@ -5000,13 +5007,13 @@ body.modo-vitrine-publica{
         <option value="Voucher">Voucher (crédito de troca)</option>
       </select>
 
-      <div class="pdv-forma-selecionada" style="background:var(--bg);border-radius:10px;padding:10px 14px;margin-top:12px;">
-        <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);">Forma Selecionada</span>
-        <strong id="pdv-forma-texto" style="display:block;margin-top:2px;color:var(--accent);">— selecione acima —</strong>
+      <div class="pdv-forma-selecionada">
+        <span style="color:var(--muted);">Forma selecionada</span>
+        <strong id="pdv-forma-texto">— selecione acima —</strong>
       </div>
 
-      <div class="form-row" style="margin:12px 0 0;">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500;font-size:12px;color:var(--muted);">
+      <div class="form-row" style="margin:10px 0 0;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400;">
           <input type="checkbox" id="venda-pag-misto" onchange="togglePagamentoMisto()" style="width:auto;">
           Dividir em até 2 formas de pagamento
         </label>
@@ -5014,14 +5021,14 @@ body.modo-vitrine-publica{
 
       <div class="pdv-resumo-lateral" id="carrinho-resumo"></div>
 
-      <div class="pdv-finalizar-bar" style="margin-top:12px;">
-        <button class="pdv-btn-limpar" onclick="limparCarrinho()" style="border-radius:10px;">🗑 Limpar</button>
+      <div class="pdv-finalizar-bar">
+        <button class="pdv-btn-limpar" onclick="limparCarrinho()">🗑 Limpar</button>
       </div>
 
-      <!-- RECEBER CREDIÁRIO -->
+      <!-- RECEBER CREDIÁRIO — só aparece se loja tem crediário habilitado -->
       <div id="pdv-receber-cred-wrap" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
         <button onclick="abrirModalReceberCrediario()"
-          style="width:100%;padding:14px;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;border:none;border-radius:14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(59,130,246,0.3);transition:.15s ease;"
+          style="width:100%;padding:12px;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(59,130,246,0.3);transition:.15s ease;"
           onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform=''">
           💳 Receber Crediário
         </button>
@@ -5031,7 +5038,7 @@ body.modo-vitrine-publica{
 
   </div>
 
-  <!-- Mantido oculto: usado pela lógica original -->
+  <!-- Mantido oculto: usado pela lógica original para saber se há itens no carrinho -->
   <div id="carrinho-wrap" style="display:none;"></div>
 </div>
 
@@ -8458,6 +8465,7 @@ function showPage(id) {
   if (id === 'crediario') { renderCrediario(); }
   if (id === 'consignado') { renderConsignados(); }
   if (id === 'consignado') { renderConsignados(); }
+  if (id === 'seguranca') { renderSeguranca(); }
   aplicarFlagCrediario();
   if (id === 'trocas') { renderTrocas(); }
   if (id === 'usuarios') { renderUsuarios(); }
@@ -19588,6 +19596,130 @@ atualizarHora();
 
 <!-- USUÁRIOS -->
 <!-- CONFIGURAÇÕES DA EMPRESA -->
+<!-- ===== PÁGINA: CENTRAL DE SEGURANÇA ===== -->
+<div id="page-seguranca" class="page">
+
+  <!-- Hero -->
+  <div class="seg-hero">
+    <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+      <div>
+        <h2 style="font-size:18px;margin:0 0 6px;color:#111827;">🔐 Central de Segurança</h2>
+        <p style="font-size:13px;color:#64748b;margin:0;max-width:720px;">Backup lógico dos dados da sua loja. Exporte, valide e restaure com segurança — apenas os dados desta loja.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="seg-kpis" id="seg-kpis">
+    <div class="seg-kpi"><span class="val" id="seg-kpi-ultimo">—</span><span class="lbl">Último backup</span></div>
+    <div class="seg-kpi"><span class="val" id="seg-kpi-tipo">—</span><span class="lbl">Tipo</span></div>
+    <div class="seg-kpi"><span class="val" id="seg-kpi-tamanho">—</span><span class="lbl">Tamanho</span></div>
+  </div>
+
+  <!-- Abas -->
+  <div class="seg-tabs">
+    <button class="seg-tab active" id="seg-tab-backup"    onclick="segMostrarAba('backup')">💾 Backup</button>
+    <button class="seg-tab"        id="seg-tab-restaurar" onclick="segMostrarAba('restaurar')">🔄 Restaurar</button>
+    <button class="seg-tab"        id="seg-tab-validar"   onclick="segMostrarAba('validar')">✅ Validar Backup</button>
+  </div>
+
+  <!-- ===== PAINEL BACKUP ===== -->
+  <div id="seg-panel-backup" class="seg-panel active">
+    <div class="seg-box">
+      <h3>📦 Selecionar módulos</h3>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <button class="btn btn-sm btn-outline" onclick="segSelecionarTodos(true)"  style="font-size:12px;padding:5px 12px;">✅ Selecionar todos</button>
+        <button class="btn btn-sm btn-outline" onclick="segSelecionarTodos(false)" style="font-size:12px;padding:5px 12px;">☐ Desmarcar todos</button>
+      </div>
+      <div class="seg-check-grid" id="seg-modulos-grid"></div>
+    </div>
+
+    <div class="seg-box">
+      <h3>🚀 Gerar Backup</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">O backup é gerado no seu navegador e salvo como arquivo <strong>.zip</strong> na sua máquina. Nenhum dado sai para servidores externos.</p>
+      <div class="seg-progress-wrap" id="seg-progress-wrap">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px;">
+          <span id="seg-progress-label">Iniciando...</span>
+          <span id="seg-progress-pct">0%</span>
+        </div>
+        <div class="seg-progress-bar"><div class="seg-progress-fill" id="seg-progress-fill" style="width:0%"></div></div>
+      </div>
+      <div class="seg-log" id="seg-log-backup"></div>
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-primary" id="seg-btn-gerar" onclick="segGerarBackup()" style="background:linear-gradient(135deg,#1e3a8a,#3b5fc0);border:none;">
+          💾 Gerar Backup
+        </button>
+        <span id="seg-resultado-backup" style="font-size:13px;color:var(--muted);"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PAINEL RESTAURAR ===== -->
+  <div id="seg-panel-restaurar" class="seg-panel">
+    <div class="seg-box">
+      <h3>📂 Selecionar arquivo de backup</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Selecione um arquivo <strong>.zip</strong> gerado pelo LegadoERP. Apenas dados desta loja serão restaurados.</p>
+      <input type="file" id="seg-restore-file" accept=".zip" style="display:none;" onchange="segCarregarArquivoRestore(event)">
+      <button class="btn btn-outline" onclick="document.getElementById('seg-restore-file').click()">📁 Escolher arquivo .zip</button>
+      <span id="seg-restore-filename" style="font-size:13px;color:var(--muted);margin-left:10px;"></span>
+    </div>
+
+    <div id="seg-restore-resumo" style="display:none;">
+      <div class="seg-box">
+        <h3>📋 Resumo do backup</h3>
+        <div id="seg-restore-manifest-info" style="font-size:13px;margin-bottom:14px;"></div>
+        <div id="seg-restore-modulos-lista"></div>
+      </div>
+
+      <div class="seg-box" style="border-color:#fbbf24;background:#fffbeb;">
+        <h3 style="color:#92400e;">⚠️ Atenção antes de restaurar</h3>
+        <p style="font-size:13px;color:#78350f;margin-bottom:10px;">Um <strong>backup preventivo automático</strong> será gerado antes da restauração. Registros existentes serão atualizados via upsert — novos dados não serão apagados.</p>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;">
+          <input type="checkbox" id="seg-restore-confirmar" style="accent-color:#1e3a8a;width:15px;height:15px;">
+          Entendo os riscos e quero continuar
+        </label>
+      </div>
+
+      <div class="seg-progress-wrap" id="seg-restore-progress-wrap" style="display:block;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px;">
+          <span id="seg-restore-progress-label">Aguardando confirmação...</span>
+          <span id="seg-restore-progress-pct">0%</span>
+        </div>
+        <div class="seg-progress-bar"><div class="seg-progress-fill" id="seg-restore-progress-fill" style="width:0%"></div></div>
+      </div>
+
+      <div class="seg-log" id="seg-log-restore"></div>
+
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="seg-btn-restaurar" onclick="segExecutarRestore()" style="background:linear-gradient(135deg,#1e3a8a,#3b5fc0);border:none;">
+          🔄 Restaurar dados
+        </button>
+        <button class="btn btn-outline" onclick="segLimparRestore()">✕ Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PAINEL VALIDAR ===== -->
+  <div id="seg-panel-validar" class="seg-panel">
+    <div class="seg-box">
+      <h3>🔍 Validar arquivo de backup</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Verifica manifest, estrutura dos JSONs, hash SHA-256 e compatibilidade de versão — sem alterar nenhum dado.</p>
+      <input type="file" id="seg-validar-file" accept=".zip" style="display:none;" onchange="segValidarBackup(event)">
+      <button class="btn btn-outline" onclick="document.getElementById('seg-validar-file').click()">📁 Escolher arquivo .zip para validar</button>
+    </div>
+
+    <div id="seg-validar-resultado" style="display:none;">
+      <div class="seg-box">
+        <h3 id="seg-validar-titulo">Resultado da validação</h3>
+        <div id="seg-validar-itens"></div>
+      </div>
+      <div class="seg-log" id="seg-log-validar" style="display:block;"></div>
+    </div>
+  </div>
+
+</div>
+<!-- FIM CENTRAL DE SEGURANÇA -->
+
 <div id="page-empresa" class="page">
   <div style="max-width:860px;">
 
@@ -20213,5 +20345,588 @@ atualizarHora();
   window.addEventListener('resize', fixarPosicaoLogo);
   document.addEventListener('DOMContentLoaded', fixarPosicaoLogo);
 </script>
+
+<!-- ===== CENTRAL DE SEGURANÇA — SCRIPT ===== -->
+<script>
+// ---------------------------------------------------------------
+// CONSTANTES DO MÓDULO
+// ---------------------------------------------------------------
+const SEG_VERSAO_BACKUP  = '1';
+const SEG_VERSAO_ERP     = '1.0.0';
+const SEG_LS_ULTIMO      = 'legado_ultimo_backup';
+
+const SEG_MODULOS = [
+  { id:'clientes',        label:'Clientes',           emoji:'👥', tabela:'clientes',                filtro:'loja_id',  pk:'id',            grupo:'cadastro'  },
+  { id:'fornecedores',    label:'Fornecedores',        emoji:'🏭', tabela:'clientes',                filtro:'loja_id',  pk:'id',            grupo:'cadastro', extra:'tipo=eq.fornecedor' },
+  { id:'produtos',        label:'Produtos',            emoji:'📦', tabela:'produtos',                filtro:'loja_id',  pk:'id',            grupo:'estoque'   },
+  { id:'estoque',         label:'Estoque (grade)',      emoji:'📐', tabela:'grade_estoque',           filtro:'loja_id',  pk:'id',            grupo:'estoque',  opcional:true },
+  { id:'vendas',          label:'Vendas',              emoji:'🛒', tabela:'vendas',                  filtro:'loja_id',  pk:'id',            grupo:'financeiro' },
+  { id:'financeiro',      label:'A Receber (débitos)',  emoji:'💰', tabela:'debitos',                 filtro:'loja_id',  pk:'id',            grupo:'financeiro' },
+  { id:'contas_pagar',    label:'Contas a Pagar',      emoji:'💸', tabela:'contas_pagar',            filtro:'loja_id',  pk:'id',            grupo:'financeiro' },
+  { id:'crediario',       label:'Crediário',           emoji:'💳', tabela:'crediario_configuracoes', filtro:'loja_id',  pk:'loja_id,chave', grupo:'crediario'  },
+  { id:'consignado',      label:'Consignado',          emoji:'🤝', tabela:'consignados',             filtro:'loja_id',  pk:'id',            grupo:'consignado' },
+  { id:'trocas',          label:'Trocas',              emoji:'🔄', tabela:'trocas',                  filtro:'loja_id',  pk:'id',            grupo:'financeiro' },
+  { id:'vouchers',        label:'Vouchers',            emoji:'🎟️', tabela:'vouchers',                filtro:'loja_id',  pk:'id',            grupo:'financeiro' },
+  { id:'caixa',           label:'Caixa',               emoji:'🏦', tabela:'caixa_sessoes',           filtro:'loja_id',  pk:'id',            grupo:'financeiro' },
+  { id:'vendedores',      label:'Vendedores',          emoji:'🧑‍💼', tabela:'vendedores',              filtro:'loja_id',  pk:'id',            grupo:'cadastro'  },
+  { id:'usuarios',        label:'Usuários da Loja',    emoji:'🔑', tabela:'usuarios',                filtro:'loja_id',  pk:'id',            grupo:'sistema'   },
+  { id:'configuracoes',   label:'Configurações',       emoji:'⚙️', tabela:'loja_configuracoes',      filtro:'loja_id',  pk:'loja_id,chave', grupo:'sistema'   },
+  { id:'taxas_cartao',    label:'Taxas de Cartão',     emoji:'💳', tabela:'taxas_cartao',            filtro:'loja_id',  pk:'id',            grupo:'financeiro' },
+  { id:'consig_itens',    label:'Itens Consignado',    emoji:'📋', tabela:'consignado_itens',        filtro:'loja_id',  pk:'id',            grupo:'consignado' },
+];
+
+const SEG_DEPS = {
+  financeiro:   ['clientes'],
+  crediario:    ['clientes'],
+  consignado:   ['clientes','produtos'],
+  consig_itens: ['consignado','produtos'],
+  trocas:       ['clientes','produtos'],
+  vouchers:     ['clientes'],
+  estoque:      ['produtos'],
+};
+
+const SEG_ORDEM_RESTORE = [
+  'configuracoes','usuarios','vendedores',
+  'clientes','fornecedores','produtos','estoque',
+  'taxas_cartao','vendas','financeiro','contas_pagar',
+  'crediario','trocas','vouchers','caixa',
+  'consignado','consig_itens',
+];
+
+// ---------------------------------------------------------------
+// ESTADO INTERNO
+// ---------------------------------------------------------------
+let _segArquivoRestore = null;
+let _segDadosRestore   = null;
+let _segEmAndamento    = false;
+
+// ---------------------------------------------------------------
+// INICIALIZAÇÃO DA TELA
+// ---------------------------------------------------------------
+function renderSeguranca() {
+  segRenderModulos();
+  segAtualizarKPIs();
+}
+
+function segMostrarAba(aba) {
+  document.querySelectorAll('.seg-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.seg-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('seg-tab-' + aba).classList.add('active');
+  document.getElementById('seg-panel-' + aba).classList.add('active');
+}
+
+function segRenderModulos() {
+  const grid = document.getElementById('seg-modulos-grid');
+  if (!grid) return;
+  grid.innerHTML = SEG_MODULOS.map(m => `
+    <label class="seg-check-item">
+      <input type="checkbox" id="seg-mod-${m.id}" checked>
+      <span>${m.emoji} ${m.label}</span>
+    </label>
+  `).join('');
+}
+
+function segSelecionarTodos(val) {
+  SEG_MODULOS.forEach(m => {
+    const el = document.getElementById('seg-mod-' + m.id);
+    if (el) el.checked = val;
+  });
+}
+
+function segAtualizarKPIs() {
+  try {
+    const meta = JSON.parse(localStorage.getItem(SEG_LS_ULTIMO) || 'null');
+    if (meta) {
+      document.getElementById('seg-kpi-ultimo').textContent  = meta.data     || '—';
+      document.getElementById('seg-kpi-tipo').textContent    = meta.tipo     || '—';
+      document.getElementById('seg-kpi-tamanho').textContent = meta.tamanho  || '—';
+    }
+  } catch(e) {}
+}
+
+// ---------------------------------------------------------------
+// UTILITÁRIOS
+// ---------------------------------------------------------------
+function segLog(logId, msg, tipo = 'inf') {
+  const el = document.getElementById(logId);
+  if (!el) return;
+  el.style.display = 'block';
+  const cls = tipo === 'ok' ? 'ok' : tipo === 'err' ? 'err' : 'inf';
+  const ts = new Date().toLocaleTimeString('pt-BR');
+  el.innerHTML += `<div class="${cls}">[${ts}] ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function segProgresso(wrapId, fillId, pctId, labelId, pct, label) {
+  const wrap = document.getElementById(wrapId);
+  if (wrap) wrap.style.display = 'block';
+  const fill = document.getElementById(fillId);
+  if (fill) fill.style.width = pct + '%';
+  const pctEl = document.getElementById(pctId);
+  if (pctEl) pctEl.textContent = pct + '%';
+  const lblEl = document.getElementById(labelId);
+  if (lblEl) lblEl.textContent = label;
+}
+
+async function segCalcHash(modulos) {
+  const chaves = Object.keys(modulos).sort();
+  const conteudo = chaves.map(k => JSON.stringify(modulos[k])).join('|');
+  const buffer = new TextEncoder().encode(conteudo);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function segFormatarBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(2) + ' MB';
+}
+
+// ---------------------------------------------------------------
+// BUSCA DE DADOS DO SUPABASE
+// ---------------------------------------------------------------
+async function segBuscarModulo(modulo, timestampISO) {
+  let query = `loja_id=eq.${encodeURIComponent(LOJA_ID)}&created_at=lte.${encodeURIComponent(timestampISO)}&limit=10000`;
+  if (modulo.extra) query += '&' + modulo.extra;
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/${modulo.tabela}?${query}`, { headers: SB_HEADS });
+    if (!r.ok) {
+      const txt = await r.text();
+      if (r.status === 404 || txt.includes('relation') || txt.includes('does not exist')) return [];
+      throw new Error(txt);
+    }
+    return await r.json();
+  } catch(e) {
+    console.warn(`[Backup] Módulo ${modulo.id}:`, e.message);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------
+// GERAR BACKUP
+// ---------------------------------------------------------------
+async function segGerarBackup() {
+  if (_segEmAndamento) return;
+  _segEmAndamento = true;
+
+  const logEl = document.getElementById('seg-log-backup');
+  logEl.innerHTML = '';
+  logEl.style.display = 'block';
+  document.getElementById('seg-resultado-backup').textContent = '';
+  document.getElementById('seg-btn-gerar').disabled = true;
+
+  try {
+    await segCarregarJSZip();
+
+    const modulosSelecionados = SEG_MODULOS.filter(m => {
+      const el = document.getElementById('seg-mod-' + m.id);
+      return el && el.checked;
+    });
+
+    if (modulosSelecionados.length === 0) {
+      segLog('seg-log-backup', 'Selecione pelo menos um módulo.', 'err');
+      return;
+    }
+
+    const timestampISO = new Date().toISOString();
+    segLog('seg-log-backup', `Iniciando backup — snapshot: ${timestampISO}`, 'inf');
+
+    let nomeLoja = CONFIG_LOJA.nome || LOJA_ID;
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome`, { headers: SB_HEADS });
+      if (r.ok) { const d = await r.json(); if (d[0]?.nome) nomeLoja = d[0].nome; }
+    } catch(e) {}
+
+    const total = modulosSelecionados.length;
+    const dadosModulos = {};
+    const contagens = {};
+
+    for (let i = 0; i < modulosSelecionados.length; i++) {
+      const m = modulosSelecionados[i];
+      const pct = Math.round((i / total) * 80);
+      segProgresso('seg-progress-wrap','seg-progress-fill','seg-progress-pct','seg-progress-label',
+        pct, `Buscando ${m.label}...`);
+      segLog('seg-log-backup', `Buscando ${m.emoji} ${m.label}...`, 'inf');
+
+      const dados = await segBuscarModulo(m, timestampISO);
+      dadosModulos[m.id] = dados;
+      contagens[m.id] = dados.length;
+      segLog('seg-log-backup', `  → ${m.label}: ${dados.length} registros`, dados.length > 0 ? 'ok' : 'inf');
+    }
+
+    segProgresso('seg-progress-wrap','seg-progress-fill','seg-progress-pct','seg-progress-label', 85, 'Calculando hash SHA-256...');
+    segLog('seg-log-backup', 'Calculando hash SHA-256...', 'inf');
+    const hash = await segCalcHash(dadosModulos);
+    segLog('seg-log-backup', `Hash: ${hash.substring(0,16)}...`, 'ok');
+
+    const manifest = {
+      versao_legadoerp: SEG_VERSAO_ERP,
+      versao_backup:    SEG_VERSAO_BACKUP,
+      data:             timestampISO,
+      loja_id:          LOJA_ID,
+      nome_loja:        nomeLoja,
+      tipo:             'manual',
+      hash_sha256:      hash,
+      modulos:          Object.keys(dadosModulos),
+      contagens:        contagens,
+      modulos_ausentes: SEG_MODULOS.filter(m => !dadosModulos[m.id]).map(m => m.id),
+    };
+
+    segProgresso('seg-progress-wrap','seg-progress-fill','seg-progress-pct','seg-progress-label', 90, 'Compactando ZIP...');
+    segLog('seg-log-backup', 'Compactando ZIP...', 'inf');
+
+    const zip = new JSZip();
+    zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+    for (const [id, dados] of Object.entries(dadosModulos)) {
+      zip.file(`${id}.json`, JSON.stringify(dados, null, 2));
+    }
+
+    const blob = await zip.generateAsync({ type:'blob', compression:'DEFLATE', compressionOptions:{ level:6 } });
+    const tamanhoStr = segFormatarBytes(blob.size);
+
+    segProgresso('seg-progress-wrap','seg-progress-fill','seg-progress-pct','seg-progress-label', 98, 'Gerando download...');
+    const dataStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const nomeArq = `legadoerp_backup_${dataStr}_${LOJA_ID.slice(0,8)}.zip`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nomeArq; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    const metaLS = {
+      data:     new Date().toLocaleString('pt-BR'),
+      tipo:     'Manual',
+      tamanho:  tamanhoStr,
+      arquivo:  nomeArq,
+      hash:     hash,
+      contagens,
+    };
+    localStorage.setItem(SEG_LS_ULTIMO, JSON.stringify(metaLS));
+    segAtualizarKPIs();
+
+    segProgresso('seg-progress-wrap','seg-progress-fill','seg-progress-pct','seg-progress-label', 100, 'Concluído!');
+    segLog('seg-log-backup', `✅ Backup concluído: ${nomeArq} (${tamanhoStr})`, 'ok');
+    document.getElementById('seg-resultado-backup').textContent = `✅ ${nomeArq} — ${tamanhoStr}`;
+
+  } catch(e) {
+    segLog('seg-log-backup', `❌ Erro fatal: ${e.message}`, 'err');
+    console.error('[Backup]', e);
+  } finally {
+    document.getElementById('seg-btn-gerar').disabled = false;
+    _segEmAndamento = false;
+  }
+}
+
+// ---------------------------------------------------------------
+// CARREGAR JSZIP DINAMICAMENTE
+// ---------------------------------------------------------------
+function segCarregarJSZip() {
+  return new Promise((resolve, reject) => {
+    if (window.JSZip) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Não foi possível carregar JSZip. Verifique sua conexão.'));
+    document.head.appendChild(s);
+  });
+}
+
+// ---------------------------------------------------------------
+// CARREGAR ARQUIVO PARA RESTORE
+// ---------------------------------------------------------------
+async function segCarregarArquivoRestore(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  _segArquivoRestore = file;
+  _segDadosRestore = null;
+  document.getElementById('seg-restore-filename').textContent = file.name;
+  document.getElementById('seg-restore-resumo').style.display = 'none';
+  document.getElementById('seg-log-restore').innerHTML = '';
+  document.getElementById('seg-log-restore').style.display = 'none';
+
+  try {
+    await segCarregarJSZip();
+    const zip = await JSZip.loadAsync(file);
+
+    const manifestFile = zip.file('manifest.json');
+    if (!manifestFile) throw new Error('manifest.json não encontrado no ZIP.');
+    const manifest = JSON.parse(await manifestFile.async('string'));
+
+    if (manifest.loja_id && manifest.loja_id !== LOJA_ID) {
+      throw new Error(`Este backup pertence à loja "${manifest.nome_loja || manifest.loja_id}", não a esta loja. Restauração bloqueada.`);
+    }
+
+    const versaoBackup = parseInt(manifest.versao_backup || '1');
+    const versaoAtual  = parseInt(SEG_VERSAO_BACKUP);
+    if (versaoBackup > versaoAtual) {
+      throw new Error(`Backup versão ${versaoBackup} é mais recente que esta versão do sistema (${versaoAtual}). Atualize o LegadoERP.`);
+    }
+
+    const dadosModulos = {};
+    for (const modId of (manifest.modulos || [])) {
+      const f = zip.file(`${modId}.json`);
+      if (f) dadosModulos[modId] = JSON.parse(await f.async('string'));
+    }
+
+    _segDadosRestore = { manifest, modulos: dadosModulos };
+    segRenderResumorestore(manifest, dadosModulos);
+    document.getElementById('seg-restore-resumo').style.display = 'block';
+    document.getElementById('seg-restore-confirmar').checked = false;
+
+  } catch(e) {
+    alert('Erro ao ler backup: ' + e.message);
+    _segArquivoRestore = null;
+    document.getElementById('seg-restore-filename').textContent = '';
+  }
+}
+
+function segRenderResumorestore(manifest, dados) {
+  const dataFmt = manifest.data ? new Date(manifest.data).toLocaleString('pt-BR') : '—';
+  document.getElementById('seg-restore-manifest-info').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;font-size:13px;">
+      <div><strong>Loja:</strong> ${manifest.nome_loja || manifest.loja_id}</div>
+      <div><strong>Data:</strong> ${dataFmt}</div>
+      <div><strong>Tipo:</strong> ${manifest.tipo || '—'}</div>
+      <div><strong>Versão ERP:</strong> ${manifest.versao_legadoerp || '—'}</div>
+      <div><strong>Módulos:</strong> ${(manifest.modulos||[]).length}</div>
+      <div><strong>Hash:</strong> <code style="font-size:10px;">${(manifest.hash_sha256||'').slice(0,16)}...</code></div>
+    </div>
+  `;
+  const lista = document.getElementById('seg-restore-modulos-lista');
+  const modDef = Object.fromEntries(SEG_MODULOS.map(m => [m.id, m]));
+  lista.innerHTML = (manifest.modulos || []).map(id => {
+    const def = modDef[id] || { emoji:'📄', label: id };
+    const qtd = (manifest.contagens || {})[id] ?? (dados[id]?.length ?? '?');
+    return `
+      <div class="seg-restore-mod">
+        <span class="ico">${def.emoji}</span>
+        <div class="inf">
+          <strong>${def.label || id}</strong>
+          <span>${qtd} registros</span>
+        </div>
+        <span class="seg-badge seg-badge-ok">✓ Incluído</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// ---------------------------------------------------------------
+// EXECUTAR RESTAURAÇÃO
+// ---------------------------------------------------------------
+async function segExecutarRestore() {
+  if (_segEmAndamento) return;
+  if (!_segDadosRestore) { alert('Nenhum arquivo de backup carregado.'); return; }
+  if (!document.getElementById('seg-restore-confirmar').checked) {
+    alert('Marque a caixa de confirmação antes de continuar.'); return;
+  }
+  _segEmAndamento = true;
+
+  const logEl = document.getElementById('seg-log-restore');
+  logEl.innerHTML = ''; logEl.style.display = 'block';
+  document.getElementById('seg-btn-restaurar').disabled = true;
+
+  try {
+    const { manifest, modulos: dadosRestore } = _segDadosRestore;
+
+    segLog('seg-log-restore', '🛡️ Gerando backup preventivo automático...', 'inf');
+    segProgresso('seg-restore-progress-wrap','seg-restore-progress-fill','seg-restore-progress-pct','seg-restore-progress-label', 5, 'Backup preventivo...');
+    try {
+      await segGerarBackupSilencioso('pre-restore');
+      segLog('seg-log-restore', '✅ Backup preventivo salvo.', 'ok');
+    } catch(e) {
+      segLog('seg-log-restore', `⚠️ Backup preventivo falhou: ${e.message} — continuando...`, 'inf');
+    }
+
+    segLog('seg-log-restore', '🔐 Verificando integridade (SHA-256)...', 'inf');
+    segProgresso('seg-restore-progress-wrap','seg-restore-progress-fill','seg-restore-progress-pct','seg-restore-progress-label', 10, 'Verificando hash...');
+    const hashCalc = await segCalcHash(dadosRestore);
+    if (manifest.hash_sha256 && hashCalc !== manifest.hash_sha256) {
+      throw new Error('Hash SHA-256 divergente. O arquivo pode estar corrompido ou adulterado.');
+    }
+    segLog('seg-log-restore', '✅ Integridade confirmada.', 'ok');
+
+    const idsOrdenados = SEG_ORDEM_RESTORE.filter(id => dadosRestore[id] !== undefined);
+    const total = idsOrdenados.length;
+    const modDef = Object.fromEntries(SEG_MODULOS.map(m => [m.id, m]));
+    let restaurados = 0, falhas = 0;
+
+    for (let i = 0; i < idsOrdenados.length; i++) {
+      const id = idsOrdenados[i];
+      const dados = dadosRestore[id];
+      const def = modDef[id];
+      if (!def || !dados || dados.length === 0) {
+        segLog('seg-log-restore', `⏭️ ${id}: sem dados — pulando.`, 'inf');
+        continue;
+      }
+
+      const pct = 10 + Math.round((i / total) * 85);
+      segProgresso('seg-restore-progress-wrap','seg-restore-progress-fill','seg-restore-progress-pct','seg-restore-progress-label',
+        pct, `Restaurando ${def.label}...`);
+      segLog('seg-log-restore', `Restaurando ${def.emoji} ${def.label} (${dados.length} registros)...`, 'inf');
+
+      try {
+        const lote = 200;
+        for (let j = 0; j < dados.length; j += lote) {
+          const chunk = dados.slice(j, j + lote);
+          const chunkComLoja = chunk.map(r => ({ ...r, loja_id: LOJA_ID }));
+          await sbUpsert(def.tabela, chunkComLoja, def.pk);
+        }
+        segLog('seg-log-restore', `  ✅ ${def.label}: ${dados.length} registros restaurados.`, 'ok');
+        restaurados++;
+      } catch(e) {
+        segLog('seg-log-restore', `  ❌ ${def.label}: ${e.message}`, 'err');
+        falhas++;
+      }
+    }
+
+    segProgresso('seg-restore-progress-wrap','seg-restore-progress-fill','seg-restore-progress-pct','seg-restore-progress-label', 100, 'Concluído!');
+    segLog('seg-log-restore', `─────────────────────────────────────`, 'inf');
+    segLog('seg-log-restore', `✅ Restauração concluída. Sucesso: ${restaurados} | Falhas: ${falhas}`, falhas > 0 ? 'inf' : 'ok');
+    if (falhas > 0) segLog('seg-log-restore', `⚠️ Revise os erros acima. O backup preventivo está disponível para desfazer.`, 'inf');
+
+    invalidarCache();
+
+  } catch(e) {
+    segLog('seg-log-restore', `❌ Erro fatal: ${e.message}`, 'err');
+    console.error('[Restore]', e);
+  } finally {
+    document.getElementById('seg-btn-restaurar').disabled = false;
+    _segEmAndamento = false;
+  }
+}
+
+function segLimparRestore() {
+  _segArquivoRestore = null;
+  _segDadosRestore = null;
+  document.getElementById('seg-restore-file').value = '';
+  document.getElementById('seg-restore-filename').textContent = '';
+  document.getElementById('seg-restore-resumo').style.display = 'none';
+  document.getElementById('seg-log-restore').innerHTML = '';
+  document.getElementById('seg-log-restore').style.display = 'none';
+  document.getElementById('seg-restore-confirmar').checked = false;
+}
+
+// ---------------------------------------------------------------
+// BACKUP PREVENTIVO SILENCIOSO
+// ---------------------------------------------------------------
+async function segGerarBackupSilencioso(sufixo) {
+  await segCarregarJSZip();
+  const timestampISO = new Date().toISOString();
+  const dadosModulos = {};
+  for (const m of SEG_MODULOS) {
+    try { dadosModulos[m.id] = await segBuscarModulo(m, timestampISO); } catch(e) { dadosModulos[m.id] = []; }
+  }
+  const hash = await segCalcHash(dadosModulos);
+  const manifest = {
+    versao_legadoerp: SEG_VERSAO_ERP, versao_backup: SEG_VERSAO_BACKUP,
+    data: timestampISO, loja_id: LOJA_ID, nome_loja: CONFIG_LOJA.nome || LOJA_ID,
+    tipo: sufixo || 'preventivo', hash_sha256: hash,
+    modulos: Object.keys(dadosModulos),
+    contagens: Object.fromEntries(Object.entries(dadosModulos).map(([k,v]) => [k, v.length])),
+  };
+  const zip = new JSZip();
+  zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+  for (const [id, dados] of Object.entries(dadosModulos)) zip.file(`${id}.json`, JSON.stringify(dados, null, 2));
+  const blob = await zip.generateAsync({ type:'blob', compression:'DEFLATE', compressionOptions:{ level:6 } });
+  const dataStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const nomeArq = `legadoerp_${sufixo}_${dataStr}_${LOJA_ID.slice(0,8)}.zip`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = nomeArq; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// ---------------------------------------------------------------
+// VALIDAR BACKUP
+// ---------------------------------------------------------------
+async function segValidarBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const logEl   = document.getElementById('seg-log-validar');
+  const resDiv  = document.getElementById('seg-validar-resultado');
+  const itensDiv = document.getElementById('seg-validar-itens');
+  logEl.innerHTML = ''; logEl.style.display = 'block';
+  resDiv.style.display = 'block';
+  itensDiv.innerHTML = '';
+  document.getElementById('seg-validar-titulo').textContent = `Validando ${file.name}...`;
+
+  const checks = [];
+  const addCheck = (label, ok, detalhe = '') => {
+    checks.push({ label, ok, detalhe });
+    segLog('seg-log-validar', `${ok ? '✅' : '❌'} ${label}${detalhe ? ': ' + detalhe : ''}`, ok ? 'ok' : 'err');
+  };
+
+  try {
+    await segCarregarJSZip();
+    const zip = await JSZip.loadAsync(file);
+
+    const manifestFile = zip.file('manifest.json');
+    addCheck('manifest.json presente', !!manifestFile);
+    if (!manifestFile) throw new Error('manifest.json ausente — arquivo inválido.');
+
+    let manifest;
+    try {
+      manifest = JSON.parse(await manifestFile.async('string'));
+      addCheck('manifest.json legível (JSON válido)', true);
+    } catch(e) {
+      addCheck('manifest.json legível', false, e.message);
+      throw e;
+    }
+
+    const camposOK = ['versao_backup','data','loja_id','hash_sha256','modulos'].every(c => manifest[c] !== undefined);
+    addCheck('Campos obrigatórios no manifest', camposOK, camposOK ? '' : 'Campos faltando');
+
+    const versaoBackup = parseInt(manifest.versao_backup || '1');
+    const versaoAtual  = parseInt(SEG_VERSAO_BACKUP);
+    addCheck('Versão do backup compatível',
+      versaoBackup <= versaoAtual,
+      `backup v${versaoBackup} / sistema v${versaoAtual}`);
+
+    const lojaOK = manifest.loja_id === LOJA_ID;
+    addCheck('loja_id corresponde a esta loja', lojaOK,
+      lojaOK ? LOJA_ID : `esperado ${LOJA_ID}, encontrado ${manifest.loja_id}`);
+
+    const dadosModulos = {};
+    let jsonOK = true;
+    for (const modId of (manifest.modulos || [])) {
+      const f = zip.file(`${modId}.json`);
+      if (!f) { addCheck(`${modId}.json presente`, false, 'arquivo ausente'); jsonOK = false; continue; }
+      try {
+        dadosModulos[modId] = JSON.parse(await f.async('string'));
+      } catch(e) {
+        addCheck(`${modId}.json legível`, false, e.message); jsonOK = false;
+      }
+    }
+    if (jsonOK) addCheck('Todos os JSONs dos módulos presentes e legíveis', true, `${(manifest.modulos||[]).length} arquivos`);
+
+    if (Object.keys(dadosModulos).length > 0) {
+      const hashCalc = await segCalcHash(dadosModulos);
+      const hashOK = hashCalc === manifest.hash_sha256;
+      addCheck('Integridade SHA-256', hashOK,
+        hashOK ? hashCalc.slice(0,16) + '...' : 'HASH DIVERGENTE — arquivo corrompido ou adulterado');
+    }
+
+  } catch(e) {
+    segLog('seg-log-validar', `❌ Erro durante validação: ${e.message}`, 'err');
+  }
+
+  const totalERR = checks.filter(c => !c.ok).length;
+  const tudoOK   = totalERR === 0;
+
+  document.getElementById('seg-validar-titulo').textContent = tudoOK
+    ? `✅ Backup válido — ${file.name}`
+    : `⚠️ ${totalERR} problema(s) encontrado(s) — ${file.name}`;
+
+  itensDiv.innerHTML = checks.map(c => `
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
+      <span style="font-size:16px;flex-shrink:0;">${c.ok ? '✅' : '❌'}</span>
+      <div>
+        <strong>${c.label}</strong>
+        ${c.detalhe ? `<div style="color:var(--muted);font-size:11px;margin-top:2px;">${c.detalhe}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+</script>
+<!-- FIM CENTRAL DE SEGURANÇA — SCRIPT -->
 </body>
 </html>
