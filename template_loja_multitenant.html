@@ -4354,40 +4354,6 @@ body.modo-vitrine-publica{
 #crediario-parcelas-table th,#crediario-parcelas-table td,#crediario-clientes-table th,#crediario-clientes-table td{font-size:12px;}
 .cred-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 @media(max-width:900px){.cred-flow,.cred-kpis,.cred-grid-2,.cred-form-grid{grid-template-columns:1fr}.cred-flow-step{text-align:left}.cred-flow-step .ico{margin-left:0}}
-
-/* ===== CENTRAL DE SEGURANÇA ===== */
-.seg-hero{background:linear-gradient(135deg,#fff 0%,#f0f4ff 55%,#fff 100%);border:1px solid var(--border);border-radius:22px;padding:18px;box-shadow:0 14px 42px rgba(15,23,42,.06);margin-bottom:16px;}
-.seg-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;}
-.seg-tab{border:1px solid var(--border);background:#fff;color:#475569;border-radius:999px;padding:9px 14px;font-size:12px;font-weight:800;cursor:pointer;}
-.seg-tab.active{background:linear-gradient(135deg,#1e3a8a,#3b5fc0);color:#fff;border-color:transparent;box-shadow:0 10px 24px rgba(30,58,138,.18);}
-.seg-panel{display:none}.seg-panel.active{display:block}
-.seg-box{background:#fff;border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:0 10px 26px rgba(15,23,42,.04);margin-bottom:14px;}
-.seg-box h3{font-size:15px;margin:0 0 10px;color:#111827;}
-.seg-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px;}
-.seg-kpi{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center;}
-.seg-kpi .val{font-size:22px;font-weight:800;color:#1e3a8a;display:block;margin-bottom:2px;}
-.seg-kpi .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
-.seg-check-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
-.seg-check-item{display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;cursor:pointer;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:#fafafa;transition:background .15s,border-color .15s;}
-.seg-check-item:hover{background:#eff6ff;border-color:#93c5fd;}
-.seg-check-item input[type=checkbox]{accent-color:#1e3a8a;width:15px;height:15px;flex-shrink:0;}
-.seg-progress-wrap{margin:12px 0;display:none;}
-.seg-progress-bar{height:8px;border-radius:99px;background:#e5e7eb;overflow:hidden;}
-.seg-progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#1e3a8a,#3b82f6);transition:width .3s;}
-.seg-log{background:#0f172a;border-radius:12px;padding:14px;font-family:monospace;font-size:12px;color:#94a3b8;max-height:220px;overflow-y:auto;margin-top:12px;display:none;}
-.seg-log .ok{color:#4ade80;}.seg-log .err{color:#f87171;}.seg-log .inf{color:#60a5fa;}
-.seg-restore-mod{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:#fafafa;}
-.seg-restore-mod .ico{font-size:20px;flex-shrink:0;}
-.seg-restore-mod .inf{flex:1;font-size:13px;}
-.seg-restore-mod .inf strong{display:block;color:#111827;}
-.seg-restore-mod .inf span{color:var(--muted);font-size:11px;}
-.seg-restore-mod.disabled{opacity:.45;}
-.seg-restore-mod .seg-badge{font-size:10px;padding:2px 8px;border-radius:99px;font-weight:700;}
-.seg-badge-ok{background:#dcfce7;color:#166534;}
-.seg-badge-warn{background:#fef9c3;color:#854d0e;}
-.seg-badge-err{background:#fee2e2;color:#991b1b;}
-.seg-badge-ext{background:#ede9fe;color:#5b21b6;}
-@media(max-width:700px){.seg-check-grid{grid-template-columns:1fr}.seg-kpis{grid-template-columns:1fr 1fr}}
 </style>
 
 </head>
@@ -4467,7 +4433,6 @@ body.modo-vitrine-publica{
   <button onclick="showPage('crediario')" id="nav-btn-crediario" style="display:none;">💳 Crediário</button>
   <button onclick="showPage('consignado')" id="nav-btn-consignado" style="display:none;">📦 Consignado</button>
   <button onclick="showPage('trocas')">🔄 Trocas</button>
-  <button onclick="showPage('seguranca')" id="nav-btn-seguranca">🔐 Central de Segurança</button>
   <button id="nav-empresa" onclick="showPage('empresa'); carregarDadosEmpresa();" style="display:none;">⚙️ Config. Empresa</button>
   <button class="btn-logout-mobile" onclick="fazerLogout()" style="display:none;margin-top:auto;color:var(--danger);border-color:var(--danger);">🚪 Sair</button>
 </nav>
@@ -8434,7 +8399,6 @@ function showPage(id) {
   if (id === 'crediario') { renderCrediario(); }
   if (id === 'consignado') { renderConsignados(); }
   if (id === 'consignado') { renderConsignados(); }
-  if (id === 'seguranca') { renderSeguranca(); }
   aplicarFlagCrediario();
   if (id === 'trocas') { renderTrocas(); }
   if (id === 'usuarios') { renderUsuarios(); }
@@ -11461,68 +11425,168 @@ async function confirmarVenda() {
       const contratoId = 'cred_venda_' + vendaId + sufixoId;
       const valorFinanciado = Math.max(0, valorLeg - entradaVal);
       const parcelasCred = gerarParcelasCredVenda(valorFinanciado, qtdCred, vencInput, intervaloCred);
-      const debitos = getDebitos();
       const prodLabel = carrinho.map(c => c.produto).join(', ');
+      const _cliObj = getClientes().find(c => c.nome === cliente);
+
+      // ── Montar lista de débitos para a transação ──────────────────────
+      const debitosPayload = [];
 
       if (entradaVal > 0) {
         const dataBase = dataInput || new Date().toISOString().slice(0,10);
         const [ey, em, ed] = dataBase.split('-');
         const dataFmt = ed + '/' + em + '/' + ey;
-        debitos.unshift({
-          id: 'cred_ent_' + vendaId + sufixoId,
-          venda_id: vendaId,
+        debitosPayload.push({
           contrato_id: contratoId,
           cliente: 'Entrada Crediário · ' + cliente,
-          data_venda: agora,
-          total: entradaVal,
+          cliente_id: _cliObj?.id || null,
+          produto: prodLabel,
+          valor_total: entradaVal,
+          valor_pago: entradaVal,
           vencimento: dataFmt,
+          vencimento_iso: dataBase,
           obs: '[CREDIARIO] Entrada recebida no ato da venda — ' + prodLabel,
-          itens: carrinho.map(c=>({produto:c.produto, qtd:c.qtd, valor:c.valor_unit*c.qtd})),
           pagamentos: [{ valor: entradaVal, forma: 'Entrada Crediário', data: dataFmt, horaISO: new Date().toISOString() }],
-          origem_crediario: 'entrada_venda'
+          origem_crediario: 'entrada_venda',
+          parcela: null,
+          total_parcelas: null,
         });
       }
 
       for (const pc of parcelasCred) {
-        const _cliObj = getClientes().find(c => c.nome === cliente);
-        const debitoCred = {
-          id: contratoId + '_p' + pc.parcela,
-          venda_id: vendaId,
+        debitosPayload.push({
           contrato_id: contratoId,
           cliente,
           cliente_id: _cliObj?.id || null,
-          data_venda: agora,
-          total: pc.valor,
+          produto: prodLabel,
+          valor_total: pc.valor,
+          valor_pago: 0,
           vencimento: pc.vencimento,
+          vencimento_iso: credDataISO(pc.vencimento),
           obs: '[CREDIARIO] Venda parcelada' + (obsCred ? ' — ' + obsCred : ''),
-          itens: carrinho.map(c=>({produto:c.produto, qtd:c.qtd, valor:(c.valor_unit*c.qtd) / qtdCred})),
           pagamentos: [],
           origem_crediario: 'venda',
           parcela: pc.parcela,
           total_parcelas: pc.total_parcelas,
-          imprimir_carne: !!document.getElementById('cred-venda-imprimir')?.checked,
-          cpf_cliente: (() => { const nomeCliente = document.getElementById('venda-cliente')?.value || document.getElementById('cliente-nome')?.value || ''; const cli = getClientes().find(c => c.nome === nomeCliente); return getCPFCliente(cli); })()
-        };
-        debitos.unshift(debitoCred);
-        try {
-          const criado = await sbPost('debitos', {
-            cliente: debitoCred.cliente,
-            cliente_id: debitoCred.cliente_id || null,
-            produto: prodLabel,
-            valor_total: debitoCred.total,
-            valor_pago: 0,
-            vencimento: debitoCred.vencimento,
-            vencimento_iso: credDataISO(debitoCred.vencimento),
-            obs: debitoCred.obs,
-            pagamentos: [],
-            parcela: debitoCred.parcela,
-            total_parcelas: debitoCred.total_parcelas
-          });
-          const registro = Array.isArray(criado) ? criado[0] : criado;
-          if (registro && registro.id) debitoCred.id = registro.id;
-        } catch(e) { console.warn('Parcela de crediário salva localmente:', e.message); }
+        });
       }
-      saveDebitos(debitos); invalidarCache('debitos');
+
+      // ── Montar itens de venda para a transação ────────────────────────
+      const itensPayload = carrinho.map(item => {
+        const valorUnitLiq = item.valor_unit * fatorDesconto;
+        const lucroItem = (valorUnitLiq - item.custo_unit) * item.qtd;
+        const margemItem = valorUnitLiq > 0 ? (lucroItem / (valorUnitLiq * item.qtd) * 100) : 0;
+        return {
+          ref: item.ref, produto: item.produto, categoria: item.categoria,
+          custo: item.custo_unit, custo_unit: item.custo_unit,
+          qtd: item.qtd, valor: valorUnitLiq, valor_unit: valorUnitLiq,
+          valor_total: valorUnitLiq * item.qtd,
+          lucro: lucroItem, margem: margemItem,
+          cliente, vendedor, pagamento: pag, data: agora,
+        };
+      });
+
+      // ── Chamar Edge Function transacional ─────────────────────────────
+      try {
+        const efUrl = `${SB_URL}/functions/v1/venda-crediario`;
+        const efResp = await fetch(efUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': SB_HEADS.Authorization },
+          body: JSON.stringify({ loja_id: LOJA_ID, itens: itensPayload, debitos: debitosPayload }),
+        });
+        if (!efResp.ok) {
+          const errTxt = await efResp.text();
+          throw new Error(errTxt);
+        }
+        const efData = await efResp.json();
+
+        // Atualizar IDs reais no cache local com os retornados pelo banco
+        const debitos = getDebitos();
+        const debitosRetornados = efData.debitos || [];
+
+        // Entrada
+        if (entradaVal > 0 && debitosRetornados[0]) {
+          debitos.unshift({
+            id: debitosRetornados[0].id,
+            contrato_id: contratoId,
+            cliente: 'Entrada Crediário · ' + cliente,
+            data_venda: agora, total: entradaVal,
+            vencimento: debitosPayload[0].vencimento,
+            pagamentos: debitosPayload[0].pagamentos,
+            origem_crediario: 'entrada_venda',
+          });
+        }
+        const offsetEntrada = entradaVal > 0 ? 1 : 0;
+        parcelasCred.forEach((pc, i) => {
+          const reg = debitosRetornados[offsetEntrada + i];
+          debitos.unshift({
+            id: reg?.id || (contratoId + '_p' + pc.parcela),
+            contrato_id: contratoId, cliente,
+            cliente_id: _cliObj?.id || null,
+            data_venda: agora, total: pc.valor,
+            vencimento: pc.vencimento,
+            obs: debitosPayload[offsetEntrada + i].obs,
+            pagamentos: [],
+            origem_crediario: 'venda',
+            parcela: pc.parcela, total_parcelas: pc.total_parcelas,
+          });
+        });
+
+        // Atualizar estoque local com valores retornados pela transação
+        const vendas = getVendas();
+        const produtos = getProdutos();
+        (efData.vendas || []).forEach(v => {
+          vendas.unshift({ ...v });
+          const pidx = produtos.findIndex(p => p.ref === v.ref);
+          if (pidx >= 0) produtos[pidx].estoque -= v.qtd;
+        });
+        saveProdutos(produtos); saveVendas(vendas);
+        saveDebitos(debitos);
+        invalidarCache('debitos'); invalidarCache('vendas'); invalidarCache('produtos');
+
+      } catch(e) {
+        // Fallback: inserts individuais (comportamento anterior)
+        // Garante que o sistema continua funcionando mesmo se a Edge Function
+        // estiver indisponível — sem atomicidade, mas sem perda de venda.
+        console.warn('[crediário] Edge Function indisponível, fallback local:', e.message);
+        const debitos = getDebitos();
+        if (entradaVal > 0) {
+          const dataBase = dataInput || new Date().toISOString().slice(0,10);
+          const [ey, em, ed] = dataBase.split('-');
+          const dataFmt = ed + '/' + em + '/' + ey;
+          const entObj = { id: 'cred_ent_' + vendaId + sufixoId, contrato_id: contratoId,
+            cliente: 'Entrada Crediário · ' + cliente, data_venda: agora, total: entradaVal,
+            vencimento: dataFmt, pagamentos: [{ valor: entradaVal, forma: 'Entrada Crediário', data: dataFmt, horaISO: new Date().toISOString() }],
+            origem_crediario: 'entrada_venda' };
+          debitos.unshift(entObj);
+          try {
+            const cr = await sbPost('debitos', { cliente: entObj.cliente, cliente_id: _cliObj?.id || null,
+              produto: prodLabel, valor_total: entradaVal, valor_pago: entradaVal,
+              vencimento: entObj.vencimento, vencimento_iso: dataBase,
+              obs: entObj.obs, pagamentos: entObj.pagamentos, origem_crediario: 'entrada_venda',
+              contrato_id: contratoId });
+            const r = Array.isArray(cr) ? cr[0] : cr;
+            if (r?.id) entObj.id = r.id;
+          } catch(e2) { console.warn('Entrada crediário local:', e2.message); }
+        }
+        for (const pc of parcelasCred) {
+          const deb = { id: contratoId + '_p' + pc.parcela, contrato_id: contratoId,
+            cliente, cliente_id: _cliObj?.id || null, data_venda: agora, total: pc.valor,
+            vencimento: pc.vencimento, obs: '[CREDIARIO] Venda parcelada' + (obsCred ? ' — ' + obsCred : ''),
+            pagamentos: [], origem_crediario: 'venda', parcela: pc.parcela, total_parcelas: pc.total_parcelas };
+          debitos.unshift(deb);
+          try {
+            const cr = await sbPost('debitos', { cliente: deb.cliente, cliente_id: deb.cliente_id,
+              produto: prodLabel, valor_total: deb.total, valor_pago: 0,
+              vencimento: deb.vencimento, vencimento_iso: credDataISO(deb.vencimento),
+              obs: deb.obs, pagamentos: [], parcela: deb.parcela, total_parcelas: deb.total_parcelas,
+              contrato_id: contratoId, origem_crediario: 'venda' });
+            const r = Array.isArray(cr) ? cr[0] : cr;
+            if (r?.id) deb.id = r.id;
+          } catch(e2) { console.warn('Parcela crediário local:', e2.message); }
+        }
+        saveDebitos(debitos); invalidarCache('debitos');
+      }
+
       _ultimoCarneCrediario = {
         contratoId, cliente, totalVenda: valorLeg, entrada: entradaVal, valorFinanciado, parcelas: parcelasCred,
         dataVenda: agora, loja: (window.CONFIG_LOJA?.nome || document.title || 'LegadoERP'), produtos: prodLabel
@@ -19417,136 +19481,6 @@ atualizarHora();
 
 <!-- USUÁRIOS -->
 <!-- CONFIGURAÇÕES DA EMPRESA -->
-<!-- ===== PÁGINA: CENTRAL DE SEGURANÇA ===== -->
-<div id="page-seguranca" class="page">
-
-  <!-- Hero -->
-  <div class="seg-hero">
-    <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
-      <div>
-        <h2 style="font-size:18px;margin:0 0 6px;color:#111827;">🔐 Central de Segurança</h2>
-        <p style="font-size:13px;color:#64748b;margin:0;max-width:720px;">Backup lógico dos dados da sua loja. Exporte, valide e restaure com segurança — apenas os dados desta loja.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- KPIs -->
-  <div class="seg-kpis" id="seg-kpis">
-    <div class="seg-kpi"><span class="val" id="seg-kpi-ultimo">—</span><span class="lbl">Último backup</span></div>
-    <div class="seg-kpi"><span class="val" id="seg-kpi-tipo">—</span><span class="lbl">Tipo</span></div>
-    <div class="seg-kpi"><span class="val" id="seg-kpi-tamanho">—</span><span class="lbl">Tamanho</span></div>
-  </div>
-
-  <!-- Abas -->
-  <div class="seg-tabs">
-    <button class="seg-tab active" id="seg-tab-backup"   onclick="segMostrarAba('backup')">💾 Backup</button>
-    <button class="seg-tab"        id="seg-tab-restaurar" onclick="segMostrarAba('restaurar')">🔄 Restaurar</button>
-    <button class="seg-tab"        id="seg-tab-validar"   onclick="segMostrarAba('validar')">✅ Validar Backup</button>
-  </div>
-
-  <!-- ===== PAINEL BACKUP ===== -->
-  <div id="seg-panel-backup" class="seg-panel active">
-    <div class="seg-box">
-      <h3>📦 Selecionar módulos</h3>
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-        <button class="btn btn-sm btn-outline" onclick="segSelecionarTodos(true)" style="font-size:12px;padding:5px 12px;">✅ Selecionar todos</button>
-        <button class="btn btn-sm btn-outline" onclick="segSelecionarTodos(false)" style="font-size:12px;padding:5px 12px;">☐ Desmarcar todos</button>
-      </div>
-      <div class="seg-check-grid" id="seg-modulos-grid">
-        <!-- preenchido por segRenderModulos() -->
-      </div>
-    </div>
-
-    <div class="seg-box">
-      <h3>🚀 Gerar Backup</h3>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">O backup é gerado no seu navegador e salvo como arquivo <strong>.zip</strong> na sua máquina. Nenhum dado sai para servidores externos.</p>
-
-      <div class="seg-progress-wrap" id="seg-progress-wrap">
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px;">
-          <span id="seg-progress-label">Iniciando...</span>
-          <span id="seg-progress-pct">0%</span>
-        </div>
-        <div class="seg-progress-bar"><div class="seg-progress-fill" id="seg-progress-fill" style="width:0%"></div></div>
-      </div>
-
-      <div class="seg-log" id="seg-log-backup"></div>
-
-      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-        <button class="btn btn-primary" id="seg-btn-gerar" onclick="segGerarBackup()" style="background:linear-gradient(135deg,#1e3a8a,#3b5fc0);border:none;">
-          💾 Gerar Backup
-        </button>
-        <span id="seg-resultado-backup" style="font-size:13px;color:var(--muted);"></span>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== PAINEL RESTAURAR ===== -->
-  <div id="seg-panel-restaurar" class="seg-panel">
-    <div class="seg-box">
-      <h3>📂 Selecionar arquivo de backup</h3>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Selecione um arquivo <strong>.zip</strong> gerado pelo LegadoERP. Apenas dados desta loja serão restaurados.</p>
-      <input type="file" id="seg-restore-file" accept=".zip" style="display:none;" onchange="segCarregarArquivoRestore(event)">
-      <button class="btn btn-outline" onclick="document.getElementById('seg-restore-file').click()">📁 Escolher arquivo .zip</button>
-      <span id="seg-restore-filename" style="font-size:13px;color:var(--muted);margin-left:10px;"></span>
-    </div>
-
-    <!-- Resumo do manifest (oculto até carregar arquivo) -->
-    <div id="seg-restore-resumo" style="display:none;">
-      <div class="seg-box">
-        <h3>📋 Resumo do backup</h3>
-        <div id="seg-restore-manifest-info" style="font-size:13px;margin-bottom:14px;"></div>
-        <div id="seg-restore-modulos-lista"></div>
-      </div>
-
-      <div class="seg-box" style="border-color:#fbbf24;background:#fffbeb;">
-        <h3 style="color:#92400e;">⚠️ Atenção antes de restaurar</h3>
-        <p style="font-size:13px;color:#78350f;margin-bottom:10px;">Um <strong>backup preventivo automático</strong> será gerado antes da restauração. Registros existentes serão atualizados via upsert — novos dados não serão apagados.</p>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;">
-          <input type="checkbox" id="seg-restore-confirmar" style="accent-color:#1e3a8a;width:15px;height:15px;">
-          Entendo os riscos e quero continuar
-        </label>
-      </div>
-
-      <div class="seg-progress-wrap" id="seg-restore-progress-wrap" style="display:block;">
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px;">
-          <span id="seg-restore-progress-label">Aguardando confirmação...</span>
-          <span id="seg-restore-progress-pct">0%</span>
-        </div>
-        <div class="seg-progress-bar"><div class="seg-progress-fill" id="seg-restore-progress-fill" style="width:0%"></div></div>
-      </div>
-
-      <div class="seg-log" id="seg-log-restore"></div>
-
-      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-primary" id="seg-btn-restaurar" onclick="segExecutarRestore()" style="background:linear-gradient(135deg,#1e3a8a,#3b5fc0);border:none;">
-          🔄 Restaurar dados
-        </button>
-        <button class="btn btn-outline" onclick="segLimparRestore()">✕ Cancelar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== PAINEL VALIDAR ===== -->
-  <div id="seg-panel-validar" class="seg-panel">
-    <div class="seg-box">
-      <h3>🔍 Validar arquivo de backup</h3>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Verifica manifest, estrutura dos JSONs, hash SHA-256 e compatibilidade de versão — sem alterar nenhum dado.</p>
-      <input type="file" id="seg-validar-file" accept=".zip" style="display:none;" onchange="segValidarBackup(event)">
-      <button class="btn btn-outline" onclick="document.getElementById('seg-validar-file').click()">📁 Escolher arquivo .zip para validar</button>
-    </div>
-
-    <div id="seg-validar-resultado" style="display:none;">
-      <div class="seg-box">
-        <h3 id="seg-validar-titulo">Resultado da validação</h3>
-        <div id="seg-validar-itens"></div>
-      </div>
-      <div class="seg-log" id="seg-log-validar" style="display:block;"></div>
-    </div>
-  </div>
-
-</div>
-<!-- FIM CENTRAL DE SEGURANÇA -->
-
 <div id="page-empresa" class="page">
   <div style="max-width:860px;">
 
@@ -20179,649 +20113,5 @@ atualizarHora();
   window.addEventListener('resize', fixarPosicaoLogo);
   document.addEventListener('DOMContentLoaded', fixarPosicaoLogo);
 </script>
-
-<!-- ===== CENTRAL DE SEGURANÇA — SCRIPT ===== -->
-<script>
-// ---------------------------------------------------------------
-// CONSTANTES DO MÓDULO
-// ---------------------------------------------------------------
-const SEG_VERSAO_BACKUP  = '1';      // versão do schema do formato de backup
-const SEG_VERSAO_ERP     = '1.0.0';  // versão do LegadoERP (atualize ao subir versão)
-const SEG_LS_ULTIMO      = 'legado_ultimo_backup'; // localStorage: metadados do último backup
-
-// Definição de módulos: id, label, emoji, tabela Supabase, campo filtro loja, PKs para upsert
-const SEG_MODULOS = [
-  { id:'clientes',        label:'Clientes',           emoji:'👥', tabela:'clientes',                filtro:'loja_id',  pk:'id',         grupo:'cadastro' },
-  { id:'fornecedores',    label:'Fornecedores',        emoji:'🏭', tabela:'clientes',                filtro:'loja_id',  pk:'id',         grupo:'cadastro', extra:'tipo=eq.fornecedor' },
-  { id:'produtos',        label:'Produtos',            emoji:'📦', tabela:'produtos',                filtro:'loja_id',  pk:'id',         grupo:'estoque'  },
-  { id:'estoque',         label:'Estoque (grade)',      emoji:'📐', tabela:'grade_estoque',           filtro:'loja_id',  pk:'id',         grupo:'estoque', opcional:true },
-  { id:'vendas',          label:'Vendas',              emoji:'🛒', tabela:'vendas',                  filtro:'loja_id',  pk:'id',         grupo:'financeiro' },
-  { id:'financeiro',      label:'A Receber (débitos)',  emoji:'💰', tabela:'debitos',                 filtro:'loja_id',  pk:'id',         grupo:'financeiro' },
-  { id:'contas_pagar',    label:'Contas a Pagar',      emoji:'💸', tabela:'contas_pagar',            filtro:'loja_id',  pk:'id',         grupo:'financeiro' },
-  { id:'crediario',       label:'Crediário',           emoji:'💳', tabela:'crediario_configuracoes', filtro:'loja_id',  pk:'loja_id,chave', grupo:'crediario' },
-  { id:'consignado',      label:'Consignado',          emoji:'🤝', tabela:'consignados',             filtro:'loja_id',  pk:'id',         grupo:'consignado' },
-  { id:'trocas',          label:'Trocas',              emoji:'🔄', tabela:'trocas',                  filtro:'loja_id',  pk:'id',         grupo:'financeiro' },
-  { id:'vouchers',        label:'Vouchers',            emoji:'🎟️', tabela:'vouchers',                filtro:'loja_id',  pk:'id',         grupo:'financeiro' },
-  { id:'caixa',           label:'Caixa',               emoji:'🏦', tabela:'caixa_sessoes',           filtro:'loja_id',  pk:'id',         grupo:'financeiro' },
-  { id:'vendedores',      label:'Vendedores',          emoji:'🧑‍💼', tabela:'vendedores',              filtro:'loja_id',  pk:'id',         grupo:'cadastro'  },
-  { id:'usuarios',        label:'Usuários da Loja',    emoji:'🔑', tabela:'usuarios',                filtro:'loja_id',  pk:'id',         grupo:'sistema'  },
-  { id:'configuracoes',   label:'Configurações',       emoji:'⚙️', tabela:'loja_configuracoes',      filtro:'loja_id',  pk:'loja_id,chave', grupo:'sistema'  },
-  { id:'taxas_cartao',    label:'Taxas de Cartão',     emoji:'💳', tabela:'taxas_cartao',            filtro:'loja_id',  pk:'id',         grupo:'financeiro' },
-  { id:'consig_itens',    label:'Itens Consignado',    emoji:'📋', tabela:'consignado_itens',        filtro:'loja_id',  pk:'id',         grupo:'consignado' },
-];
-
-// Dependências: ao restaurar X, Y deve ter sido restaurado antes
-const SEG_DEPS = {
-  financeiro:   ['clientes'],
-  crediario:    ['clientes'],
-  consignado:   ['clientes','produtos'],
-  consig_itens: ['consignado','produtos'],
-  trocas:       ['clientes','produtos'],
-  vouchers:     ['clientes'],
-  estoque:      ['produtos'],
-};
-
-// Ordem segura de restauração (índice = prioridade)
-const SEG_ORDEM_RESTORE = [
-  'configuracoes','usuarios','vendedores',
-  'clientes','fornecedores','produtos','estoque',
-  'taxas_cartao','vendas','financeiro','contas_pagar',
-  'crediario','trocas','vouchers','caixa',
-  'consignado','consig_itens',
-];
-
-// ---------------------------------------------------------------
-// ESTADO INTERNO
-// ---------------------------------------------------------------
-let _segArquivoRestore = null;   // File selecionado para restore
-let _segDadosRestore   = null;   // { manifest, modulos:{id:dados[]} }
-let _segEmAndamento    = false;  // lock contra duplo clique
-
-// ---------------------------------------------------------------
-// INICIALIZAÇÃO DA TELA
-// ---------------------------------------------------------------
-function renderSeguranca() {
-  segRenderModulos();
-  segAtualizarKPIs();
-}
-
-function segMostrarAba(aba) {
-  document.querySelectorAll('.seg-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.seg-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('seg-tab-' + aba).classList.add('active');
-  document.getElementById('seg-panel-' + aba).classList.add('active');
-}
-
-function segRenderModulos() {
-  const grid = document.getElementById('seg-modulos-grid');
-  if (!grid) return;
-  grid.innerHTML = SEG_MODULOS.map(m => `
-    <label class="seg-check-item">
-      <input type="checkbox" id="seg-mod-${m.id}" checked>
-      <span>${m.emoji} ${m.label}</span>
-    </label>
-  `).join('');
-}
-
-function segSelecionarTodos(val) {
-  SEG_MODULOS.forEach(m => {
-    const el = document.getElementById('seg-mod-' + m.id);
-    if (el) el.checked = val;
-  });
-}
-
-function segAtualizarKPIs() {
-  try {
-    const meta = JSON.parse(localStorage.getItem(SEG_LS_ULTIMO) || 'null');
-    if (meta) {
-      document.getElementById('seg-kpi-ultimo').textContent = meta.data || '—';
-      document.getElementById('seg-kpi-tipo').textContent   = meta.tipo || '—';
-      document.getElementById('seg-kpi-tamanho').textContent = meta.tamanho || '—';
-    }
-  } catch(e) {}
-}
-
-// ---------------------------------------------------------------
-// UTILITÁRIOS
-// ---------------------------------------------------------------
-function segLog(logId, msg, tipo = 'inf') {
-  const el = document.getElementById(logId);
-  if (!el) return;
-  el.style.display = 'block';
-  const cls = tipo === 'ok' ? 'ok' : tipo === 'err' ? 'err' : 'inf';
-  const ts = new Date().toLocaleTimeString('pt-BR');
-  el.innerHTML += `<div class="${cls}">[${ts}] ${msg}</div>`;
-  el.scrollTop = el.scrollHeight;
-}
-
-function segProgresso(wrapId, fillId, pctId, labelId, pct, label) {
-  const wrap = document.getElementById(wrapId);
-  if (wrap) wrap.style.display = 'block';
-  const fill = document.getElementById(fillId);
-  if (fill) fill.style.width = pct + '%';
-  const pctEl = document.getElementById(pctId);
-  if (pctEl) pctEl.textContent = pct + '%';
-  const lblEl = document.getElementById(labelId);
-  if (lblEl) lblEl.textContent = label;
-}
-
-async function segCalcHash(modulos) {
-  // Hash SHA-256 sobre JSONs concatenados em ordem alfabética
-  const chaves = Object.keys(modulos).sort();
-  const conteudo = chaves.map(k => JSON.stringify(modulos[k])).join('|');
-  const buffer = new TextEncoder().encode(conteudo);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-function segFormatarBytes(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
-  return (bytes/(1024*1024)).toFixed(2) + ' MB';
-}
-
-// ---------------------------------------------------------------
-// BUSCA DE DADOS DO SUPABASE (respeita timestamp de consistência)
-// ---------------------------------------------------------------
-async function segBuscarModulo(modulo, timestampISO) {
-  // Clientes e fornecedores compartilham tabela — filtro extra
-  let query = `loja_id=eq.${encodeURIComponent(LOJA_ID)}&created_at=lte.${encodeURIComponent(timestampISO)}&limit=10000`;
-  if (modulo.extra) query += '&' + modulo.extra;
-  // Fornecedores: a tabela clientes filtra por tipo
-  if (modulo.id === 'fornecedores') {
-    // extra já contém o filtro tipo=eq.fornecedor
-    // remove o extra do query de clientes comuns (já adicionado acima)
-  }
-  try {
-    const r = await fetch(`${SB_URL}/rest/v1/${modulo.tabela}?${query}`, { headers: SB_HEADS });
-    if (!r.ok) {
-      const txt = await r.text();
-      // Tabela não existe (feature flag desativada ou módulo opcional)
-      if (r.status === 404 || txt.includes('relation') || txt.includes('does not exist')) return [];
-      throw new Error(txt);
-    }
-    return await r.json();
-  } catch(e) {
-    console.warn(`[Backup] Módulo ${modulo.id}:`, e.message);
-    return [];
-  }
-}
-
-// ---------------------------------------------------------------
-// GERAR BACKUP
-// ---------------------------------------------------------------
-async function segGerarBackup() {
-  if (_segEmAndamento) return;
-  _segEmAndamento = true;
-
-  // Limpar UI
-  const logEl = document.getElementById('seg-log-backup');
-  logEl.innerHTML = '';
-  logEl.style.display = 'block';
-  document.getElementById('seg-resultado-backup').textContent = '';
-  document.getElementById('seg-btn-gerar').disabled = true;
-
-  try {
-    // Carregar JSZip dinamicamente (não está no bundle base)
-    await segCarregarJSZip();
-
-    const modulosSelecionados = SEG_MODULOS.filter(m => {
-      const el = document.getElementById('seg-mod-' + m.id);
-      return el && el.checked;
-    });
-
-    if (modulosSelecionados.length === 0) {
-      segLog('seg-log-backup', 'Selecione pelo menos um módulo.', 'err');
-      return;
-    }
-
-    const timestampISO = new Date().toISOString();
-    segLog('seg-log-backup', `Iniciando backup — snapshot: ${timestampISO}`, 'inf');
-
-    // Buscar nome da loja
-    let nomeLoja = CONFIG_LOJA.nome || LOJA_ID;
-    try {
-      const r = await fetch(`${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome`, { headers: SB_HEADS });
-      if (r.ok) { const d = await r.json(); if (d[0]?.nome) nomeLoja = d[0].nome; }
-    } catch(e) {}
-
-    const total = modulosSelecionados.length;
-    const dadosModulos = {};
-    const contagens = {};
-    let erros = [];
-
-    for (let i = 0; i < modulosSelecionados.length; i++) {
-      const m = modulosSelecionados[i];
-      const pct = Math.round((i / total) * 80);
-      segProgresso('seg-progress-wrap','seg-progress-fill','seg-progress-pct','seg-progress-label',
-        pct, `Buscando ${m.label}...`);
-      segLog('seg-log-backup', `Buscando ${m.emoji} ${m.label}...`, 'inf');
-
-      const dados = await segBuscarModulo(m, timestampISO);
-      dadosModulos[m.id] = dados;
-      contagens[m.id] = dados.length;
-
-      if (dados.length === 0 && !m.opcional) {
-        segLog('seg-log-backup', `  → ${m.label}: 0 registros`, 'inf');
-      } else {
-        segLog('seg-log-backup', `  → ${m.label}: ${dados.length} registros`, 'ok');
-      }
-    }
-
-    // Calcular hash
-    segProgresso('seg-progress-wrap','seg-progress-fill','seg-progress-pct','seg-progress-label', 85, 'Calculando hash SHA-256...');
-    segLog('seg-log-backup', 'Calculando hash SHA-256...', 'inf');
-    const hash = await segCalcHash(dadosModulos);
-    segLog('seg-log-backup', `Hash: ${hash.substring(0,16)}...`, 'ok');
-
-    // Montar manifest
-    const manifest = {
-      versao_legadoerp: SEG_VERSAO_ERP,
-      versao_backup:    SEG_VERSAO_BACKUP,
-      data:             timestampISO,
-      loja_id:          LOJA_ID,
-      nome_loja:        nomeLoja,
-      tipo:             'manual',
-      hash_sha256:      hash,
-      modulos:          Object.keys(dadosModulos),
-      contagens:        contagens,
-      modulos_ausentes: SEG_MODULOS.filter(m => !dadosModulos[m.id]).map(m => m.id),
-    };
-
-    // Compactar ZIP
-    segProgresso('seg-progress-wrap','seg-progress-fill','seg-progress-pct','seg-progress-label', 90, 'Compactando ZIP...');
-    segLog('seg-log-backup', 'Compactando ZIP...', 'inf');
-
-    const zip = new JSZip();
-    zip.file('manifest.json', JSON.stringify(manifest, null, 2));
-    for (const [id, dados] of Object.entries(dadosModulos)) {
-      zip.file(`${id}.json`, JSON.stringify(dados, null, 2));
-    }
-
-    const blob = await zip.generateAsync({ type:'blob', compression:'DEFLATE', compressionOptions:{ level:6 } });
-    const tamanhoStr = segFormatarBytes(blob.size);
-
-    // Download
-    segProgresso('seg-progress-wrap','seg-progress-fill','seg-progress-pct','seg-progress-label', 98, 'Gerando download...');
-    const dataStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-    const nomeArq = `legadoerp_backup_${dataStr}_${LOJA_ID.slice(0,8)}.zip`;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = nomeArq; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-
-    // Salvar metadados localmente
-    const metaLS = {
-      data:     new Date().toLocaleString('pt-BR'),
-      tipo:     'Manual',
-      tamanho:  tamanhoStr,
-      arquivo:  nomeArq,
-      hash:     hash,
-      contagens,
-    };
-    localStorage.setItem(SEG_LS_ULTIMO, JSON.stringify(metaLS));
-    segAtualizarKPIs();
-
-    segProgresso('seg-progress-wrap','seg-progress-fill','seg-progress-pct','seg-progress-label', 100, 'Concluído!');
-    segLog('seg-log-backup', `✅ Backup concluído: ${nomeArq} (${tamanhoStr})`, 'ok');
-    segLog('seg-log-backup', `   Módulos: ${Object.keys(dadosModulos).length} | Erros: ${erros.length}`, 'ok');
-    document.getElementById('seg-resultado-backup').textContent = `✅ ${nomeArq} — ${tamanhoStr}`;
-
-  } catch(e) {
-    segLog('seg-log-backup', `❌ Erro fatal: ${e.message}`, 'err');
-    console.error('[Backup]', e);
-  } finally {
-    document.getElementById('seg-btn-gerar').disabled = false;
-    _segEmAndamento = false;
-  }
-}
-
-// ---------------------------------------------------------------
-// CARREGAR JSZIP DINAMICAMENTE
-// ---------------------------------------------------------------
-function segCarregarJSZip() {
-  return new Promise((resolve, reject) => {
-    if (window.JSZip) { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
-    s.onload = resolve;
-    s.onerror = () => reject(new Error('Não foi possível carregar JSZip. Verifique sua conexão.'));
-    document.head.appendChild(s);
-  });
-}
-
-// ---------------------------------------------------------------
-// CARREGAR ARQUIVO PARA RESTORE
-// ---------------------------------------------------------------
-async function segCarregarArquivoRestore(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  _segArquivoRestore = file;
-  _segDadosRestore = null;
-  document.getElementById('seg-restore-filename').textContent = file.name;
-  document.getElementById('seg-restore-resumo').style.display = 'none';
-  document.getElementById('seg-log-restore').innerHTML = '';
-  document.getElementById('seg-log-restore').style.display = 'none';
-
-  try {
-    await segCarregarJSZip();
-    const zip = await JSZip.loadAsync(file);
-
-    // Ler manifest
-    const manifestFile = zip.file('manifest.json');
-    if (!manifestFile) throw new Error('manifest.json não encontrado no ZIP.');
-    const manifest = JSON.parse(await manifestFile.async('string'));
-
-    // Validar loja
-    if (manifest.loja_id && manifest.loja_id !== LOJA_ID) {
-      throw new Error(`Este backup pertence à loja "${manifest.nome_loja || manifest.loja_id}", não a esta loja. Restauração bloqueada.`);
-    }
-
-    // Validar versão
-    const versaoBackup = parseInt(manifest.versao_backup || '1');
-    const versaoAtual  = parseInt(SEG_VERSAO_BACKUP);
-    if (versaoBackup > versaoAtual) {
-      throw new Error(`Backup versão ${versaoBackup} é mais recente que esta versão do sistema (${versaoAtual}). Atualize o LegadoERP.`);
-    }
-
-    // Ler JSONs dos módulos
-    const dadosModulos = {};
-    for (const modId of (manifest.modulos || [])) {
-      const f = zip.file(`${modId}.json`);
-      if (f) dadosModulos[modId] = JSON.parse(await f.async('string'));
-    }
-
-    _segDadosRestore = { manifest, modulos: dadosModulos };
-
-    // Renderizar resumo
-    segRenderResumorestore(manifest, dadosModulos);
-    document.getElementById('seg-restore-resumo').style.display = 'block';
-    document.getElementById('seg-restore-confirmar').checked = false;
-
-  } catch(e) {
-    alert('Erro ao ler backup: ' + e.message);
-    _segArquivoRestore = null;
-    document.getElementById('seg-restore-filename').textContent = '';
-  }
-}
-
-function segRenderResumorestore(manifest, dados) {
-  // Info do manifest
-  const dataFmt = manifest.data ? new Date(manifest.data).toLocaleString('pt-BR') : '—';
-  document.getElementById('seg-restore-manifest-info').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;font-size:13px;">
-      <div><strong>Loja:</strong> ${manifest.nome_loja || manifest.loja_id}</div>
-      <div><strong>Data:</strong> ${dataFmt}</div>
-      <div><strong>Tipo:</strong> ${manifest.tipo || '—'}</div>
-      <div><strong>Versão ERP:</strong> ${manifest.versao_legadoerp || '—'}</div>
-      <div><strong>Módulos:</strong> ${(manifest.modulos||[]).length}</div>
-      <div><strong>Hash:</strong> <code style="font-size:10px;">${(manifest.hash_sha256||'').slice(0,16)}...</code></div>
-    </div>
-  `;
-
-  // Lista de módulos
-  const lista = document.getElementById('seg-restore-modulos-lista');
-  const modDef = Object.fromEntries(SEG_MODULOS.map(m => [m.id, m]));
-  lista.innerHTML = (manifest.modulos || []).map(id => {
-    const def = modDef[id] || { emoji:'📄', label: id };
-    const qtd = (manifest.contagens || {})[id] ?? (dados[id]?.length ?? '?');
-    return `
-      <div class="seg-restore-mod">
-        <span class="ico">${def.emoji}</span>
-        <div class="inf">
-          <strong>${def.label || id}</strong>
-          <span>${qtd} registros</span>
-        </div>
-        <span class="seg-badge seg-badge-ok">✓ Incluído</span>
-      </div>
-    `;
-  }).join('');
-}
-
-// ---------------------------------------------------------------
-// EXECUTAR RESTAURAÇÃO
-// ---------------------------------------------------------------
-async function segExecutarRestore() {
-  if (_segEmAndamento) return;
-  if (!_segDadosRestore) { alert('Nenhum arquivo de backup carregado.'); return; }
-  if (!document.getElementById('seg-restore-confirmar').checked) {
-    alert('Marque a caixa de confirmação antes de continuar.'); return;
-  }
-  _segEmAndamento = true;
-
-  const logEl = document.getElementById('seg-log-restore');
-  logEl.innerHTML = ''; logEl.style.display = 'block';
-  document.getElementById('seg-btn-restaurar').disabled = true;
-
-  try {
-    const { manifest, modulos: dadosRestore } = _segDadosRestore;
-
-    // --- 1. Backup preventivo automático ---
-    segLog('seg-log-restore', '🛡️ Gerando backup preventivo automático...', 'inf');
-    segProgresso('seg-restore-progress-wrap','seg-restore-progress-fill','seg-restore-progress-pct','seg-restore-progress-label', 5, 'Backup preventivo...');
-    try {
-      await segGerarBackupSilencioso('pre-restore');
-      segLog('seg-log-restore', '✅ Backup preventivo salvo.', 'ok');
-    } catch(e) {
-      segLog('seg-log-restore', `⚠️ Backup preventivo falhou: ${e.message} — continuando...`, 'inf');
-    }
-
-    // --- 2. Verificar hash ---
-    segLog('seg-log-restore', '🔐 Verificando integridade (SHA-256)...', 'inf');
-    segProgresso('seg-restore-progress-wrap','seg-restore-progress-fill','seg-restore-progress-pct','seg-restore-progress-label', 10, 'Verificando hash...');
-    const hashCalc = await segCalcHash(dadosRestore);
-    if (manifest.hash_sha256 && hashCalc !== manifest.hash_sha256) {
-      throw new Error('Hash SHA-256 divergente. O arquivo pode estar corrompido ou adulterado.');
-    }
-    segLog('seg-log-restore', '✅ Integridade confirmada.', 'ok');
-
-    // --- 3. Restaurar em ordem de dependência ---
-    const idsOrdenados = SEG_ORDEM_RESTORE.filter(id => dadosRestore[id] !== undefined);
-    const total = idsOrdenados.length;
-    const modDef = Object.fromEntries(SEG_MODULOS.map(m => [m.id, m]));
-    let restaurados = 0, falhas = 0;
-
-    for (let i = 0; i < idsOrdenados.length; i++) {
-      const id = idsOrdenados[i];
-      const dados = dadosRestore[id];
-      const def = modDef[id];
-      if (!def || !dados || dados.length === 0) {
-        segLog('seg-log-restore', `⏭️ ${id}: sem dados — pulando.`, 'inf');
-        continue;
-      }
-
-      const pct = 10 + Math.round((i / total) * 85);
-      segProgresso('seg-restore-progress-wrap','seg-restore-progress-fill','seg-restore-progress-pct','seg-restore-progress-label',
-        pct, `Restaurando ${def.label}...`);
-      segLog('seg-log-restore', `Restaurando ${def.emoji} ${def.label} (${dados.length} registros)...`, 'inf');
-
-      try {
-        // Restaurar em lotes de 200 para não estourar limite da API
-        const lote = 200;
-        for (let j = 0; j < dados.length; j += lote) {
-          const chunk = dados.slice(j, j + lote);
-          // Garantir loja_id em todos os registros
-          const chunkComLoja = chunk.map(r => ({ ...r, loja_id: LOJA_ID }));
-          await sbUpsert(def.tabela, chunkComLoja, def.pk);
-        }
-        segLog('seg-log-restore', `  ✅ ${def.label}: ${dados.length} registros restaurados.`, 'ok');
-        restaurados++;
-      } catch(e) {
-        segLog('seg-log-restore', `  ❌ ${def.label}: ${e.message}`, 'err');
-        falhas++;
-      }
-    }
-
-    segProgresso('seg-restore-progress-wrap','seg-restore-progress-fill','seg-restore-progress-pct','seg-restore-progress-label', 100, 'Concluído!');
-    segLog('seg-log-restore', `─────────────────────────────────────`, 'inf');
-    segLog('seg-log-restore', `✅ Restauração concluída. Sucesso: ${restaurados} | Falhas: ${falhas}`, falhas > 0 ? 'inf' : 'ok');
-    if (falhas > 0) segLog('seg-log-restore', `⚠️ Revise os erros acima. O backup preventivo está disponível para desfazer.`, 'inf');
-
-    // Invalidar cache local
-    invalidarCache();
-
-  } catch(e) {
-    segLog('seg-log-restore', `❌ Erro fatal: ${e.message}`, 'err');
-    console.error('[Restore]', e);
-  } finally {
-    document.getElementById('seg-btn-restaurar').disabled = false;
-    _segEmAndamento = false;
-  }
-}
-
-function segLimparRestore() {
-  _segArquivoRestore = null;
-  _segDadosRestore = null;
-  document.getElementById('seg-restore-file').value = '';
-  document.getElementById('seg-restore-filename').textContent = '';
-  document.getElementById('seg-restore-resumo').style.display = 'none';
-  document.getElementById('seg-log-restore').innerHTML = '';
-  document.getElementById('seg-log-restore').style.display = 'none';
-  document.getElementById('seg-restore-confirmar').checked = false;
-}
-
-// ---------------------------------------------------------------
-// BACKUP PREVENTIVO SILENCIOSO (usado antes do restore)
-// ---------------------------------------------------------------
-async function segGerarBackupSilencioso(sufixo) {
-  await segCarregarJSZip();
-  const timestampISO = new Date().toISOString();
-  const dadosModulos = {};
-  for (const m of SEG_MODULOS) {
-    try { dadosModulos[m.id] = await segBuscarModulo(m, timestampISO); } catch(e) { dadosModulos[m.id] = []; }
-  }
-  const hash = await segCalcHash(dadosModulos);
-  const manifest = {
-    versao_legadoerp: SEG_VERSAO_ERP, versao_backup: SEG_VERSAO_BACKUP,
-    data: timestampISO, loja_id: LOJA_ID, nome_loja: CONFIG_LOJA.nome || LOJA_ID,
-    tipo: sufixo || 'preventivo', hash_sha256: hash,
-    modulos: Object.keys(dadosModulos),
-    contagens: Object.fromEntries(Object.entries(dadosModulos).map(([k,v]) => [k, v.length])),
-  };
-  const zip = new JSZip();
-  zip.file('manifest.json', JSON.stringify(manifest, null, 2));
-  for (const [id, dados] of Object.entries(dadosModulos)) zip.file(`${id}.json`, JSON.stringify(dados, null, 2));
-  const blob = await zip.generateAsync({ type:'blob', compression:'DEFLATE', compressionOptions:{ level:6 } });
-  const dataStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  const nomeArq = `legadoerp_${sufixo}_${dataStr}_${LOJA_ID.slice(0,8)}.zip`;
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = nomeArq; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-}
-
-// ---------------------------------------------------------------
-// VALIDAR BACKUP (sem restaurar)
-// ---------------------------------------------------------------
-async function segValidarBackup(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const logEl = document.getElementById('seg-log-validar');
-  const resDiv = document.getElementById('seg-validar-resultado');
-  const itensDiv = document.getElementById('seg-validar-itens');
-  logEl.innerHTML = ''; logEl.style.display = 'block';
-  resDiv.style.display = 'block';
-  itensDiv.innerHTML = '';
-  document.getElementById('seg-validar-titulo').textContent = `Validando ${file.name}...`;
-
-  const checks = []; // { label, ok, detalhe }
-
-  const addCheck = (label, ok, detalhe = '') => {
-    checks.push({ label, ok, detalhe });
-    segLog('seg-log-validar', `${ok ? '✅' : '❌'} ${label}${detalhe ? ': ' + detalhe : ''}`, ok ? 'ok' : 'err');
-  };
-
-  try {
-    await segCarregarJSZip();
-    const zip = await JSZip.loadAsync(file);
-
-    // 1. manifest.json presente
-    const manifestFile = zip.file('manifest.json');
-    addCheck('manifest.json presente', !!manifestFile);
-    if (!manifestFile) throw new Error('manifest.json ausente — arquivo inválido.');
-
-    // 2. Parse do manifest
-    let manifest;
-    try {
-      manifest = JSON.parse(await manifestFile.async('string'));
-      addCheck('manifest.json legível (JSON válido)', true);
-    } catch(e) {
-      addCheck('manifest.json legível', false, e.message);
-      throw e;
-    }
-
-    // 3. Campos obrigatórios
-    const camposOK = ['versao_backup','data','loja_id','hash_sha256','modulos'].every(c => manifest[c] !== undefined);
-    addCheck('Campos obrigatórios no manifest', camposOK, camposOK ? '' : 'Campos faltando');
-
-    // 4. Compatibilidade de versão
-    const versaoBackup = parseInt(manifest.versao_backup || '1');
-    const versaoAtual  = parseInt(SEG_VERSAO_BACKUP);
-    addCheck('Versão do backup compatível',
-      versaoBackup <= versaoAtual,
-      `backup v${versaoBackup} / sistema v${versaoAtual}`);
-
-    // 5. loja_id
-    const lojaOK = manifest.loja_id === LOJA_ID;
-    addCheck('loja_id corresponde a esta loja', lojaOK,
-      lojaOK ? LOJA_ID : `esperado ${LOJA_ID}, encontrado ${manifest.loja_id}`);
-
-    // 6. JSONs dos módulos
-    const dadosModulos = {};
-    let jsonOK = true;
-    for (const modId of (manifest.modulos || [])) {
-      const f = zip.file(`${modId}.json`);
-      if (!f) { addCheck(`${modId}.json presente`, false, 'arquivo ausente'); jsonOK = false; continue; }
-      try {
-        dadosModulos[modId] = JSON.parse(await f.async('string'));
-      } catch(e) {
-        addCheck(`${modId}.json legível`, false, e.message); jsonOK = false;
-      }
-    }
-    if (jsonOK) addCheck('Todos os JSONs dos módulos presentes e legíveis', true, `${(manifest.modulos||[]).length} arquivos`);
-
-    // 7. Hash SHA-256
-    if (Object.keys(dadosModulos).length > 0) {
-      const hashCalc = await segCalcHash(dadosModulos);
-      const hashOK = hashCalc === manifest.hash_sha256;
-      addCheck('Integridade SHA-256', hashOK,
-        hashOK ? hashCalc.slice(0,16) + '...' : 'HASH DIVERGENTE — arquivo corrompido ou adulterado');
-    }
-
-  } catch(e) {
-    segLog('seg-log-validar', `❌ Erro durante validação: ${e.message}`, 'err');
-  }
-
-  // Renderizar resultado
-  const totalOK  = checks.filter(c => c.ok).length;
-  const totalERR = checks.filter(c => !c.ok).length;
-  const tudoOK   = totalERR === 0;
-
-  document.getElementById('seg-validar-titulo').textContent = tudoOK
-    ? `✅ Backup válido — ${file.name}`
-    : `⚠️ ${totalERR} problema(s) encontrado(s) — ${file.name}`;
-
-  itensDiv.innerHTML = checks.map(c => `
-    <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
-      <span style="font-size:16px;flex-shrink:0;">${c.ok ? '✅' : '❌'}</span>
-      <div>
-        <strong>${c.label}</strong>
-        ${c.detalhe ? `<div style="color:var(--muted);font-size:11px;margin-top:2px;">${c.detalhe}</div>` : ''}
-      </div>
-    </div>
-  `).join('');
-}
-
-// ---------------------------------------------------------------
-// HOOK no showPage
-// ---------------------------------------------------------------
-const _segOrigShowPage = showPage;
-// Interceptar showPage para inicializar a tela de segurança
-document.addEventListener('DOMContentLoaded', () => {
-  // Reaproveitamos o padrão do próprio showPage que já chama renderConsignados, renderCrediario etc.
-  // Aqui apenas garantimos que renderSeguranca() é chamado quando a aba abre.
-});
-</script>
-<!-- FIM CENTRAL DE SEGURANÇA — SCRIPT -->
 </body>
 </html>
