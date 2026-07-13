@@ -7392,7 +7392,12 @@ const SB_HEADS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Conte
 // compartilhar o MESMO projeto Supabase sem misturar dados entre si.
 const LOJA_ID = CONFIG_LOJA.lojaId;
 
-const TABELAS_MULTITENANT = ['produtos', 'vendas', 'clientes', 'debitos', 'contas_pagar', 'usuarios', 'licenca', 'taxas_cartao', 'trocas', 'vouchers', 'caixa_sessoes'];
+const TABELAS_MULTITENANT = [
+  'produtos', 'vendas', 'clientes', 'debitos', 'contas_pagar',
+  'usuarios', 'licenca', 'taxas_cartao', 'trocas', 'vouchers',
+  'caixa_sessoes', 'vendedores', 'consignados', 'consignado_itens',
+  'crediario_configuracoes', 'loja_configuracoes', 'loja_sequencias',
+];
 
 function ehMultiTenant(tabela) {
   return TABELAS_MULTITENANT.includes(tabela);
@@ -11327,19 +11332,6 @@ async function confirmarVenda() {
     }
   }
 
-  // Pré-validar bloqueio/limite do crediário ANTES de gravar qualquer dado.
-  const legCrediario = pagamentos.find(p => p.forma === 'Crediário');
-  if (legCrediario) {
-    const entradaPreVal = valorMoeda('cred-venda-entrada');
-    const financiadoPreVal = Math.max(0, legCrediario.valor - entradaPreVal);
-    const preVal = validarLimiteCrediarioVenda(cliente, financiadoPreVal);
-    if (!preVal.ok) {
-      alert(preVal.msg);
-      if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = '✓ Finalizar Venda'; }
-      return;
-    }
-  }
-
   // Voucher: não dá pra fechar a venda sem informar o número — precisa estar
   // vinculado a um voucher de verdade, com saldo suficiente. Não é receita
   // nova (é resgate de crédito já concedido), por isso não gera débito.
@@ -11474,7 +11466,7 @@ async function confirmarVenda() {
       if (!vencInput) { alert('Informe o primeiro vencimento do crediário.'); return; }
       if (entradaVal >= valorLeg) { alert('A entrada não pode ser maior ou igual ao total da venda.'); return; }
       const limiteOk = validarLimiteCrediarioVenda(cliente, valorLeg - entradaVal);
-      if (!limiteOk.ok) { alert(limiteOk.msg); return false; }
+      if (!limiteOk.ok) { alert(limiteOk.msg); return; }
 
       const contratoId = 'cred_venda_' + vendaId + sufixoId;
       const valorFinanciado = Math.max(0, valorLeg - entradaVal);
@@ -11689,15 +11681,7 @@ async function confirmarVenda() {
 
   for (let i = 0; i < pagamentos.length; i++) {
     const leg = pagamentos[i];
-  for (let i = 0; i < pagamentos.length; i++) {
-    const leg = pagamentos[i];
-    const ok = await processarFormaPagamento(leg.forma, leg.valor, leg.parcelas, pagamentos.length > 1 ? '_' + (i + 1) : '', leg.voucherNumero);
-    if (ok === false) {
-      if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = '✓ Finalizar Venda'; }
-      mostrarLoading && mostrarLoading(false);
-      return;
-    }
-  }
+    await processarFormaPagamento(leg.forma, leg.valor, leg.parcelas, pagamentos.length > 1 ? '_' + (i + 1) : '', leg.voucherNumero);
   }
   
   // Modal confirmação
@@ -12133,7 +12117,9 @@ async function carregarConsignados() {
 
 async function carregarItensConsignado(consignadoId) {
   try {
-    return await sbGet('consignado_itens', 'consignado_id=eq.' + consignadoId) || [];
+    return await sbGet('consignado_itens', `consignado_id=eq.${consignadoId}`) || [];
+    // Nota: sbGet injeta loja_id=eq.LOJA_ID automaticamente — garante que o item
+    // pertence à loja mesmo que o consignado_id seja de outra loja.
   } catch(e) { return []; }
 }
 
@@ -13369,6 +13355,7 @@ function getCredConfig(){
 async function carregarCredConfigBanco(){
   try {
     const rows = await sbGet('crediario_configuracoes', 'select=chave,valor');
+    // sbGet já injeta loja_id=eq.LOJA_ID via comFiltroLoja (tabela agora em TABELAS_MULTITENANT)
     if (!rows || !rows.length) return;
     const base = JSON.parse(localStorage.getItem(CRED_CONF_KEY) || '{}');
     rows.forEach(r => { try { base[r.chave] = JSON.parse(r.valor); } catch { base[r.chave] = r.valor; } });
@@ -15755,6 +15742,7 @@ function saveCaixaAtual(obj) {
 async function _carregarConfigsBanco() {
   try {
     const rows = await sbGet('loja_configuracoes', 'select=chave,valor');
+    // sbGet injeta loja_id=eq.LOJA_ID automaticamente (tabela em TABELAS_MULTITENANT)
     if (!rows?.length) return;
     rows.forEach(r => {
       try {
