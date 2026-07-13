@@ -7392,12 +7392,7 @@ const SB_HEADS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Conte
 // compartilhar o MESMO projeto Supabase sem misturar dados entre si.
 const LOJA_ID = CONFIG_LOJA.lojaId;
 
-const TABELAS_MULTITENANT = [
-  'produtos', 'vendas', 'clientes', 'debitos', 'contas_pagar',
-  'usuarios', 'licenca', 'taxas_cartao', 'trocas', 'vouchers',
-  'caixa_sessoes', 'vendedores', 'consignados', 'consignado_itens',
-  'crediario_configuracoes', 'loja_configuracoes', 'loja_sequencias',
-];
+const TABELAS_MULTITENANT = ['produtos', 'vendas', 'clientes', 'debitos', 'contas_pagar', 'usuarios', 'licenca', 'taxas_cartao', 'trocas', 'vouchers', 'caixa_sessoes'];
 
 function ehMultiTenant(tabela) {
   return TABELAS_MULTITENANT.includes(tabela);
@@ -7729,12 +7724,12 @@ async function saveLicencaSB(validade) {
 
 // ===== SISTEMA DE AUTENTICAÇÃO E USUÁRIOS =====
 
-const USR_KEY   = 'oi2026_usuarios';
+const USR_KEY   = `oi2026_usuarios_${LOJA_ID}`;
 const SES_KEY   = 'oi2026_sessao';
 const LIC_KEY   = 'oi2026_licenca';
-const CL_KEY    = 'oi2026_clientes';
-const VND_KEY   = 'oi2026_vendedores';
-const TAXA_KEY  = 'oi2026_taxas_cartao';
+const CL_KEY    = `oi2026_clientes_${LOJA_ID}`;
+const VND_KEY   = `oi2026_vendedores_${LOJA_ID}`;
+const TAXA_KEY  = `oi2026_taxas_cartao_${LOJA_ID}`;
 
 // MÓDULOS DO SISTEMA
 const MODULOS = [
@@ -8365,8 +8360,8 @@ async function confirmarExcluirUsuario() {
 
 <script>
 // ===== BANCO DE DADOS =====
-const DB_KEY = 'oi2026_db';
-const VD_KEY = 'oi2026_vendas';
+const DB_KEY = `oi2026_db_${LOJA_ID}`;
+const VD_KEY = `oi2026_vendas_${LOJA_ID}`;
 
 const PRODUTOS_INICIAIS = [];
 
@@ -11876,7 +11871,7 @@ function previewCredVenda(){
   el.innerHTML = `<div style="margin-bottom:8px;"><strong>Total:</strong> ${R(total)} · <strong>Entrada:</strong> ${R(entrada)} · <strong>Financiado:</strong> ${R(financiado)}</div><div class="table-wrap"><table><thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th></tr></thead><tbody>${arr.map(p=>`<tr><td>${p.parcela}/${p.total_parcelas}</td><td>${p.vencimento}</td><td><strong>${R(p.valor)}</strong></td></tr>`).join('')}</tbody></table></div>`;
 }
 // ── CONFIGURAÇÃO DO CARNÊ ──
-const CARNE_CONF_KEY = 'legado_carne_config';
+const CARNE_CONF_KEY = `legado_carne_config_${LOJA_ID}`;
 
 function getCarneConfig() {
   try {
@@ -12117,9 +12112,7 @@ async function carregarConsignados() {
 
 async function carregarItensConsignado(consignadoId) {
   try {
-    return await sbGet('consignado_itens', `consignado_id=eq.${consignadoId}`) || [];
-    // Nota: sbGet injeta loja_id=eq.LOJA_ID automaticamente — garante que o item
-    // pertence à loja mesmo que o consignado_id seja de outra loja.
+    return await sbGet('consignado_itens', 'consignado_id=eq.' + consignadoId) || [];
   } catch(e) { return []; }
 }
 
@@ -13345,7 +13338,7 @@ function previewCarneDemo() {
 }
 
 // ===== MÓDULO CREDIÁRIO MVP =====
-const CRED_CONF_KEY = 'oi2026_crediario_config';
+const CRED_CONF_KEY = `oi2026_crediario_config_${LOJA_ID}`;
 let credAbaAtual = 'visao';
 function getCredConfig(){
   if (window._credConfigCache) return window._credConfigCache;
@@ -13355,7 +13348,6 @@ function getCredConfig(){
 async function carregarCredConfigBanco(){
   try {
     const rows = await sbGet('crediario_configuracoes', 'select=chave,valor');
-    // sbGet já injeta loja_id=eq.LOJA_ID via comFiltroLoja (tabela agora em TABELAS_MULTITENANT)
     if (!rows || !rows.length) return;
     const base = JSON.parse(localStorage.getItem(CRED_CONF_KEY) || '{}');
     rows.forEach(r => { try { base[r.chave] = JSON.parse(r.valor); } catch { base[r.chave] = r.valor; } });
@@ -14135,7 +14127,7 @@ let _ultimoCupom = null;
 
 // Numeração sequencial simples, só pra referência no cupom (não é numeração fiscal).
 function proximoNumeroCupom() {
-  const chave = 'oi2026_cupom_seq';
+  const chave = `oi2026_cupom_seq_${LOJA_ID}`;
   const atual = parseInt(localStorage.getItem(chave) || '0') + 1;
   localStorage.setItem(chave, atual);
   return String(atual).padStart(6, '0');
@@ -15411,7 +15403,7 @@ function renderSubReceber() {
 }
 
 // ===== FINANCEIRO (EXTRATO GERAL) =====
-const FIN_KEY = 'oi2026_debitos';
+const FIN_KEY = `oi2026_debitos_${LOJA_ID}`;
 function cartaoModo(modo) {
   const isData = modo === 'data';
   document.getElementById('cartao-filtro-data').style.display = isData ? 'flex' : 'none';
@@ -15704,8 +15696,8 @@ function dentroDoPeriodoFin(dataISO) { return dentroDoPeriodo('fin', dataISO); }
 // só pela data — assim, se um dia tiver duas aberturas (turno manhã/tarde),
 // cada uma soma só o que é dela. Armazenado localmente por enquanto (mesmo
 // motivo de sempre: sem tabela própria confirmada no Supabase pra isso ainda).
-const CAIXA_ATUAL_KEY = 'oi2026_caixa_atual';
-const CAIXA_HISTORICO_KEY = 'oi2026_caixa_historico';
+const CAIXA_ATUAL_KEY = `oi2026_caixa_atual_${LOJA_ID}`;
+const CAIXA_HISTORICO_KEY = `oi2026_caixa_historico_${LOJA_ID}`;
 
 // Converte uma linha da tabela caixa_sessoes (Supabase) pro mesmo formato
 // que o resto do sistema já usa localmente.
@@ -15742,7 +15734,6 @@ function saveCaixaAtual(obj) {
 async function _carregarConfigsBanco() {
   try {
     const rows = await sbGet('loja_configuracoes', 'select=chave,valor');
-    // sbGet injeta loja_id=eq.LOJA_ID automaticamente (tabela em TABELAS_MULTITENANT)
     if (!rows?.length) return;
     rows.forEach(r => {
       try {
@@ -15814,7 +15805,7 @@ function saveHistoricoCaixas(lista) {
   });
 }
 function proximoNumeroCaixa() {
-  const chave = 'oi2026_caixa_seq';
+  const chave = `oi2026_caixa_seq_${LOJA_ID}`;
   const atual = parseInt(localStorage.getItem(chave) || '0') + 1;
   localStorage.setItem(chave, atual);
   return atual;
@@ -16558,8 +16549,8 @@ async function salvarNovaReceber() {
 }
 
 // ===== TROCAS E DEVOLUÇÕES (armazenado localmente por enquanto) =====
-const TROCAS_KEY = 'oi2026_trocas';
-const VOUCHERS_KEY = 'oi2026_vouchers';
+const TROCAS_KEY = `oi2026_trocas_${LOJA_ID}`;
+const VOUCHERS_KEY = `oi2026_vouchers_${LOJA_ID}`;
 function getTrocas() {
   const lista = _cache.trocas || JSON.parse(localStorage.getItem(TROCAS_KEY) || '[]');
   // Traduz nomes de coluna do Supabase (snake_case) pra como o resto do
@@ -16793,7 +16784,7 @@ async function confirmarDevolucao() {
 
 // Numeração sequencial simples do voucher, só como referência (mesmo padrão do cupom de venda).
 function proximoNumeroVoucher() {
-  const chave = 'oi2026_voucher_seq';
+  const chave = `oi2026_voucher_seq_${LOJA_ID}`;
   const atual = parseInt(localStorage.getItem(chave) || '0') + 1;
   localStorage.setItem(chave, atual);
   return String(atual).padStart(6, '0');
@@ -17716,7 +17707,7 @@ function gerarPDFClienteReceber() {
 }
 
 // ===== CONTAS A PAGAR =====
-const CP_KEY = 'oi2026_contas_pagar';
+const CP_KEY = `oi2026_contas_pagar_${LOJA_ID}`;
 let _cpEditing = null;
 
 // ===== SPLASH: Contas a pagar vencidas OU vencendo hoje (avisa logo após o login) =====
