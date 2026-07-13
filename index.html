@@ -7724,12 +7724,12 @@ async function saveLicencaSB(validade) {
 
 // ===== SISTEMA DE AUTENTICAÇÃO E USUÁRIOS =====
 
-const USR_KEY   = `oi2026_usuarios_${LOJA_ID}`;
+const USR_KEY   = 'oi2026_usuarios';
 const SES_KEY   = 'oi2026_sessao';
 const LIC_KEY   = 'oi2026_licenca';
-const CL_KEY    = `oi2026_clientes_${LOJA_ID}`;
-const VND_KEY   = `oi2026_vendedores_${LOJA_ID}`;
-const TAXA_KEY  = `oi2026_taxas_cartao_${LOJA_ID}`;
+const CL_KEY    = 'oi2026_clientes';
+const VND_KEY   = 'oi2026_vendedores';
+const TAXA_KEY  = 'oi2026_taxas_cartao';
 
 // MÓDULOS DO SISTEMA
 const MODULOS = [
@@ -8106,8 +8106,8 @@ async function renderUsuarios() {
       <div class="user-card">
         <div class="user-avatar ${avatarClass}">${inicial}</div>
         <div class="user-info">
-          <strong>${u.nome} ${ehVoce ? '<span style="font-size:11px;color:var(--muted);">👤 Você</span>' : ''}</strong>
-          <p>Login: <code>${u.login}</code> · ${modsLabel}</p>
+          <strong>${esc(u.nome)} ${ehVoce ? '<span style="font-size:11px;color:var(--muted);">👤 Você</span>' : ''}</strong>
+          <p>Login: <code>${esc(u.login)}</code> · ${modsLabel}</p>
         </div>
         <span class="user-role-badge ${roleClass}">${roleLabel}</span>
         ${canEdit && !ehVoce ? `
@@ -8360,8 +8360,8 @@ async function confirmarExcluirUsuario() {
 
 <script>
 // ===== BANCO DE DADOS =====
-const DB_KEY = `oi2026_db_${LOJA_ID}`;
-const VD_KEY = `oi2026_vendas_${LOJA_ID}`;
+const DB_KEY = 'oi2026_db';
+const VD_KEY = 'oi2026_vendas';
 
 const PRODUTOS_INICIAIS = [];
 
@@ -8945,7 +8945,7 @@ function renderDashboard() {
         const dias = Math.ceil((new Date(x.vencISO) - new Date(hoje)) / 86400000);
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
           <div>
-            <div style="font-size:13px;font-weight:600;">${x.cliente}</div>
+            <div style="font-size:13px;font-weight:600;">${esc(x.cliente)}</div>
             <div style="font-size:11px;color:var(--muted);">vence ${x.venc} · <span style="color:${dias<=3?'var(--danger)':'var(--warn)'};">em ${dias}d</span></div>
           </div>
           <strong style="color:var(--danger);">${R(x.saldo)}</strong>
@@ -8966,8 +8966,8 @@ function renderDashboard() {
         const diasLabel = diasVal < 0 ? `${Math.abs(diasVal)}d atraso` : diasVal === 0 ? 'Hoje' : `em ${diasVal}d`;
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
           <div>
-            <div style="font-size:13px;font-weight:600;">${c.descricao}</div>
-            <div style="font-size:11px;color:var(--muted);">${c.fornecedor||''} · <span style="color:${st==='vencido'?'var(--danger)':'var(--warn)'};">${diasLabel}</span></div>
+            <div style="font-size:13px;font-weight:600;">${esc(c.descricao)}</div>
+            <div style="font-size:11px;color:var(--muted);">${esc(c.fornecedor||'')} · <span style="color:${st==='vencido'?'var(--danger)':'var(--warn)'};">${diasLabel}</span></div>
           </div>
           <strong style="color:${st==='vencido'?'var(--danger)':'var(--warn)'};">${R(c.valor)}</strong>
         </div>`;
@@ -8994,9 +8994,9 @@ function renderDashboard() {
   const baixo = todos_produtos.filter(p=>p.estoque<=1).sort((a,b)=>a.estoque-b.estoque).slice(0,12);
   document.getElementById('alertas-body').innerHTML = baixo.map(p => `
     <tr>
-      <td><code style="font-size:11px;">${p.ref}</code></td>
-      <td style="font-size:12px;">${p.produto}</td>
-      <td><span class="tag-cat">${p.categoria}</span></td>
+      <td><code style="font-size:11px;">${esc(p.ref)}</code></td>
+      <td style="font-size:12px;">${esc(p.produto)}</td>
+      <td><span class="tag-cat">${esc(p.categoria)}</span></td>
       <td>${estoqueBadge(p.estoque)}</td>
     </tr>
   `).join('') || '<tr><td colspan="4" class="empty">Nenhum alerta 🎉</td></tr>';
@@ -9063,24 +9063,24 @@ function renderEstoque() {
   document.getElementById('estoque-body').innerHTML = pagina.map(p => {
     const margem = p.custo > 0 ? ((p.preco_venda - p.custo) / p.preco_venda * 100) : null;
     return `<tr>
-      <td><input type="checkbox" class="etq-select-produto" value="${p.ref}" onchange="atualizarBarraSelecaoEtiqueta()" style="width:auto;"></td>
-      <td><code style="font-size:11px;">${p.ref}</code></td>
-      <td>${p.produto}</td>
-      <td><span class="tag-cat">${p.categoria}</span></td>
+      <td><input type="checkbox" class="etq-select-produto" value="${esc(p.ref)}" onchange="atualizarBarraSelecaoEtiqueta()" style="width:auto;"></td>
+      <td><code style="font-size:11px;">${esc(p.ref)}</code></td>
+      <td>${esc(p.produto)}</td>
+      <td><span class="tag-cat">${esc(p.categoria)}</span></td>
       <td class="col-custo">${verCusto() ? (p.custo > 0 ? R(p.custo) : '<span style="color:var(--muted)">—</span>') : '—'}</td>
       <td><strong>${R(p.preco_venda)}</strong></td>
       <td>${margem !== null ? pct(margem) : '<span style="color:var(--muted)">—</span>'}</td>
       <td>
         <div style="display:flex;align-items:center;gap:6px;">
-          <button class="btn btn-outline btn-sm" style="padding:3px 8px;font-size:14px;line-height:1;" onclick="ajustarEstoque('${p.ref}',-1)" title="Diminuir 1">−</button>
+          <button class="btn btn-outline btn-sm" style="padding:3px 8px;font-size:14px;line-height:1;" onclick="ajustarEstoque('${esc(p.ref)}',-1)" title="Diminuir 1">−</button>
           <span style="min-width:28px;text-align:center;font-weight:700;color:${p.estoque<=0?'var(--danger)':p.estoque<=1?'var(--warn)':'var(--success)'}">${p.estoque}</span>
-          <button class="btn btn-outline btn-sm" style="padding:3px 8px;font-size:14px;line-height:1;" onclick="ajustarEstoque('${p.ref}',1)" title="Adicionar 1">+</button>
+          <button class="btn btn-outline btn-sm" style="padding:3px 8px;font-size:14px;line-height:1;" onclick="ajustarEstoque('${esc(p.ref)}',1)" title="Adicionar 1">+</button>
         </div>
       </td>
       <td style="white-space:nowrap;">
-        <button class="btn btn-outline btn-sm" onclick="abrirEdicao('${p.ref}')">Editar</button>
-        <button class="btn btn-secondary btn-sm" onclick="registrarVendaRapida('${p.ref}')">Vender</button>
-        <button class="btn btn-outline btn-sm" onclick="abrirImpressaoEtiqueta('${p.ref}')" title="Imprimir etiqueta">🏷️</button>
+        <button class="btn btn-outline btn-sm" onclick="abrirEdicao('${esc(p.ref)}')">Editar</button>
+        <button class="btn btn-secondary btn-sm" onclick="registrarVendaRapida('${esc(p.ref)}')">Vender</button>
+        <button class="btn btn-outline btn-sm" onclick="abrirImpressaoEtiqueta('${esc(p.ref)}')" title="Imprimir etiqueta">🏷️</button>
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="9" class="empty">Nenhum produto encontrado.</td></tr>';
@@ -9385,7 +9385,7 @@ function handleImportExcel(event) {
           <table>
             <thead><tr><th>Ref.</th><th>Produto</th><th>Categoria</th><th>Custo</th><th>Preço Venda</th><th>Estoque</th></tr></thead>
             <tbody>${produtosNormalizados.slice(0,50).map(p => `<tr>
-              <td><code>${p.ref}</code></td><td>${p.produto}</td><td>${p.categoria}</td>
+              <td><code>${esc(p.ref)}</code></td><td>${esc(p.produto)}</td><td>${esc(p.categoria)}</td>
               <td>${R(p.custo)}</td><td>${R(p.preco_venda)}</td><td>${p.estoque}</td>
             </tr>`).join('')}</tbody>
           </table>
@@ -9501,18 +9501,18 @@ function handleImportXmlNFe(event) {
       _xmlNFeParsed = { fornecedor, numeroNota, dataEmissao, itens };
 
       const valorTotalNota = itens.reduce((s,i) => s + i.valorTotal, 0);
-      statusEl.innerHTML = `<span style="color:var(--success)">✅ NF-e nº ${numeroNota} lida com sucesso — ${itens.length} item(ns), fornecedor: ${fornecedor.nome}.</span>`;
+      statusEl.innerHTML = `<span style="color:var(--success)">✅ NF-e nº ${numeroNota} lida com sucesso — ${itens.length} item(ns), fornecedor: ${esc(fornecedor.nome)}.</span>`;
 
       previewEl.innerHTML = `
         <div class="produto-info-box" style="margin-bottom:14px;">
-          <strong>${fornecedor.nome}</strong><br>
+          <strong>${esc(fornecedor.nome)}</strong><br>
           <span style="font-size:12px;color:var(--muted);">CNPJ: ${fornecedor.cnpj || '—'} · Nota nº ${numeroNota} · Total: ${R(valorTotalNota)}</span>
         </div>
         <div class="table-wrap" style="max-height:320px;overflow-y:auto;">
           <table>
             <thead><tr><th>Cód.</th><th>EAN</th><th>Produto</th><th>Qtd.</th><th>Custo Unit.</th><th>Total</th></tr></thead>
             <tbody>${itens.map(i => `<tr>
-              <td><code>${i.codigo}</code></td><td style="font-size:11px;">${i.ean||'—'}</td><td>${i.nome}</td>
+              <td><code>${esc(i.codigo)}</code></td><td style="font-size:11px;">${i.ean||'—'}</td><td>${esc(i.nome)}</td>
               <td>${i.quantidade}</td><td>${R(i.valorUnit)}</td><td>${R(i.valorTotal)}</td>
             </tr>`).join('')}</tbody>
           </table>
@@ -9925,12 +9925,12 @@ function autopreencherItemNotaManual() {
     if (matches.length > 0 && !exato) {
       drop.style.display = 'block';
       drop.innerHTML = matches.map(p => `
-        <div onclick="selecionarItemNota('${p.ref}')"
+        <div onclick="selecionarItemNota('${esc(p.ref)}')"
           style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;transition:background .1s;"
           onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='#fff'">
           <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.produto}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${p.ref} · ${p.categoria||'—'} · ${p.estoque||0} em estoque</div>
+            <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.produto)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(p.ref)} · ${esc(p.categoria||'—')} · ${p.estoque||0} em estoque</div>
           </div>
           <div style="text-align:right;flex-shrink:0;font-size:12px;color:var(--muted);">${R(p.custo||0)}<br><span style="font-size:10px;">custo</span></div>
         </div>`).join('');
@@ -11012,10 +11012,10 @@ function filtrarProdutosVenda() {
       ${res.map(p => {
         const noCarrinho = carrinho.filter(c=>c.ref===p.ref).reduce((s,c)=>s+c.qtd,0);
         const disp = p.estoque - noCarrinho;
-        return `<div onclick="selecionarProduto('${p.ref}')" style="padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;transition:background .1s;" onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='white'">
+        return `<div onclick="selecionarProduto('${esc(p.ref)}')" style="padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;transition:background .1s;" onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='white'">
           <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.produto}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${p.ref} · ${p.categoria} · ${disp} em estoque</div>
+            <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.produto)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(p.ref)} · ${esc(p.categoria)} · ${disp} em estoque</div>
           </div>
           <div style="text-align:right;flex-shrink:0;">
             <div style="font-size:14px;font-weight:700;color:var(--accent2);">${R(p.preco_venda)}</div>
@@ -11148,7 +11148,7 @@ function renderCarrinho() {
   document.getElementById('carrinho-body').innerHTML = carrinho.map((c,i) => {
     const subtotal = c.valor_unit * c.qtd;
     return `<tr>
-      <td><strong>${c.produto}</strong><br><code style="font-size:10px;color:var(--muted)">${c.ref}</code></td>
+      <td><strong>${esc(c.produto)}</strong><br><code style="font-size:10px;color:var(--muted)">${esc(c.ref)}</code></td>
       <td style="text-align:right;">${c.qtd}</td>
       <td style="text-align:right;">${R(c.valor_unit)}</td>
       <td style="text-align:right;"><strong>${R(subtotal)}</strong></td>
@@ -11190,7 +11190,7 @@ function checarSaldoVoucher(inputId, saldoBoxId) {
   if (!voucher) {
     box.innerHTML = '<span style="color:var(--danger);">⚠ Voucher não encontrado</span>';
   } else {
-    box.innerHTML = `Cliente: <strong>${voucher.cliente}</strong> · Saldo disponível: <strong style="color:var(--success);">${R(voucher.valorRestante)}</strong>`;
+    box.innerHTML = `Cliente: <strong>${esc(voucher.cliente)}</strong> · Saldo disponível: <strong style="color:var(--success);">${R(voucher.valorRestante)}</strong>`;
   }
 }
 
@@ -11205,7 +11205,7 @@ function checarSaldoVoucherMisto(perna) {
     box.innerHTML = '<span style="color:var(--danger);">⚠ Voucher não encontrado</span>';
     return;
   }
-  box.innerHTML = `Cliente: <strong>${voucher.cliente}</strong> · Saldo disponível: <strong style="color:var(--success);">${R(voucher.valorRestante)}</strong>`;
+  box.innerHTML = `Cliente: <strong>${esc(voucher.cliente)}</strong> · Saldo disponível: <strong style="color:var(--success);">${R(voucher.valorRestante)}</strong>`;
 
   if (perna === 1) {
     const totalBruto = carrinho.reduce((s,c) => s + c.valor_unit * c.qtd, 0);
@@ -11680,7 +11680,7 @@ async function confirmarVenda() {
   }
   
   // Modal confirmação
-  const itensList = carrinho.map(c=>`<li style="margin-bottom:4px;">${c.qtd}x <strong>${c.produto}</strong> · ${R(c.valor_unit)} = ${R(c.valor_unit*c.qtd)}</li>`).join('');
+  const itensList = carrinho.map(c=>`<li style="margin-bottom:4px;">${c.qtd}x <strong>${esc(c.produto)}</strong> · ${R(c.valor_unit)} = ${R(c.valor_unit*c.qtd)}</li>`).join('');
   const margemGeral = totalFat > 0 ? (totalLucro/totalFat*100) : 0;
   document.getElementById('confirm-venda-body').innerHTML = `
     <div class="produto-info-box">
@@ -11871,7 +11871,7 @@ function previewCredVenda(){
   el.innerHTML = `<div style="margin-bottom:8px;"><strong>Total:</strong> ${R(total)} · <strong>Entrada:</strong> ${R(entrada)} · <strong>Financiado:</strong> ${R(financiado)}</div><div class="table-wrap"><table><thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th></tr></thead><tbody>${arr.map(p=>`<tr><td>${p.parcela}/${p.total_parcelas}</td><td>${p.vencimento}</td><td><strong>${R(p.valor)}</strong></td></tr>`).join('')}</tbody></table></div>`;
 }
 // ── CONFIGURAÇÃO DO CARNÊ ──
-const CARNE_CONF_KEY = `legado_carne_config_${LOJA_ID}`;
+const CARNE_CONF_KEY = 'legado_carne_config';
 
 function getCarneConfig() {
   try {
@@ -12250,10 +12250,10 @@ function consigBuscarCliente(busca) {
   if (!clientes.length) { sug.style.display='none'; return; }
   sug.innerHTML = clientes.map(c => {
     const cpf = getCPFCliente(c);
-    return `<div onclick="consigSelecionarCliente('${c.nome.replace(/'/g,"\\'")}','${c.id||''}')"
+    return `<div onclick="consigSelecionarCliente('${esc(c.nome)}','${c.id||''}')"
       style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
       onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
-      ${c.nome}${cpf?`<span style="font-size:11px;color:var(--muted);margin-left:6px;">${cpf}</span>`:''}
+      ${esc(c.nome)}${cpf?`<span style="font-size:11px;color:var(--muted);margin-left:6px;">${cpf}</span>`:''}
     </div>`;
   }).join('');
   sug.style.display = 'block';
@@ -13163,7 +13163,7 @@ function imprimirContratoCrediario(dadosCarne) {
       <div class="assinatura-linha">${nomeLoja}<br><span style="font-size:10px;color:#64748b;">CREDOR</span></div>
     </div>
     <div class="assinatura-box">
-      <div class="assinatura-linha">${c.cliente}<br><span style="font-size:10px;color:#64748b;">DEVEDOR${cpf ? ` · CPF: ${cpf}` : ''}</span></div>
+      <div class="assinatura-linha">${esc(c.cliente)}<br><span style="font-size:10px;color:#64748b;">DEVEDOR${cpf ? ` · CPF: ${cpf}` : ''}</span></div>
     </div>
   </div>
 
@@ -13338,7 +13338,7 @@ function previewCarneDemo() {
 }
 
 // ===== MÓDULO CREDIÁRIO MVP =====
-const CRED_CONF_KEY = `oi2026_crediario_config_${LOJA_ID}`;
+const CRED_CONF_KEY = 'oi2026_crediario_config';
 let credAbaAtual = 'visao';
 function getCredConfig(){
   if (window._credConfigCache) return window._credConfigCache;
@@ -13664,21 +13664,21 @@ function renderCredListas(parcelas){
   const tbody = document.getElementById('cred-parcelas-body');
   if (tbody) tbody.innerHTML = filtradas.map(p => `
     <tr>
-      <td>${p.vencimento||'—'}</td><td><strong>${p.cliente||'—'}</strong></td><td>${p.contrato_id||p.venda_id||'—'}</td>
+      <td>${esc(p.vencimento)||'—'}</td><td><strong>${esc(p.cliente)||'—'}</strong></td><td>${esc(p.contrato_id||p.venda_id)||'—'}</td>
       <td>${p.parcela||'1'} / ${p.total_parcelas||'1'}</td><td><strong>${R(p.total)}</strong></td><td>${R(p.pago)}</td>
-      <td><span class="cred-status ${p.statusCred}">${p.statusCred}</span></td>
+      <td><span class="cred-status ${p.statusCred}">${esc(p.statusCred)}</span></td>
       <td>${p.statusCred === 'vencido'
-        ? `<button class="btn btn-sm" data-reneg="${(p.cliente||'').replace(/"/g,'&quot;')}" onclick="abrirModalRenegociar(this.dataset.reneg)" style="background:var(--accent);color:#fff;font-size:11px;padding:3px 8px;">🔄 Renegociar</button>`
+        ? `<button class="btn btn-sm" data-reneg="${esc(p.cliente||'')}" onclick="abrirModalRenegociar(this.dataset.reneg)" style="background:var(--accent);color:#fff;font-size:11px;padding:3px 8px;">🔄 Renegociar</button>`
         : p.statusCred !== 'pago'
-          ? `<button class="btn btn-sm btn-outline" data-reneg="${(p.cliente||'').replace(/"/g,'&quot;')}" onclick="abrirModalRenegociar(this.dataset.reneg)" style="font-size:11px;padding:3px 8px;">Renegociar</button>`
+          ? `<button class="btn btn-sm btn-outline" data-reneg="${esc(p.cliente||'')}" onclick="abrirModalRenegociar(this.dataset.reneg)" style="font-size:11px;padding:3px 8px;">Renegociar</button>`
           : '—'}</td>
     </tr>`).join('') || '<tr><td colspan="8" class="empty">Nenhuma parcela de crediário encontrada.</td></tr>';
   const proximas = parcelas.filter(p=>p.statusCred!=='pago' && p.statusCred!=='vencido').slice(0,6);
   const proxEl = document.getElementById('cred-proximas');
-  if (proxEl) proxEl.innerHTML = proximas.length ? proximas.map(p=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #eef2f7;font-size:12px;"><span><strong>${p.cliente}</strong><br><small>${p.vencimento} · Parc. ${p.parcela||1}/${p.total_parcelas||1}</small></span><strong>${R(p.saldo)}</strong></div>`).join('') : '<div class="empty">Sem próximas parcelas.</div>';
+  if (proxEl) proxEl.innerHTML = proximas.length ? proximas.map(p=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #eef2f7;font-size:12px;"><span><strong>${esc(p.cliente)}</strong><br><small>${esc(p.vencimento)} · Parc. ${p.parcela||1}/${p.total_parcelas||1}</small></span><strong>${R(p.saldo)}</strong></div>`).join('') : '<div class="empty">Sem próximas parcelas.</div>';
   const vencidas = parcelas.filter(p=>p.statusCred==='vencido').slice(0,6);
   const vencEl = document.getElementById('cred-vencidas');
-  if (vencEl) vencEl.innerHTML = vencidas.length ? vencidas.map(p=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #fee2e2;font-size:12px;"><span><strong>${p.cliente}</strong><br><small>${p.vencimento} · Parc. ${p.parcela||1}/${p.total_parcelas||1}</small></span><strong style="color:#dc2626">${R(p.saldo)}</strong></div>`).join('') : '<div class="empty">Nenhuma parcela vencida.</div>';
+  if (vencEl) vencEl.innerHTML = vencidas.length ? vencidas.map(p=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #fee2e2;font-size:12px;"><span><strong>${esc(p.cliente)}</strong><br><small>${esc(p.vencimento)} · Parc. ${p.parcela||1}/${p.total_parcelas||1}</small></span><strong style="color:#dc2626">${R(p.saldo)}</strong></div>`).join('') : '<div class="empty">Nenhuma parcela vencida.</div>';
 }
 function renderCredClientes(parcelas){
   const map = {};
@@ -13725,7 +13725,7 @@ function renderCredClientes(parcelas){
       <td>${dispStr}</td>
       <td style="white-space:nowrap;">
         ${c.vencido > 0
-          ? `<button class="btn btn-sm" data-reneg="${c.cliente.replace(/"/g,'&quot;')}" onclick="abrirModalRenegociar(this.dataset.reneg)" style="background:var(--accent);color:#fff;font-size:11px;margin-right:4px;">🔄 Renegociar</button>`
+          ? `<button class="btn btn-sm" data-reneg="${esc(c.cliente)}" onclick="abrirModalRenegociar(this.dataset.reneg)" style="background:var(--accent);color:#fff;font-size:11px;margin-right:4px;">🔄 Renegociar</button>`
           : ''}
         <button class="btn btn-sm btn-outline" data-extrato="${c.cliente.replace(/"/g,'&quot;')}" onclick="imprimirExtratoCliente(this.dataset.extrato)" style="font-size:11px;">📄 Extrato</button>
       </td>
@@ -13858,9 +13858,9 @@ async function excluirVenda(id) {
   const isCartao = venda.pagamento === 'Cartão crédito';
   const isAutoDebito = ['Dinheiro','Pix','À vista'].includes(venda.pagamento);
   const msg = `Remover esta venda do histórico?\n\n` +
-    `${venda.qtd}x ${venda.produto || venda.ref}\n` +
+    `${venda.qtd}x ${(venda.produto || venda.ref || '').replace(/[<>"'&]/g,'')}\n` +
     `Valor: ${R(venda.valor || venda.valor_total)}\n\n` +
-    `O estoque de "${venda.produto}" será devolvido (${venda.qtd} pç).` +
+    `O estoque de "${(venda.produto || '').replace(/[<>"'&]/g,'')}" será devolvido (${venda.qtd} pç).` +
     (isPrazo || isAutoDebito ? `\n\nO lançamento financeiro vinculado também será removido de A Receber.` : '') +
     (isCartao ? `\n\nO valor será subtraído do lançamento de cartão do dia.` : '');
   if (!confirm(msg)) return;
@@ -14127,7 +14127,7 @@ let _ultimoCupom = null;
 
 // Numeração sequencial simples, só pra referência no cupom (não é numeração fiscal).
 function proximoNumeroCupom() {
-  const chave = `oi2026_cupom_seq_${LOJA_ID}`;
+  const chave = 'oi2026_cupom_seq';
   const atual = parseInt(localStorage.getItem(chave) || '0') + 1;
   localStorage.setItem(chave, atual);
   return String(atual).padStart(6, '0');
@@ -14161,7 +14161,7 @@ function montarCupomHTML(v, fontSize) {
     ${linha}
     <div style="font-size:${fs - 1}px;">Data: ${v.dataHora}</div>
     <div style="font-size:${fs - 1}px;">Operador: ${operador}</div>
-    ${v.vendedor ? `<div style="font-size:${fs - 1}px;font-weight:700;">Vendedor(a): ${v.vendedor}</div>` : ''}
+    ${v.vendedor ? `<div style="font-size:${fs - 1}px;font-weight:700;">Vendedor(a): ${esc(v.vendedor)}</div>` : ''}
     ${linha}
     <div style="font-weight:700;margin-bottom:8px;">ITENS</div>
     ${itensHtml}
@@ -14182,7 +14182,7 @@ function montarCupomHTML(v, fontSize) {
         <span>${R(p.valor)}</span>
       </div>
     `).join('')}
-    ${v.cliente ? `<div style="margin-top:6px;">Cliente: ${v.cliente}</div>` : ''}
+    ${v.cliente ? `<div style="margin-top:6px;">Cliente: ${esc(v.cliente)}</div>` : ''}
     <div style="text-align:center;font-size:${fs - 4}px;font-weight:700;border:1px solid #999;border-radius:6px;padding:8px;margin-top:14px;">
       DOCUMENTO NÃO FISCAL<br>Comprovante interno de venda, sem valor fiscal
     </div>
@@ -14519,7 +14519,7 @@ function renderClientes() {
       <td>
         <strong>${cl.eh_fornecedor ? '🏢' : '👤'} ${cl.nome}</strong>
         ${hoje2 ? ' <span style="background:var(--warn);color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;font-weight:700;">HOJE 🎂</span>' : ''}
-        ${cl.obs ? `<br><span style="font-size:11px;color:var(--muted);">${cl.obs}</span>` : ''}
+        ${cl.obs ? `<br><span style="font-size:11px;color:var(--muted);">${esc(cl.obs)}</span>` : ''}
         ${cl.doc_numero ? `<br><span style="font-size:11px;color:var(--muted);">${(cl.doc_tipo||'cpf').toUpperCase()}: ${cl.doc_numero}</span>` : ''}
       </td>
       <td>${cl.tel ? `<a href="https://wa.me/55${cl.tel.replace(/\D/g,'')}" target="_blank" style="color:var(--accent2);text-decoration:none;">📱 ${cl.tel}</a>` : '—'}</td>
@@ -14967,7 +14967,7 @@ function abrirExcluirCliente(id) {
   _clienteParaExcluir = id;
   document.getElementById('modal-del-cli-body').innerHTML = `
     <p style="margin-bottom:12px;">Tem certeza que deseja excluir o cliente:</p>
-    <div class="produto-info-box"><strong>${cl.nome}</strong>${cl.tel?`<br><span style="font-size:12px;color:var(--muted);">${cl.tel}</span>`:''}</div>
+    <div class="produto-info-box"><strong>${esc(cl.nome)}</strong>${cl.tel?`<br><span style="font-size:12px;color:var(--muted);">${esc(cl.tel)}</span>`:''}</div>
   `;
   document.getElementById('modal-del-cliente').classList.add('open');
 }
@@ -15351,8 +15351,8 @@ function renderSubReceber() {
       return `<tr>
         <td style="font-size:12px;">${d.data_venda}</td>
         <td style="max-width:220px;">
-          <div style="font-size:12px;font-weight:600;">${d.itens?.map(i=>`${i.qtd}x ${i.produto}`).join(', ')||'Venda'}</div>
-          ${d.obs ? `<div style="font-size:11px;color:var(--muted);">${d.obs}</div>` : ''}
+          <div style="font-size:12px;font-weight:600;">${d.itens?.map(i=>`${i.qtd}x ${esc(i.produto)}`).join(', ')||'Venda'}</div>
+          ${d.obs ? `<div style="font-size:11px;color:var(--muted);">${esc(d.obs)}</div>` : ''}
           ${pagHist}
         </td>
         <td>${stBadge}</td>
@@ -15403,7 +15403,7 @@ function renderSubReceber() {
 }
 
 // ===== FINANCEIRO (EXTRATO GERAL) =====
-const FIN_KEY = `oi2026_debitos_${LOJA_ID}`;
+const FIN_KEY = 'oi2026_debitos';
 function cartaoModo(modo) {
   const isData = modo === 'data';
   document.getElementById('cartao-filtro-data').style.display = isData ? 'flex' : 'none';
@@ -15696,8 +15696,8 @@ function dentroDoPeriodoFin(dataISO) { return dentroDoPeriodo('fin', dataISO); }
 // só pela data — assim, se um dia tiver duas aberturas (turno manhã/tarde),
 // cada uma soma só o que é dela. Armazenado localmente por enquanto (mesmo
 // motivo de sempre: sem tabela própria confirmada no Supabase pra isso ainda).
-const CAIXA_ATUAL_KEY = `oi2026_caixa_atual_${LOJA_ID}`;
-const CAIXA_HISTORICO_KEY = `oi2026_caixa_historico_${LOJA_ID}`;
+const CAIXA_ATUAL_KEY = 'oi2026_caixa_atual';
+const CAIXA_HISTORICO_KEY = 'oi2026_caixa_historico';
 
 // Converte uma linha da tabela caixa_sessoes (Supabase) pro mesmo formato
 // que o resto do sistema já usa localmente.
@@ -15805,7 +15805,7 @@ function saveHistoricoCaixas(lista) {
   });
 }
 function proximoNumeroCaixa() {
-  const chave = `oi2026_caixa_seq_${LOJA_ID}`;
+  const chave = 'oi2026_caixa_seq';
   const atual = parseInt(localStorage.getItem(chave) || '0') + 1;
   localStorage.setItem(chave, atual);
   return atual;
@@ -16237,7 +16237,7 @@ function montarRelatorioCaixaHTML(sessao, fs) {
     <div style="display:flex;justify-content:space-between;font-size:${fs + 2}px;font-weight:800;">
       <span>DIFERENÇA TOTAL</span><span>${f.diferencaTotal >= 0 ? '+' : ''}${R(f.diferencaTotal)}</span>
     </div>
-    ${f.obs ? `${linha}<div style="font-size:${fs - 2}px;"><strong>Obs:</strong> ${f.obs}</div>` : ''}
+    ${f.obs ? `${linha}<div style="font-size:${fs - 2}px;"><strong>Obs:</strong> ${esc(f.obs)}</div>` : ''}
     <div style="text-align:center;font-size:${fs - 4}px;font-weight:700;border:1px solid #999;border-radius:6px;padding:6px;margin-top:12px;">
       Documento interno de controle de caixa — não é documento fiscal.
     </div>
@@ -16447,7 +16447,7 @@ function renderFinanceiro() {
       <td>
         <div style="font-size:13px;font-weight:600;">${ev.titulo}</div>
         <div style="font-size:11px;color:var(--muted);">${ev.descricao||ev.desc||""}${ev.cat ? ` · ${ev.cat}` : ''}</div>
-        ${ev.obs ? `<div style="font-size:10px;color:var(--muted);">${ev.obs}</div>` : ''}
+        ${ev.obs ? `<div style="font-size:10px;color:var(--muted);">${esc(ev.obs)}</div>` : ''}
         ${pagHist}
       </td>
       <td>${stBadge}</td>
@@ -16549,8 +16549,8 @@ async function salvarNovaReceber() {
 }
 
 // ===== TROCAS E DEVOLUÇÕES (armazenado localmente por enquanto) =====
-const TROCAS_KEY = `oi2026_trocas_${LOJA_ID}`;
-const VOUCHERS_KEY = `oi2026_vouchers_${LOJA_ID}`;
+const TROCAS_KEY = 'oi2026_trocas';
+const VOUCHERS_KEY = 'oi2026_vouchers';
 function getTrocas() {
   const lista = _cache.trocas || JSON.parse(localStorage.getItem(TROCAS_KEY) || '[]');
   // Traduz nomes de coluna do Supabase (snake_case) pra como o resto do
@@ -16784,7 +16784,7 @@ async function confirmarDevolucao() {
 
 // Numeração sequencial simples do voucher, só como referência (mesmo padrão do cupom de venda).
 function proximoNumeroVoucher() {
-  const chave = `oi2026_voucher_seq_${LOJA_ID}`;
+  const chave = 'oi2026_voucher_seq';
   const atual = parseInt(localStorage.getItem(chave) || '0') + 1;
   localStorage.setItem(chave, atual);
   return String(atual).padStart(6, '0');
@@ -16929,8 +16929,8 @@ function abrirImpressaoEtiquetaDireta(refs) {
 function abrirModalQtdEtiqueta(refs) {
   const produtos = getProdutos().filter(p => refs.includes(p.ref));
   document.getElementById('etq-lote-resumo').innerHTML = produtos.length === 1
-    ? `<strong>${produtos[0].produto}</strong> (${produtos[0].ref})`
-    : `<strong>${produtos.length} produtos selecionados:</strong> ${produtos.map(p => p.produto).join(', ')}`;
+    ? `<strong>${esc(produtos[0].produto)}</strong> (${esc(produtos[0].ref)})`
+    : `<strong>${produtos.length} produtos selecionados:</strong> ${produtos.map(p => esc(p.produto)).join(', ')}`;
   document.getElementById('etq-qtd').value = 1;
   document.getElementById('etq-sem-barras-aviso').style.display = produtos.some(p => !p.ean13) ? 'block' : 'none';
   document.getElementById('modal-etiqueta').classList.add('open');
@@ -17304,10 +17304,10 @@ function filtrarClientesVenda(input) {
     const cpf = getCPFCliente(c);
     const tel = c.tel || c.telefone || '';
     const info = [tel, cpf].filter(Boolean).join(' · ');
-    return `<div onmousedown="event.preventDefault();selecionarClienteVenda('${c.nome.replace(/'/g, "\\'")}')"
+    return `<div onmousedown="event.preventDefault();selecionarClienteVenda('${esc(c.nome)}')"
          style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
          onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
-      ${c.nome}${info ? `<span style="color:var(--muted);font-size:11px;"> · ${info}</span>` : ''}
+      ${esc(c.nome)}${info ? `<span style="color:var(--muted);font-size:11px;"> · ${esc(info)}</span>` : ''}
     </div>`;
   }).join('');
   box.style.display = 'block';
@@ -17511,8 +17511,8 @@ function renderRelReceber() {
       return `<tr>
         <td style="font-size:12px;">${d.data_venda}</td>
         <td style="max-width:220px;">
-          <div style="font-size:12px;font-weight:600;">${d.itens?.map(i=>`${i.qtd}x ${i.produto}`).join(', ')||'Venda'}</div>
-          ${d.obs ? `<div style="font-size:11px;color:var(--muted);">${d.obs}</div>` : ''}
+          <div style="font-size:12px;font-weight:600;">${d.itens?.map(i=>`${i.qtd}x ${esc(i.produto)}`).join(', ')||'Venda'}</div>
+          ${d.obs ? `<div style="font-size:11px;color:var(--muted);">${esc(d.obs)}</div>` : ''}
           ${pagHistorico}
         </td>
         <td>${stBadge}</td>
@@ -17633,8 +17633,8 @@ function gerarPDFClienteReceber() {
       return `<tr>
         <td style="font-size:10px;">${d.data_venda}</td>
         <td>
-          <div style="font-size:10px;font-weight:600;">${d.itens?.map(i=>`${i.qtd}x ${i.produto}`).join(', ')||'Venda'}</div>
-          ${d.obs?`<div style="font-size:9px;color:#888;">${d.obs}</div>`:''}
+          <div style="font-size:10px;font-weight:600;">${d.itens?.map(i=>`${i.qtd}x ${esc(i.produto)}`).join(', ')||'Venda'}</div>
+          ${d.obs?`<div style="font-size:9px;color:#888;">${esc(d.obs)}</div>`:''}
           ${pagHistorico}
         </td>
         <td><span style="background:${st==='pago'?'#E5F2E9':st==='parcial'?'#FDF3E3':'#FCE8E8'};color:${stColor};padding:1px 7px;border-radius:99px;font-size:9px;font-weight:700;">${stLabel}</span></td>
@@ -17707,7 +17707,20 @@ function gerarPDFClienteReceber() {
 }
 
 // ===== CONTAS A PAGAR =====
-const CP_KEY = `oi2026_contas_pagar_${LOJA_ID}`;
+const CP_KEY = 'oi2026_contas_pagar';
+
+// ── Sanitização HTML ──────────────────────────────────────────────────────────
+// Usar em TODO innerHTML que receba dados vindos do banco (nomes, obs, produtos).
+// Previne Stored XSS: <script>, <img onerror=...>, etc.
+function esc(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 let _cpEditing = null;
 
 // ===== SPLASH: Contas a pagar vencidas OU vencendo hoje (avisa logo após o login) =====
@@ -17746,8 +17759,8 @@ function verificarContasVencendoHoje() {
     return `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
       <div>
-        <div style="font-size:13px;font-weight:600;">${c.fornecedor || c.descricao || 'Sem descrição'}</div>
-        ${c.fornecedor && c.descricao ? `<div style="font-size:11px;color:var(--muted);">${c.descricao}</div>` : ''}
+        <div style="font-size:13px;font-weight:600;">${esc(c.fornecedor || c.descricao || 'Sem descrição')}</div>
+        ${c.fornecedor && c.descricao ? `<div style="font-size:11px;color:var(--muted);">${esc(c.descricao)}</div>` : ''}
         <div style="font-size:11px;color:${atrasada ? 'var(--danger)' : 'var(--muted)'};margin-top:2px;">${rotulo}</div>
       </div>
       <strong style="color:var(--danger);">${R(c.valor)}</strong>
@@ -17939,10 +17952,10 @@ function renderContasPagar() {
     return `<tr>
       <td style="font-size:12px;">${vencDisplay}</td>
       <td>
-        <strong style="font-size:13px;">${c.descricao}</strong>
-        ${c.obs ? `<br><span style="font-size:11px;color:var(--muted);">${c.obs}</span>` : ''}
+        <strong style="font-size:13px;">${esc(c.descricao)}</strong>
+        ${c.obs ? `<br><span style="font-size:11px;color:var(--muted);">${esc(c.obs)}</span>` : ''}
       </td>
-      <td style="font-size:12px;">${c.fornecedor||'—'}</td>
+      <td style="font-size:12px;">${esc(c.fornecedor||'—')}</td>
       <td><span class="tag-cat">${c.cat||'Outros'}</span></td>
       <td><strong>${R(c.valor)}</strong></td>
       <td>${stBadge}</td>
@@ -17997,8 +18010,8 @@ function gerarPDFContasPagar() {
     const vencStr = c.vencimento ? (() => { const [y,m,d] = c.vencimento.split('-'); return d+'/'+m+'/'+y; })() : '—';
     return `<tr>
       <td style="font-size:10px;">${vencStr}</td>
-      <td><strong>${c.descricao}</strong>${c.obs?`<br><span style="font-size:9px;color:#888;">${c.obs}</span>`:''}</td>
-      <td>${c.fornecedor||'—'}</td>
+      <td><strong>${esc(c.descricao)}</strong>${c.obs?`<br><span style="font-size:9px;color:#888;">${esc(c.obs)}</span>`:''}</td>
+      <td>${esc(c.fornecedor||'—')}</td>
       <td><span style="background:#F5EDE8;color:#8B4A2B;padding:1px 5px;border-radius:4px;font-size:9px;">${c.cat||'Outros'}</span></td>
       <td><strong>${R(c.valor)}</strong></td>
       <td><span style="color:${stColor};font-weight:700;font-size:10px;">${stLabel}</span></td>
@@ -18807,8 +18820,8 @@ async function aplicarConfigLoja() {
       const loja = rows[0];
       if (loja) {
         if (loja.nome) {
-          nomeSistema = `${loja.nome} · Gestão`;
-          tituloAba = `Gestão de Estoque · ${loja.nome}`;
+          nomeSistema = `${esc(loja.nome)} · Gestão`;
+          tituloAba = `Gestão de Estoque · ${esc(loja.nome)}`;
         }
         if (loja.logo_base64) { logoBase64 = loja.logo_base64; window.logoBase64 = loja.logo_base64; }
         if (loja.cor_accent) cores.accent = loja.cor_accent;
