@@ -8342,6 +8342,12 @@ async function salvarUsuario() {
     fecharModal('modal-usuario');
     mostrarNotificacao('✅ Usuário salvo!');
     renderUsuarios();
+    auditLog({
+      operacao:    id ? 'edicao_usuario' : 'cadastro_usuario',
+      modulo:      'empresa',
+      registro_id: id || null,
+      dados_depois: { nome, login, perfil },
+    });
   } catch(e) { alert('Erro ao salvar: ' + e.message); }
 }
 
@@ -8358,6 +8364,12 @@ async function confirmarExcluirUsuario() {
     fecharModal('modal-del-usuario');
     mostrarNotificacao('✅ Usuário excluído.');
     renderUsuarios();
+    auditLog({
+      operacao:    'exclusao_usuario',
+      modulo:      'empresa',
+      registro_id: _delUsrId,
+      dados_antes: null,
+    });
   } catch(e) { alert('Erro: ' + e.message); }
   _delUsrId = null;
 }
@@ -9260,8 +9272,14 @@ async function salvarEdicao() {
   saveProdutos(produtos);
   fecharModal('modal-edicao');
   renderEstoque();
+
+  auditLog({
+    operacao:    'edicao_produto',
+    modulo:      'estoque',
+    registro_id: ref,
+    dados_depois: { ref, produto: produtos[idx]?.produto, preco_venda: produtos[idx]?.preco_venda },
+  });
 }
-function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
 
 // ===== CADASTRO =====
 function abrirModalCadastro() { showPage('cadastro'); }
@@ -14679,6 +14697,12 @@ async function salvarVendedor() {
     saveVendedores(vendedores);
     mostrarNotificacao('✅ Vendedor salvo!');
     popularSelectVendedores();
+    auditLog({
+      operacao:    id ? 'edicao_vendedor' : 'cadastro_vendedor',
+      modulo:      'empresa',
+      registro_id: id || null,
+      dados_depois: { nome: dados.nome },
+    });
   } catch (e) {
     console.error('Erro ao salvar vendedor:', e);
     alert('⚠ Erro ao salvar vendedor. Verifique sua conexão.');
@@ -14708,6 +14732,12 @@ async function confirmarExcluirVendedor() {
     saveVendedores(getVendedores().filter(v => v.id !== _vendedorParaExcluir));
     mostrarNotificacao('✅ Vendedor excluído!');
     popularSelectVendedores();
+    auditLog({
+      operacao:    'exclusao_vendedor',
+      modulo:      'empresa',
+      registro_id: _vendedorParaExcluir,
+      dados_antes: null,
+    });
   } catch (e) {
     console.error('Erro ao excluir vendedor:', e);
     alert('⚠ Erro ao excluir vendedor.');
@@ -14984,6 +15014,13 @@ async function salvarCliente() {
     invalidarCache('clientes');
     saveClientes(clientes);
     mostrarNotificacao('✅ Cliente salvo!');
+
+    auditLog({
+      operacao:    id ? 'edicao_cliente' : 'cadastro_cliente',
+      modulo:      'clientes',
+      registro_id: id || null,
+      dados_depois: { nome: dados.nome, tel: dados.tel },
+    });
   } catch (e) {
     console.error('Erro ao salvar cliente:', e);
     alert('⚠ Erro ao salvar cliente. Verifique sua conexão e tente novamente.');
