@@ -7363,7 +7363,13 @@ const LOJA_ID = CONFIG_LOJA.lojaId;
 
 // Tabelas que possuem a coluna loja_id (todas as tabelas de dados da loja).
 // A tabela de licença/configuração global, se houver, pode ser excluída aqui.
-const TABELAS_MULTITENANT = ['produtos', 'vendas', 'clientes', 'debitos', 'contas_pagar', 'usuarios', 'licenca', 'taxas_cartao', 'trocas', 'vouchers', 'caixa_sessoes'];
+const TABELAS_MULTITENANT = [
+  'produtos', 'vendas', 'clientes', 'debitos', 'contas_pagar',
+  'usuarios', 'licenca', 'taxas_cartao', 'trocas', 'vouchers',
+  'caixa_sessoes', 'vendedores', 'consignados', 'consignado_itens',
+  'crediario_configuracoes', 'loja_configuracoes', 'loja_sequencias',
+  'audit_log',
+];
 
 function ehMultiTenant(tabela) {
   return TABELAS_MULTITENANT.includes(tabela);
@@ -10347,6 +10353,7 @@ Total: ${R(totalComJuros)}${juros > 0 ? ` (inclui ${juros}% de juros/multa)` : '
     fecharModal('modal-renegociar-crediario');
     mostrarNotificacao(`✅ Renegociação concluída! ${qtd} nova(s) parcela(s) criada(s).`);
     renderCrediario();
+    auditLog({ operacao:'renegociacao_crediario', modulo:'crediario', registro_id:contratoId, dados_depois:{ cliente:_renegCliente, parcelas:qtd } });
   } catch(e) {
     console.error(e);
     alert('Erro na renegociação: ' + e.message);
@@ -11672,6 +11679,7 @@ async function confirmarVenda() {
 
   fecharModal('modal-finalizar-venda');
   document.getElementById('modal-confirm-venda').classList.add('open');
+  auditLog({ operacao:'venda', modulo:'pdv', registro_id:vendaId, dados_depois:{ total:totalFat, pagamento:pag, cliente, vendedor, itens:carrinho.length } });
   const btnCarne = document.getElementById('btn-imprimir-carne-crediario');
   if (btnCarne) btnCarne.style.display = (pag === 'Crediário' && _ultimoCarneCrediario && document.getElementById('cred-venda-imprimir')?.checked) ? 'inline-flex' : 'none';
   const btnContrato = document.getElementById('btn-imprimir-contrato-crediario');
@@ -13857,6 +13865,7 @@ async function excluirVenda(id) {
   mostrarNotificacao('✅ Venda removida!');
   renderHistorico();
   renderDashboard();
+  auditLog({ operacao:'exclusao_venda', modulo:'historico', registro_id:id, dados_antes:{ produto:venda.produto, valor:venda.valor_total, cliente:venda.cliente } });
 }
 
 
@@ -16041,6 +16050,7 @@ async function confirmarFechamentoCaixa() {
   mostrarNotificacao('✅ Caixa fechado com sucesso!');
   abrirRelatorioCaixa(sessao);
   if (document.getElementById('subfin-caixa') && document.getElementById('subfin-caixa').style.display !== 'none') renderTelaFechamentoCaixa();
+  auditLog({ operacao:'fechamento_caixa', modulo:'caixa', registro_id:sessao.id||sessao.numero, dados_depois:{ numero:sessao.numero, total_vendas:sessao.fechamento?.totalVendas } });
 
   try {
     if (ehIdRealCaixa(sessao.id)) {
@@ -17119,6 +17129,7 @@ async function confirmarBaixa() {
     }
 
     mostrarNotificacao('✅ Pagamento registrado!');
+    auditLog({ operacao:'recebimento_crediario', modulo:'crediario', registro_id:null, dados_depois:{ cliente:_ultimoRecebCrediario?.cliente, valor:_ultimoRecebCrediario?.valorPago } });
   } catch (e) {
     console.error('Erro ao confirmar baixa:', e);
     alert('⚠ Erro ao salvar na nuvem. Verifique sua conexão e tente novamente.');
@@ -17591,6 +17602,28 @@ function esc(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+// ── Log de auditoria ──────────────────────────────────────────────────────────
+async function auditLog({ operacao, modulo, registro_id, dados_antes, dados_depois }) {
+  try {
+    const sessao = getSessao();
+    await sbPost('audit_log', {
+      loja_id:      LOJA_ID,
+      usuario_id:   sessao?.id           || null,
+      usuario_nome: sessao?.dados?.nome  || null,
+      operacao,
+      modulo,
+      registro_id:  registro_id ? String(registro_id) : null,
+      dados_antes:  dados_antes  || null,
+      dados_depois: dados_depois || null,
+      ip:           null,
+      user_agent:   navigator.userAgent.slice(0, 200),
+    });
+  } catch(e) {
+    console.warn('[auditLog] Falha ao registrar log:', e.message);
+  }
+}
+
 // getContasPagar()/saveContasPagar() definidos na camada Supabase (com _cache) — não redefinir aqui.
 
 let _cpEditing = null;
@@ -17750,6 +17783,7 @@ async function confirmarCPBaixa() {
     invalidarCache('contasPagar');
     saveContasPagar(contas);
     mostrarNotificacao('✅ Baixa registrada!');
+    auditLog({ operacao:'baixa_conta_pagar', modulo:'financeiro', registro_id:id, dados_depois:{ forma_pagamento:forma, data_pagamento:data, valor:contas[idx]?.valor } });
   } catch (e) {
     console.error('Erro ao dar baixa na conta:', e);
     alert('⚠ Erro ao salvar. Verifique sua conexão e tente novamente.');
