@@ -10076,7 +10076,7 @@ async function handleFotoProduto(event) {
     statusEl.textContent = 'Enviando foto...';
     const resp = await fetch(`${SB_URL}/storage/v1/object/produtos/${nomeArquivo}`, {
       method: 'POST',
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'image/jpeg' },
+      headers: { 'apikey': SB_KEY, 'Authorization': SB_HEADS.Authorization, 'Content-Type': 'image/jpeg' },
       body: blob
     });
     if (!resp.ok) throw new Error('Falha no upload (status ' + resp.status + ').');
@@ -10122,7 +10122,7 @@ async function handleFotoEdicao(event) {
     statusEl.textContent = 'Enviando foto...';
     const resp = await fetch(`${SB_URL}/storage/v1/object/produtos/${nomeArquivo}`, {
       method: 'POST',
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'image/jpeg' },
+      headers: { 'apikey': SB_KEY, 'Authorization': SB_HEADS.Authorization, 'Content-Type': 'image/jpeg' },
       body: blob
     });
     if (!resp.ok) throw new Error('Falha no upload (status ' + resp.status + ').');
@@ -19394,7 +19394,7 @@ async function salvarConfigVitrine() {
       const nomeArquivo = `${LOJA_ID}/banner-vitrine.${ext}`;
       const uploadResp = await fetch(`${SB_URL}/storage/v1/object/produtos/${nomeArquivo}`, {
         method: 'POST',
-        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': file.type, 'x-upsert': 'true' },
+        headers: { 'apikey': SB_KEY, 'Authorization': SB_HEADS.Authorization, 'Content-Type': file.type, 'x-upsert': 'true' },
         body: file
       });
       if (!uploadResp.ok) {
