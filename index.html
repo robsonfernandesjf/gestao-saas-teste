@@ -9280,6 +9280,7 @@ async function salvarEdicao() {
     dados_depois: { ref, produto: produtos[idx]?.produto, preco_venda: produtos[idx]?.preco_venda },
   });
 }
+function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
 
 // ===== CADASTRO =====
 function abrirModalCadastro() { showPage('cadastro'); }
