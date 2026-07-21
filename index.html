@@ -21144,11 +21144,11 @@ function mktNav(view, btn) {
 
 // ── FLUXOS ──
 const MKT_FLUXOS = {
-  produto:   { titulo:'Vender um produto',     steps:['produto','publico','objetivo','localizacao','orcamento'], bubble:'Qual produto você quer anunciar?' },
-  loja:      { titulo:'Divulgar minha loja',   steps:['publico','objetivo','localizacao','orcamento'], bubble:'Vou criar um roteiro para sua loja. Qual o principal objetivo?' },
-  promocao:  { titulo:'Divulgar promoção',     steps:['descricao','publico','objetivo','localizacao','orcamento'], bubble:'Me conta sobre a promoção.' },
-  mensagens: { titulo:'Receber mensagens',     steps:['produto','publico','localizacao','orcamento'], bubble:'Qual produto ou serviço quer usar para atrair clientes no WhatsApp?' },
-  marca:     { titulo:'Fortalecer marca',      steps:['publico','objetivo','localizacao','orcamento'], bubble:'Vou criar conteúdo institucional. Que aspecto da marca quer destacar?' },
+  produto:   { titulo:'Vender um produto',     steps:['produto','publico','objetivo','localizacao','criativo','orcamento'], bubble:'Qual produto você quer anunciar?' },
+  loja:      { titulo:'Divulgar minha loja',   steps:['publico','objetivo','localizacao','criativo','orcamento'], bubble:'Vou criar um roteiro para sua loja. Qual o principal objetivo?' },
+  promocao:  { titulo:'Divulgar promoção',     steps:['descricao','publico','objetivo','localizacao','criativo','orcamento'], bubble:'Me conta sobre a promoção.' },
+  mensagens: { titulo:'Receber mensagens',     steps:['produto','publico','localizacao','criativo','orcamento'], bubble:'Qual produto ou serviço quer usar para atrair clientes no WhatsApp?' },
+  marca:     { titulo:'Fortalecer marca',      steps:['publico','objetivo','localizacao','criativo','orcamento'], bubble:'Vou criar conteúdo institucional. Que aspecto da marca quer destacar?' },
   nao_sei:   { titulo:'IA decide tudo',        steps:['autopilot'], bubble:'' },
 };
 
@@ -21177,7 +21177,7 @@ function mktRenderStep() {
   // Body
   const body = document.getElementById('mkt-wiz-body');
   body.innerHTML=''; body.scrollTop=0;
-  ({produto:mktStepProduto,publico:mktStepPublico,objetivo:mktStepObjetivo,localizacao:mktStepLocalizacao,orcamento:mktStepOrcamento,descricao:mktStepDescricao}[step]||function(){})();
+  ({produto:mktStepProduto,publico:mktStepPublico,objetivo:mktStepObjetivo,localizacao:mktStepLocalizacao,orcamento:mktStepOrcamento,descricao:mktStepDescricao,criativo:mktStepCriativo}[step]||function(){})();
 }
 
 function mktNext() {
@@ -21496,6 +21496,146 @@ function mktSalvarLocalizacao() {
   mktNext();
 }
 
+// ── CRIATIVO (upload de imagem/vídeo) ──
+function mktStepCriativo() {
+  const temProdFoto = MKT.dados.produto?.foto;
+  const criativos   = MKT.dados.criativos || [];
+
+  document.getElementById('mkt-wiz-body').innerHTML = `
+    ${mktBubble('Adicione fotos ou vídeos do produto. <strong>Criativos próprios geram até 3× mais resultado</strong> do que imagens genéricas.')}
+
+    <!-- Área de upload -->
+    <div id="mkt-criativo-drop" style="
+      border:2px dashed var(--border); border-radius:14px; padding:32px 20px;
+      text-align:center; cursor:pointer; transition:all .2s; background:var(--surface);
+      margin-bottom:14px; position:relative;
+    "
+    onclick="document.getElementById('mkt-file-input').click()"
+    ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='var(--accent-light)'"
+    ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--surface)'"
+    ondrop="mktHandleDrop(event)">
+      <input type="file" id="mkt-file-input" accept="image/*,video/*" multiple
+        style="display:none" onchange="mktHandleFiles(this.files)">
+      <div style="font-size:32px;margin-bottom:10px;">📁</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;">Arraste ou clique para adicionar</div>
+      <div style="font-size:12px;color:var(--muted);">Imagens (JPG, PNG, WEBP) e vídeos (MP4, MOV) · Máx. 50MB cada</div>
+    </div>
+
+    <!-- Prévia dos arquivos -->
+    <div id="mkt-criativo-preview" style="display:${criativos.length?'block':'none'}">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">
+        Criativos adicionados
+      </div>
+      <div id="mkt-criativo-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
+        ${criativos.map((c,i) => mktCriativoCard(c,i)).join('')}
+      </div>
+    </div>
+
+    <!-- Foto do produto como sugestão -->
+    ${temProdFoto ? `<div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;display:flex;gap:12px;align-items:center;">
+      <img src="${temProdFoto}" style="width:52px;height:52px;border-radius:8px;object-fit:cover;">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;">Foto do produto disponível</div>
+        <div style="font-size:12px;color:var(--muted);">A foto cadastrada no estoque pode ser usada no anúncio.</div>
+      </div>
+      <button onclick="mktUsarFotoProd()" style="padding:8px 14px;background:var(--accent-light);border:1px solid var(--accent2);color:var(--accent);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;">Usar esta foto</button>
+    </div>` : ''}
+
+    <!-- Dicas da IA -->
+    <div style="background:linear-gradient(135deg,#1a0a0f,#2a1018);border:1px solid #4a1a2a;border-radius:14px;padding:16px;margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;animation:mktGlow 1.5s ease-in-out infinite"></span>
+        Dicas da IA para criativos de moda
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${[
+          ['📱','Grave na vertical (9:16) para Stories e Reels — maior alcance'],
+          ['☀️','Luz natural ou ring light fazem a peça parecer mais valorizada'],
+          ['👗','Mostre o produto sendo usado, não só pendurado'],
+          ['⏱️','Primeiros 3 segundos são decisivos — comece com o produto em destaque'],
+          ['🎵','Música animada aumenta o tempo de visualização'],
+        ].map(([i,t])=>`<div style="display:flex;gap:10px;font-size:12px;color:rgba(255,255,255,.6);line-height:1.4;">
+          <span style="flex-shrink:0">${i}</span><span>${t}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;">
+      <button class="mkt-btn mkt-btn-ghost" style="flex:1;margin-top:0" onclick="mktNext()">Pular por agora</button>
+      <button class="mkt-btn mkt-btn-primary" style="flex:2;margin-top:0" onclick="mktNext()">
+        ${criativos.length ? `Continuar com ${criativos.length} arquivo${criativos.length>1?'s':''} →` : 'Continuar →'}
+      </button>
+    </div>
+  `;
+}
+
+function mktCriativoCard(c, i) {
+  const isVideo = c.tipo === 'video';
+  return `<div style="position:relative;border-radius:10px;overflow:hidden;background:var(--bg);border:1px solid var(--border);aspect-ratio:1">
+    ${isVideo
+      ? `<video src="${c.url}" style="width:100%;height:100%;object-fit:cover" muted></video>
+         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.5);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;">▶</div>`
+      : `<img src="${c.url}" style="width:100%;height:100%;object-fit:cover">`
+    }
+    <div style="position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.55);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:100px;">${isVideo?'🎬 Vídeo':'🖼 Imagem'}</div>
+    <button onclick="mktRemoverCriativo(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.5);border:none;color:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;font-family:inherit;">×</button>
+  </div>`;
+}
+
+function mktHandleFiles(files) {
+  if (!files?.length) return;
+  const drop = document.getElementById('mkt-criativo-drop');
+  if (drop) { drop.style.borderColor='var(--border)'; drop.style.background='var(--surface)'; }
+  Array.from(files).forEach(file => {
+    if (file.size > 52428800) { alert(`"${file.name}" é maior que 50MB e não pode ser enviado.`); return; }
+    const tipo = file.type.startsWith('video') ? 'video' : 'imagem';
+    const url  = URL.createObjectURL(file);
+    if (!MKT.dados.criativos) MKT.dados.criativos = [];
+    MKT.dados.criativos.push({ url, tipo, nome: file.name, file });
+  });
+  mktAtualizarGridCriativos();
+}
+
+function mktHandleDrop(e) {
+  e.preventDefault();
+  const drop = document.getElementById('mkt-criativo-drop');
+  if (drop) { drop.style.borderColor='var(--border)'; drop.style.background='var(--surface)'; }
+  mktHandleFiles(e.dataTransfer.files);
+}
+
+function mktRemoverCriativo(i) {
+  if (MKT.dados.criativos) {
+    URL.revokeObjectURL(MKT.dados.criativos[i]?.url);
+    MKT.dados.criativos.splice(i, 1);
+    mktAtualizarGridCriativos();
+  }
+}
+
+function mktAtualizarGridCriativos() {
+  const criativos = MKT.dados.criativos || [];
+  const grid = document.getElementById('mkt-criativo-grid');
+  const prev = document.getElementById('mkt-criativo-preview');
+  if (grid) grid.innerHTML = criativos.map((c,i) => mktCriativoCard(c,i)).join('');
+  if (prev) prev.style.display = criativos.length ? 'block' : 'none';
+  // Atualiza texto do botão continuar
+  const btns = document.querySelectorAll('#mkt-wiz-body .mkt-btn-primary');
+  btns.forEach(b => {
+    if (b.textContent.includes('Continuar') || b.textContent.includes('arquivo')) {
+      b.textContent = criativos.length ? `Continuar com ${criativos.length} arquivo${criativos.length>1?'s':''} →` : 'Continuar →';
+    }
+  });
+}
+
+function mktUsarFotoProd() {
+  const foto = MKT.dados.produto?.foto;
+  if (!foto) return;
+  if (!MKT.dados.criativos) MKT.dados.criativos = [];
+  // Evita duplicar
+  if (MKT.dados.criativos.find(c => c.url === foto)) return;
+  MKT.dados.criativos.push({ url: foto, tipo: 'imagem', nome: 'Foto do produto', file: null });
+  mktAtualizarGridCriativos();
+}
+
 // ── ORÇAMENTO ──
 function mktStepOrcamento() {
   const i   = MKT.dados.orcIdx||1;
@@ -21624,7 +21764,14 @@ function mktMostrarResult(json) {
 
   const obj={mensagens:'💬 Mensagens',vendas:'🛍️ Vendas',estoque:'🔥 Liquidação',novos:'✨ Novos clientes',lancamento:'🚀 Lançamento',visitas:'📍 Visitas'}[MKT.dados.objetivo]||'🚀 Alcance';
   const orc=MKT_ORCS[MKT.dados.orcIdx||1];
-  const img=MKT.dados.produto?.foto?`<img src="${MKT.dados.produto.foto}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent='${MKT.dados.produto.emoji||'👗'}'">`:(MKT.dados.produto?.emoji||'👗');
+  const primeiroCriativo = MKT.dados.criativos?.[0];
+  const img = primeiroCriativo
+    ? (primeiroCriativo.tipo==='video'
+        ? `<video src="${primeiroCriativo.url}" style="width:100%;height:100%;object-fit:cover" autoplay muted loop playsinline></video>`
+        : `<img src="${primeiroCriativo.url}" style="width:100%;height:100%;object-fit:cover">`)
+    : (MKT.dados.produto?.foto
+        ? `<img src="${MKT.dados.produto.foto}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent='${MKT.dados.produto.emoji||'👗'}'">`
+        : (MKT.dados.produto?.emoji||'👗'));
 
   const pm=json.publico_meta||{};
   const pubTags=[pm.faixa_etaria,...(pm.interesses||[]),...(pm.comportamentos||[])].filter(Boolean);
