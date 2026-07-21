@@ -10510,8 +10510,7 @@ async function pdvCredReceberParcela(debitoId, idx, saldoTotal) {
     d.pagamentos = d.pagamentos || [];
     d.pagamentos.push({ data: hojeISO, valor: saldo, forma, obs: 'Recebido no PDV' });
     // Registrar entrada no caixa
-    const sessoes = getCaixaSessoes();
-    const sessaoAtual = sessoes.find(s => s.status === 'aberto');
+    const sessaoAtual = getCaixaAtual();
     if (sessaoAtual) {
       sessaoAtual.movimentos = sessaoAtual.movimentos || [];
       sessaoAtual.movimentos.push({
@@ -10522,7 +10521,7 @@ async function pdvCredReceberParcela(debitoId, idx, saldoTotal) {
         data: hojeStr,
         hora: hoje.toTimeString().slice(0,5)
       });
-      saveCaixaSessoes(sessoes);
+      saveCaixaAtual(sessaoAtual);
     }
     // Salvar débito
     const ehIdReal = d.id && !String(d.id).startsWith('cred_imp_') && !String(d.id).startsWith('cartao_');
