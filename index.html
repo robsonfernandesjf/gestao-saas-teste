@@ -20636,7 +20636,12 @@ atualizarHora();
         <div class="mkt-loc-ctrl">
           <div class="mkt-loc-row">
             <span class="mkt-loc-label">Cidade</span>
-            <input type="text" id="mkt-cidade" value="Juiz de Fora, MG">
+            <input type="text" id="mkt-cidade" placeholder="Ex: Juiz de Fora, MG">
+            <span class="mkt-badge-auto">✓ loja</span>
+          </div>
+          <div class="mkt-loc-row">
+            <span class="mkt-loc-label">CEP</span>
+            <input type="text" id="mkt-cep" placeholder="Ex: 36010-000">
             <span class="mkt-badge-auto">✓ loja</span>
           </div>
           <div class="mkt-loc-row">
@@ -20967,20 +20972,19 @@ function mktNextStep() {
 }
 
 function mktPreencherCidade() {
-  // Tenta pegar endereço das configurações já carregadas
   try {
-    const cfgEnd = localStorage.getItem('mkt_cidade_loja');
-    if (cfgEnd) { document.getElementById('mkt-cidade').value = cfgEnd; return; }
-    // Fallback: busca em loja_configuracoes
-    if (typeof sbGet === 'function') {
-      sbGet('loja_configuracoes','select=chave,valor&chave=in.(endereco,cidade)').then(rows => {
-        if (!rows?.length) return;
-        const end = rows.find(r=>r.chave==='endereco')?.valor || rows.find(r=>r.chave==='cidade')?.valor || '';
-        if (end) {
-          document.getElementById('mkt-cidade').value = end.split('·')[0].trim() || end;
-          localStorage.setItem('mkt_cidade_loja', document.getElementById('mkt-cidade').value);
-        }
-      }).catch(()=>{});
+    // Usa _dadosEmpresaCache que já está carregado no login
+    const emp = _dadosEmpresaCache || {};
+    const cidade  = emp.municipio || emp.localidade || '';
+    const uf      = emp.uf || '';
+    const cep     = emp.cep || '';
+    const campoCidade = document.getElementById('mkt-cidade');
+    const campoCep    = document.getElementById('mkt-cep');
+    if (campoCidade && (cidade || uf)) {
+      campoCidade.value = cidade && uf ? `${cidade}, ${uf}` : cidade || uf;
+    }
+    if (campoCep && cep) {
+      campoCep.value = cep;
     }
   } catch(e) {}
 }
