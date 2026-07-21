@@ -18946,7 +18946,7 @@ async function aplicarConfigLoja() {
   // Busca a configuração mais recente direto da tabela "lojas" no Supabase
   // (assim o Painel Admin pode editar nome/logo/cores sem precisar editar este arquivo)
   try {
-    const resp = await fetch(`${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,logo_base64,cor_accent,cor_accent2,cor_bg,usa_nfce,usa_grade,usa_catalogo,usa_crediario,usa_consignado,usa_marketing,catalogo_whatsapp`, { headers: SB_HEADS });
+    const resp = await fetch(`${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,logo_base64,cor_accent,cor_accent2,cor_bg,usa_nfce,usa_grade,usa_catalogo,usa_crediario,usa_consignado,catalogo_whatsapp`, { headers: SB_HEADS });
     if (resp.ok) {
       const rows = await resp.json();
       const loja = rows[0];
