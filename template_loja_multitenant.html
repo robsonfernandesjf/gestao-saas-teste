@@ -8412,6 +8412,7 @@ function showPage(id) {
   if (id === 'trocas') { renderTrocas(); }
   if (id === 'usuarios') { renderUsuarios(); }
   if (id === 'vendas') { popularListaClientesVenda(); popularSelectVendedores(); atualizarWidgetCaixa(); if (!document.getElementById('venda-data').value) { const t = new Date(); document.getElementById('venda-data').value = t.toISOString().slice(0,10); } }
+  if (id === 'marketing') { renderMktSteps(); mktPreencherCidade(); }
   closeMenuMobile();
 }
 
@@ -20873,19 +20874,6 @@ async function mktAutopilot() {
   MKT.objetivo  = 'mensagens';
   MKT.orcIdx    = 1;
   mktCriarCampanha();
-}
-
-// Hook em showPage para inicializar módulo
-const _mktOrigShowPage = showPage;
-function showPage(id) {
-  _mktOrigShowPage(id);
-  if (id === 'marketing') {
-    renderMktSteps();
-    mktPreencherCidade();
-    // Mostra botão no nav se loja tem flag (simulação: sempre visível ao entrar)
-    const btn = document.getElementById('nav-btn-marketing');
-    if (btn) btn.style.display = 'block';
-  }
 }
 
 // Ativar botão nav se loja usa marketing (flag usa_marketing na tabela lojas)
