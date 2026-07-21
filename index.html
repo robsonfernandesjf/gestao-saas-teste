@@ -4462,6 +4462,7 @@ body.modo-vitrine-publica{
   <button onclick="showPage('crediario')" id="nav-btn-crediario" style="display:none;">💳 Crediário</button>
   <button onclick="showPage('consignado')" id="nav-btn-consignado" style="display:none;">📦 Consignado</button>
   <button onclick="showPage('trocas')">🔄 Trocas</button>
+  <button onclick="showPage('marketing')" id="nav-btn-marketing" style="display:none;">🚀 Marketing IA</button>
   <button id="nav-empresa" onclick="showPage('empresa'); carregarDadosEmpresa();" style="display:none;">⚙️ Config. Empresa</button>
   <button class="btn-logout-mobile" onclick="fazerLogout()" style="display:none;margin-top:auto;color:var(--danger);border-color:var(--danger);">🚪 Sair</button>
 </nav>
@@ -10805,6 +10806,8 @@ function aplicarFlagCrediario() {
   if (btnCred) btnCred.style.setProperty('display', LOJA_USA_CREDIARIO ? 'flex' : 'none', 'important');
   const btnConsig = document.getElementById('nav-btn-consignado');
   if (btnConsig) btnConsig.style.setProperty('display', LOJA_USA_CONSIGNADO ? 'flex' : 'none', 'important');
+  const btnMkt = document.getElementById('nav-btn-marketing');
+  if (btnMkt) btnMkt.style.setProperty('display', LOJA_USA_MARKETING ? 'flex' : 'none', 'important');
   const wrapCred = document.getElementById('pdv-receber-cred-wrap');
   if (wrapCred) wrapCred.style.display = LOJA_USA_CREDIARIO ? 'block' : 'none';
 
@@ -18928,6 +18931,7 @@ let LOJA_USA_GRADE = false;
 let LOJA_USA_CATALOGO = false;
 let LOJA_USA_CREDIARIO = false;
 let LOJA_USA_CONSIGNADO = false;
+let LOJA_USA_MARKETING = false;
 let LOJA_CATALOGO_WHATSAPP = '';
 
 // ===== APLICAR CONFIG_LOJA NA INTERFACE =====
@@ -18941,7 +18945,7 @@ async function aplicarConfigLoja() {
   // Busca a configuração mais recente direto da tabela "lojas" no Supabase
   // (assim o Painel Admin pode editar nome/logo/cores sem precisar editar este arquivo)
   try {
-    const resp = await fetch(`${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,logo_base64,cor_accent,cor_accent2,cor_bg,usa_nfce,usa_grade,usa_catalogo,usa_crediario,usa_consignado,catalogo_whatsapp`, { headers: SB_HEADS });
+    const resp = await fetch(`${SB_URL}/rest/v1/lojas_publico?id=eq.${encodeURIComponent(LOJA_ID)}&select=nome,logo_base64,cor_accent,cor_accent2,cor_bg,usa_nfce,usa_grade,usa_catalogo,usa_crediario,usa_consignado,usa_marketing,catalogo_whatsapp`, { headers: SB_HEADS });
     if (resp.ok) {
       const rows = await resp.json();
       const loja = rows[0];
@@ -18963,6 +18967,7 @@ async function aplicarConfigLoja() {
         LOJA_USA_CATALOGO = !!loja.usa_catalogo;
         LOJA_USA_CREDIARIO = !!loja.usa_crediario;
         LOJA_USA_CONSIGNADO = !!loja.usa_consignado;
+        LOJA_USA_MARKETING = !!loja.usa_marketing;
         LOJA_CATALOGO_WHATSAPP = loja.catalogo_whatsapp || '';
         aplicarFeatureFlagsUI();
         // Carregar configs salvas no banco (carnê, categorias)
@@ -20324,6 +20329,839 @@ atualizarHora();
   fixarPosicaoLogo();
   window.addEventListener('resize', fixarPosicaoLogo);
   document.addEventListener('DOMContentLoaded', fixarPosicaoLogo);
+</script>
+
+<!-- ===== MARKETING IA ===== -->
+<div id="page-marketing" class="page">
+<style>
+#page-marketing{padding:0;background:var(--bg);}
+.mkt-wrap{max-width:680px;margin:0 auto;padding:28px 20px 60px;}
+
+/* Header */
+.mkt-header{display:flex;align-items:center;gap:14px;margin-bottom:28px;}
+.mkt-avatar{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.mkt-title{font-size:20px;font-weight:700;color:var(--text);}
+.mkt-sub{font-size:13px;color:var(--muted);margin-top:2px;}
+
+/* Step indicator */
+.mkt-steps{display:flex;align-items:center;gap:0;margin-bottom:32px;}
+.mkt-step-dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:all .3s;flex-shrink:0;}
+.mkt-step-dot.done{background:var(--accent);}
+.mkt-step-dot.active{background:var(--accent);width:22px;border-radius:4px;}
+.mkt-step-line{flex:1;height:1px;background:var(--border);}
+.mkt-step-line.done{background:var(--accent);}
+
+/* IA bubble */
+.mkt-bubble{display:flex;gap:10px;margin-bottom:20px;animation:mktFadeIn .3s ease;}
+@keyframes mktFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.mkt-bubble-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:2px;}
+.mkt-bubble-text{background:var(--surface);border:1px solid var(--border);border-radius:4px 12px 12px 12px;padding:12px 16px;font-size:14px;line-height:1.6;color:var(--text);max-width:520px;box-shadow:var(--shadow);}
+.mkt-bubble-text b{font-weight:600;}
+
+/* Tipo cards */
+.mkt-tipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+.mkt-tipo{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:16px 12px;text-align:center;cursor:pointer;transition:all .15s;box-shadow:var(--shadow);}
+.mkt-tipo:hover{border-color:var(--accent2);background:var(--accent-light);}
+.mkt-tipo.sel{border-color:var(--accent);background:var(--accent-light);}
+.mkt-tipo-icon{font-size:24px;margin-bottom:8px;}
+.mkt-tipo-label{font-size:13px;font-weight:600;color:var(--text);}
+.mkt-tipo-desc{font-size:11px;color:var(--muted);margin-top:3px;}
+
+/* Produto list */
+.mkt-prod-search{position:relative;margin-bottom:10px;}
+.mkt-prod-search input{width:100%;padding:10px 14px 10px 36px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);color:var(--text);}
+.mkt-prod-search input:focus{outline:none;border-color:var(--accent);}
+.mkt-prod-search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;}
+.mkt-prod-list{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);max-height:240px;overflow-y:auto;}
+.mkt-prod-item{display:flex;align-items:center;gap:12px;padding:11px 14px;cursor:pointer;transition:background .1s;border-bottom:1px solid var(--border);}
+.mkt-prod-item:last-child{border-bottom:none;}
+.mkt-prod-item:hover{background:var(--bg);}
+.mkt-prod-item.sel{background:var(--accent-light);}
+.mkt-prod-thumb{width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,var(--border),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden;}
+.mkt-prod-thumb img{width:100%;height:100%;object-fit:cover;}
+.mkt-prod-info{flex:1;}
+.mkt-prod-nome{font-size:13px;font-weight:600;color:var(--text);}
+.mkt-prod-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.mkt-prod-preco{font-size:14px;font-weight:700;color:var(--accent);}
+
+/* Selected product card */
+.mkt-sel-card{background:var(--accent-light);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;gap:12px;margin-bottom:16px;}
+.mkt-sel-thumb{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,var(--border),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;overflow:hidden;}
+.mkt-sel-thumb img{width:100%;height:100%;object-fit:cover;}
+.mkt-sel-nome{font-size:15px;font-weight:700;color:var(--text);}
+.mkt-sel-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.mkt-chip{font-size:11px;padding:3px 10px;border-radius:100px;background:var(--surface);border:1px solid var(--border);color:var(--muted);}
+.mkt-chip.green{background:var(--success-light);border-color:#B8D9C0;color:var(--success);}
+.mkt-chip.rose{background:var(--accent-light);border-color:var(--accent2);color:var(--accent);}
+
+/* Insight */
+.mkt-insight{display:flex;gap:8px;align-items:flex-start;background:var(--success-light);border:1px solid #B8D9C0;border-radius:var(--radius);padding:12px 14px;margin-bottom:20px;font-size:13px;color:var(--success);line-height:1.5;}
+
+/* Textarea público */
+.mkt-textarea{width:100%;padding:14px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;line-height:1.6;background:var(--surface);color:var(--text);resize:none;min-height:80px;font-family:inherit;}
+.mkt-textarea:focus{outline:none;border-color:var(--accent);}
+.mkt-publico-preview{background:var(--accent-light);border:1px solid var(--accent2);border-radius:var(--radius);padding:12px 14px;margin-top:10px;font-size:13px;color:var(--accent);line-height:1.5;display:none;}
+
+/* Objetivo grid */
+.mkt-obj-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px;}
+.mkt-obj{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);}
+.mkt-obj:hover{border-color:var(--accent2);background:var(--accent-light);}
+.mkt-obj.sel{border-color:var(--accent);background:var(--accent-light);}
+.mkt-obj-icon{font-size:20px;flex-shrink:0;}
+.mkt-obj-label{font-size:13px;font-weight:600;color:var(--text);}
+.mkt-obj-desc{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* Localização */
+.mkt-mapa{height:130px;background:linear-gradient(135deg,var(--accent-light) 0%,var(--accent2-light) 100%);display:flex;align-items:center;justify-content:center;position:relative;border-radius:10px 10px 0 0;overflow:hidden;}
+.mkt-mapa-pin{font-size:28px;position:relative;z-index:2;}
+.mkt-ring{position:absolute;width:60px;height:60px;border:1.5px solid var(--accent2);border-radius:50%;animation:mktPulse 2s ease-in-out infinite;}
+.mkt-ring2{position:absolute;width:100px;height:100px;border:1px solid var(--accent2);border-radius:50%;opacity:.4;animation:mktPulse 2s ease-in-out infinite .3s;}
+@keyframes mktPulse{0%,100%{transform:scale(.9);opacity:.6}50%{transform:scale(1.1);opacity:1}}
+.mkt-loc-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow);}
+.mkt-loc-ctrl{padding:14px 16px;display:flex;flex-direction:column;gap:10px;}
+.mkt-loc-row{display:flex;align-items:center;gap:10px;}
+.mkt-loc-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;width:60px;flex-shrink:0;}
+.mkt-loc-row input[type=text]{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--bg);color:var(--text);}
+.mkt-raio-val{font-size:13px;font-weight:700;color:var(--accent);min-width:44px;text-align:right;}
+.mkt-badge-auto{font-size:10px;background:var(--success-light);color:var(--success);border-radius:100px;padding:2px 8px;font-weight:700;margin-left:6px;}
+
+/* Orçamento */
+.mkt-orc-valor{font-size:44px;font-weight:800;color:var(--text);letter-spacing:-.02em;}
+.mkt-orc-sub{font-size:13px;color:var(--muted);}
+.mkt-orc-preview{background:var(--accent-light);border:1px solid var(--accent2);border-radius:var(--radius);padding:14px;margin-top:16px;}
+.mkt-orc-preview-title{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.mkt-orc-preview-val{font-size:18px;font-weight:700;color:var(--accent);}
+
+/* Processing */
+.mkt-proc{text-align:center;padding:48px 20px;}
+.mkt-proc-avatar{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px;position:relative;}
+.mkt-proc-ring{position:absolute;inset:-5px;border-radius:50%;border:2px solid transparent;border-top-color:var(--accent);animation:mktSpin 1s linear infinite;}
+@keyframes mktSpin{to{transform:rotate(360deg)}}
+.mkt-proc-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.mkt-proc-sub{font-size:13px;color:var(--muted);margin-bottom:36px;}
+.mkt-proc-steps{text-align:left;max-width:320px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+.mkt-proc-step{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);transition:all .4s;}
+.mkt-proc-step.active{color:var(--text);font-weight:600;}
+.mkt-proc-step.done{color:var(--success);}
+.mkt-proc-step-icon{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;transition:all .4s;}
+.mkt-proc-step.done .mkt-proc-step-icon{background:var(--success-light);border-color:var(--success);color:var(--success);}
+.mkt-proc-step.active .mkt-proc-step-icon{background:var(--accent-light);border-color:var(--accent);animation:mktPulseDot .8s ease-in-out infinite;}
+@keyframes mktPulseDot{0%,100%{box-shadow:0 0 0 0 rgba(181,107,122,.3)}50%{box-shadow:0 0 0 5px rgba(181,107,122,0)}}
+
+/* Campanha pronta */
+.mkt-camp{animation:mktFadeIn .4s ease;}
+.mkt-camp-badge{display:inline-flex;align-items:center;gap:6px;background:var(--success-light);color:var(--success);border-radius:100px;padding:4px 14px;font-size:12px;font-weight:700;margin-bottom:16px;}
+.mkt-camp-title{font-size:22px;font-weight:800;color:var(--text);margin-bottom:4px;}
+.mkt-camp-sub{font-size:13px;color:var(--muted);margin-bottom:20px;}
+
+/* Preview anúncio */
+.mkt-preview{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow);}
+.mkt-preview-header{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);}
+.mkt-preview-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);}
+.mkt-preview-img{height:130px;background:linear-gradient(135deg,var(--accent-light) 0%,var(--border) 100%);display:flex;align-items:center;justify-content:center;font-size:44px;}
+.mkt-preview-copy{padding:14px;}
+.mkt-preview-headline{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.mkt-preview-body{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:10px;}
+.mkt-preview-cta{display:inline-block;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-radius:var(--radius);padding:6px 16px;font-size:12px;font-weight:700;}
+
+/* Meta grid */
+.mkt-meta-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+.mkt-meta-item{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
+.mkt-meta-label{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:700;margin-bottom:4px;}
+.mkt-meta-val{font-size:14px;font-weight:700;color:var(--text);}
+
+/* AI typing */
+.mkt-typing{display:inline-flex;gap:4px;align-items:center;padding:4px 0;}
+.mkt-typing span{width:6px;height:6px;border-radius:50%;background:var(--accent2);animation:mktDot 1.2s ease-in-out infinite;}
+.mkt-typing span:nth-child(2){animation-delay:.2s;}
+.mkt-typing span:nth-child(3){animation-delay:.4s;}
+@keyframes mktDot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+
+/* Buttons */
+.mkt-btn{width:100%;padding:13px;border:none;border-radius:var(--radius);font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;margin-top:8px;}
+.mkt-btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;}
+.mkt-btn-primary:hover{opacity:.9;transform:translateY(-1px);}
+.mkt-btn-autopilot{background:linear-gradient(135deg,#7c3aed,var(--accent));color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;}
+.mkt-btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.mkt-btn-publish{padding:16px;font-size:16px;letter-spacing:.01em;}
+
+/* Dashboard */
+.mkt-dash{}
+.mkt-insights{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;}
+.mkt-insight-card{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:10px;padding:14px;box-shadow:var(--shadow);}
+.mkt-insight-card.green{border-left-color:var(--success);}
+.mkt-insight-card.rose{border-left-color:var(--accent);}
+.mkt-insight-card.amber{border-left-color:#D97706;}
+.mkt-insight-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
+.mkt-insight-title{font-size:13px;font-weight:700;color:var(--text);}
+.mkt-insight-desc{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.4;}
+.mkt-insight-cta{font-size:11px;font-weight:700;color:var(--accent);margin-top:6px;cursor:pointer;}
+.mkt-metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px;}
+.mkt-metric{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;box-shadow:var(--shadow);}
+.mkt-metric-label{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:700;margin-bottom:6px;}
+.mkt-metric-val{font-size:28px;font-weight:800;color:var(--text);margin-bottom:4px;}
+.mkt-metric-delta{font-size:12px;color:var(--success);font-weight:600;}
+.mkt-minigraph{height:36px;display:flex;align-items:flex-end;gap:3px;margin-top:10px;}
+.mkt-bar{flex:1;border-radius:3px 3px 0 0;background:var(--accent);opacity:.25;transition:opacity .2s;}
+.mkt-bar.hi{opacity:1;}
+.mkt-camp-list{display:flex;flex-direction:column;gap:8px;}
+.mkt-camp-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);}
+.mkt-camp-thumb{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,var(--border),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.mkt-camp-nome{font-size:13px;font-weight:700;color:var(--text);}
+.mkt-camp-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.mkt-status{font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px;}
+.mkt-status.ativa{background:var(--success-light);color:var(--success);}
+.mkt-status.pausada{background:#FEF9C3;color:#92400E;}
+.mkt-camp-spend{font-size:13px;font-weight:700;color:var(--text);}
+.mkt-section-label{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:700;margin-bottom:10px;}
+</style>
+
+<div class="mkt-wrap">
+  <!-- Header -->
+  <div class="mkt-header">
+    <div class="mkt-avatar">🚀</div>
+    <div>
+      <div class="mkt-title">Marketing IA</div>
+      <div class="mkt-sub">Seu gestor de tráfego 24h — sem precisar entender de anúncios</div>
+    </div>
+  </div>
+
+  <!-- VIEW: wizard -->
+  <div id="mkt-view-wizard">
+    <!-- Step indicator -->
+    <div class="mkt-steps" id="mkt-step-indicator"></div>
+
+    <!-- Autopilot -->
+    <button class="mkt-btn mkt-btn-autopilot" onclick="mktAutopilot()" style="margin-bottom:12px;">
+      ✨ IA decide tudo
+    </button>
+    <div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:28px;">ou escolha passo a passo abaixo</div>
+
+    <!-- STEP 1: tipo -->
+    <div id="mkt-step-1" class="mkt-step-panel">
+      <div class="mkt-bubble">
+        <div class="mkt-bubble-avatar">✨</div>
+        <div class="mkt-bubble-text">O que você quer divulgar hoje?</div>
+      </div>
+      <div class="mkt-tipo-grid">
+        <div class="mkt-tipo" onclick="mktSelectTipo('produto',this)">
+          <div class="mkt-tipo-icon">👗</div>
+          <div class="mkt-tipo-label">Um produto</div>
+          <div class="mkt-tipo-desc">Escolher do estoque</div>
+        </div>
+        <div class="mkt-tipo" onclick="mktSelectTipo('loja',this)">
+          <div class="mkt-tipo-icon">🏪</div>
+          <div class="mkt-tipo-label">Minha loja</div>
+          <div class="mkt-tipo-desc">Divulgação geral</div>
+        </div>
+        <div class="mkt-tipo" onclick="mktSelectTipo('evento',this)">
+          <div class="mkt-tipo-icon">🎯</div>
+          <div class="mkt-tipo-label">Promoção</div>
+          <div class="mkt-tipo-desc">Evento ou oferta</div>
+        </div>
+      </div>
+      <div id="mkt-tipo-produto" style="display:none">
+        <div class="mkt-prod-search">
+          <span class="mkt-prod-search-icon">🔍</span>
+          <input type="text" placeholder="Buscar produto..." oninput="mktFiltrarProdutos(this.value)">
+        </div>
+        <div class="mkt-prod-list" id="mkt-prod-list"></div>
+      </div>
+      <div id="mkt-tipo-loja" style="display:none">
+        <div class="mkt-sel-card">
+          <div class="mkt-sel-thumb">🏪</div>
+          <div>
+            <div class="mkt-sel-nome" id="mkt-nome-loja">Minha Loja</div>
+            <div class="mkt-sel-chips">
+              <span class="mkt-chip">Moda feminina</span>
+              <span class="mkt-chip green">Ativa</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="mkt-tipo-evento" style="display:none">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Descreva a promoção</div>
+        <textarea class="mkt-textarea" id="mkt-evento-desc" placeholder="Ex: Queima de estoque de inverno, 30% off em tudo até domingo..." rows="3"></textarea>
+      </div>
+      <button class="mkt-btn mkt-btn-primary" id="mkt-btn-step1" style="display:none;" onclick="mktNextStep()">Continuar →</button>
+    </div>
+
+    <!-- STEP 2: público -->
+    <div id="mkt-step-2" class="mkt-step-panel" style="display:none">
+      <div class="mkt-bubble">
+        <div class="mkt-bubble-avatar">✨</div>
+        <div class="mkt-bubble-text" id="mkt-bubble-2">
+          Quem você quer atrair?<br>
+          <span style="font-size:12px;color:var(--muted)">Descreva com suas palavras — a IA interpreta.</span>
+        </div>
+      </div>
+      <textarea class="mkt-textarea" id="mkt-publico-input" placeholder="Ex: Mulheres elegantes entre 30 e 50 anos que trabalham em escritório e gostam de moda..." rows="3" oninput="mktPublicoInput(this.value)"></textarea>
+      <div class="mkt-publico-preview" id="mkt-publico-preview">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">✨ IA interpretou como</div>
+        <div id="mkt-publico-interpreted" style="font-size:13px;color:var(--accent);line-height:1.5;"></div>
+      </div>
+      <button class="mkt-btn mkt-btn-primary" style="margin-top:16px;" onclick="mktNextStep()">Continuar →</button>
+    </div>
+
+    <!-- STEP 3: objetivo -->
+    <div id="mkt-step-3" class="mkt-step-panel" style="display:none">
+      <div class="mkt-bubble">
+        <div class="mkt-bubble-avatar">✨</div>
+        <div class="mkt-bubble-text">O que você deseja com essa campanha?</div>
+      </div>
+      <div class="mkt-obj-grid">
+        <div class="mkt-obj" onclick="mktSelectObj('mensagens',this)"><span class="mkt-obj-icon">💬</span><div><div class="mkt-obj-label">Receber mensagens</div><div class="mkt-obj-desc">Clientes no WhatsApp</div></div></div>
+        <div class="mkt-obj" onclick="mktSelectObj('vendas',this)"><span class="mkt-obj-icon">🛍️</span><div><div class="mkt-obj-label">Vender mais</div><div class="mkt-obj-desc">Aumentar faturamento</div></div></div>
+        <div class="mkt-obj" onclick="mktSelectObj('estoque',this)"><span class="mkt-obj-icon">🔥</span><div><div class="mkt-obj-label">Queimar estoque</div><div class="mkt-obj-desc">Giro rápido</div></div></div>
+        <div class="mkt-obj" onclick="mktSelectObj('novos',this)"><span class="mkt-obj-icon">✨</span><div><div class="mkt-obj-label">Atrair clientes novos</div><div class="mkt-obj-desc">Ampliar base</div></div></div>
+        <div class="mkt-obj" onclick="mktSelectObj('lancamento',this)"><span class="mkt-obj-icon">🚀</span><div><div class="mkt-obj-label">Divulgar lançamento</div><div class="mkt-obj-desc">Nova coleção</div></div></div>
+        <div class="mkt-obj" onclick="mktSelectObj('visitas',this)"><span class="mkt-obj-icon">📍</span><div><div class="mkt-obj-label">Atrair visitas</div><div class="mkt-obj-desc">Trazer para a loja</div></div></div>
+      </div>
+      <button class="mkt-btn mkt-btn-primary" id="mkt-btn-step3" style="display:none;" onclick="mktNextStep()">Continuar →</button>
+    </div>
+
+    <!-- STEP 4: localização -->
+    <div id="mkt-step-4" class="mkt-step-panel" style="display:none">
+      <div class="mkt-bubble">
+        <div class="mkt-bubble-avatar">✨</div>
+        <div class="mkt-bubble-text">Onde você quer anunciar?</div>
+      </div>
+      <div class="mkt-loc-card">
+        <div class="mkt-mapa">
+          <div class="mkt-ring"></div>
+          <div class="mkt-ring2"></div>
+          <span class="mkt-mapa-pin">📍</span>
+        </div>
+        <div class="mkt-loc-ctrl">
+          <div class="mkt-loc-row">
+            <span class="mkt-loc-label">Cidade</span>
+            <input type="text" id="mkt-cidade" value="Juiz de Fora, MG">
+            <span class="mkt-badge-auto">✓ loja</span>
+          </div>
+          <div class="mkt-loc-row">
+            <span class="mkt-loc-label">Raio</span>
+            <input type="range" min="1" max="50" value="15" id="mkt-raio" oninput="mktRaio(this.value)" style="flex:1;">
+            <span class="mkt-raio-val" id="mkt-raio-val">15 km</span>
+          </div>
+        </div>
+      </div>
+      <div class="mkt-insight" id="mkt-loc-insight">
+        💡 15 km cobre o centro e principais bairros de Juiz de Fora — ótimo para moda feminina.
+      </div>
+      <button class="mkt-btn mkt-btn-primary" onclick="mktNextStep()">Continuar →</button>
+    </div>
+
+    <!-- STEP 5: orçamento -->
+    <div id="mkt-step-5" class="mkt-step-panel" style="display:none">
+      <div class="mkt-bubble">
+        <div class="mkt-bubble-avatar">✨</div>
+        <div class="mkt-bubble-text">Quanto deseja investir por dia?</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:8px;">
+        <div>
+          <div class="mkt-orc-valor" id="mkt-orc-val">R$ 20</div>
+          <div class="mkt-orc-sub">/dia</div>
+        </div>
+        <div style="flex:1;">
+          <input type="range" min="0" max="4" value="1" id="mkt-orc-slider" oninput="mktOrcamento(this.value)" style="width:100%;">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px;padding:0 2px;">
+            <span>R$10</span><span>R$20</span><span>R$30</span><span>R$50</span><span>R$100</span>
+          </div>
+        </div>
+      </div>
+      <div class="mkt-orc-preview">
+        <div class="mkt-orc-preview-title">✨ Com esse valor você pode atingir</div>
+        <div class="mkt-orc-preview-val" id="mkt-orc-preview-val">8 a 22 conversas por semana</div>
+      </div>
+      <button class="mkt-btn mkt-btn-primary" style="margin-top:16px;" onclick="mktCriarCampanha()">Criar campanha com IA ✨</button>
+    </div>
+  </div>
+
+  <!-- VIEW: processando -->
+  <div id="mkt-view-proc" style="display:none">
+    <div class="mkt-proc">
+      <div class="mkt-proc-avatar">
+        ✨
+        <div class="mkt-proc-ring"></div>
+      </div>
+      <div class="mkt-proc-title">IA trabalhando para você</div>
+      <div class="mkt-proc-sub">Isso leva alguns segundos...</div>
+      <div class="mkt-proc-steps" id="mkt-proc-steps">
+        <div class="mkt-proc-step" data-i="0"><div class="mkt-proc-step-icon">🔍</div><span>Analisando produto e estoque</span></div>
+        <div class="mkt-proc-step" data-i="1"><div class="mkt-proc-step-icon">👥</div><span>Calculando público ideal</span></div>
+        <div class="mkt-proc-step" data-i="2"><div class="mkt-proc-step-icon">✍️</div><span>Gerando texto do anúncio com IA</span></div>
+        <div class="mkt-proc-step" data-i="3"><div class="mkt-proc-step-icon">📊</div><span>Escolhendo estratégia e posicionamentos</span></div>
+        <div class="mkt-proc-step" data-i="4"><div class="mkt-proc-step-icon">🚀</div><span>Montando campanha final</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW: campanha pronta -->
+  <div id="mkt-view-camp" style="display:none">
+    <div class="mkt-camp">
+      <div class="mkt-camp-badge">✅ Campanha pronta</div>
+      <div class="mkt-camp-title" id="mkt-camp-title">Vestido Floral Primavera</div>
+      <div class="mkt-camp-sub">Gerada pela IA — pronta para publicar</div>
+
+      <div class="mkt-preview">
+        <div class="mkt-preview-header">
+          <div class="mkt-preview-dot"></div>
+          Prévia do anúncio · Instagram Feed + Stories
+        </div>
+        <div class="mkt-preview-img" id="mkt-prev-img">👗</div>
+        <div class="mkt-preview-copy">
+          <div class="mkt-preview-headline" id="mkt-prev-headline">Chegou o vestido que todas vão querer 🌸</div>
+          <div class="mkt-preview-body" id="mkt-prev-body">Delicado, elegante e perfeito para o dia a dia. Disponível nas melhores cores desta temporada. Clique e garanta o seu!</div>
+          <span class="mkt-preview-cta" id="mkt-prev-cta">Saiba mais</span>
+        </div>
+      </div>
+
+      <div class="mkt-meta-grid">
+        <div class="mkt-meta-item"><div class="mkt-meta-label">Objetivo</div><div class="mkt-meta-val" id="mkt-meta-obj">💬 Mensagens</div></div>
+        <div class="mkt-meta-item"><div class="mkt-meta-label">Investimento</div><div class="mkt-meta-val" id="mkt-meta-inv">R$ 20/dia</div></div>
+        <div class="mkt-meta-item"><div class="mkt-meta-label">Duração</div><div class="mkt-meta-val">7 dias</div></div>
+        <div class="mkt-meta-item"><div class="mkt-meta-label">Alcance estimado</div><div class="mkt-meta-val" id="mkt-meta-alc">2.400–6.100</div></div>
+      </div>
+
+      <div class="mkt-insight" id="mkt-camp-insight">
+        💡 Produto com margem alta — IA priorizou Reels e Stories para maior alcance.
+      </div>
+
+      <button class="mkt-btn mkt-btn-primary mkt-btn-publish" onclick="mktPublicar()">Publicar agora →</button>
+      <button class="mkt-btn mkt-btn-ghost" onclick="mktVoltarWizard()" style="margin-top:8px;">Ajustar</button>
+    </div>
+  </div>
+
+  <!-- VIEW: dashboard -->
+  <div id="mkt-view-dash" style="display:none">
+    <div class="mkt-dash">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div>
+          <div style="font-size:18px;font-weight:800;color:var(--text);">Campanhas</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">Atualizado agora há pouco</div>
+        </div>
+        <button class="btn btn-primary" onclick="mktVoltarWizard()" style="font-size:13px;padding:8px 16px;">+ Nova campanha</button>
+      </div>
+
+      <div class="mkt-insights">
+        <div class="mkt-insight-card green">
+          <span class="mkt-insight-icon">🟢</span>
+          <div>
+            <div class="mkt-insight-title">Campanha acima da média</div>
+            <div class="mkt-insight-desc">CPM 23% abaixo do esperado. Vestido Floral performando muito bem esta semana.</div>
+            <div class="mkt-insight-cta">Aumentar orçamento →</div>
+          </div>
+        </div>
+        <div class="mkt-insight-card rose">
+          <span class="mkt-insight-icon">💡</span>
+          <div>
+            <div class="mkt-insight-title">3 produtos parados há mais de 60 dias</div>
+            <div class="mkt-insight-desc">Blusa Listrada, Calça Palazzo e Kimono Bege. IA criou campanhas de liquidação prontas.</div>
+            <div class="mkt-insight-cta">Ver sugestões →</div>
+          </div>
+        </div>
+        <div class="mkt-insight-card amber">
+          <span class="mkt-insight-icon">⚠️</span>
+          <div>
+            <div class="mkt-insight-title">Estoque do Vestido Floral acabando</div>
+            <div class="mkt-insight-desc">Restam 4 unidades. Considere pausar a campanha em breve.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mkt-metrics">
+        <div class="mkt-metric">
+          <div class="mkt-metric-label">Conversas iniciadas</div>
+          <div class="mkt-metric-val">34</div>
+          <div class="mkt-metric-delta">↑ +18% esta semana</div>
+          <div class="mkt-minigraph">
+            <div class="mkt-bar" style="height:40%"></div><div class="mkt-bar" style="height:55%"></div>
+            <div class="mkt-bar" style="height:45%"></div><div class="mkt-bar" style="height:70%"></div>
+            <div class="mkt-bar" style="height:60%"></div><div class="mkt-bar" style="height:80%"></div>
+            <div class="mkt-bar hi" style="height:100%"></div>
+          </div>
+        </div>
+        <div class="mkt-metric">
+          <div class="mkt-metric-label">Investido</div>
+          <div class="mkt-metric-val">R$ 147</div>
+          <div class="mkt-metric-delta">↑ 7 dias ativos</div>
+          <div class="mkt-minigraph">
+            <div class="mkt-bar" style="height:50%"></div><div class="mkt-bar" style="height:50%"></div>
+            <div class="mkt-bar" style="height:50%"></div><div class="mkt-bar" style="height:70%"></div>
+            <div class="mkt-bar" style="height:70%"></div><div class="mkt-bar" style="height:70%"></div>
+            <div class="mkt-bar hi" style="height:80%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mkt-section-label">Campanhas ativas</div>
+      <div class="mkt-camp-list">
+        <div class="mkt-camp-item">
+          <div class="mkt-camp-thumb">👗</div>
+          <div style="flex:1;">
+            <div class="mkt-camp-nome">Vestido Floral Primavera</div>
+            <div class="mkt-camp-meta">Iniciada há 7 dias · 34 conversas</div>
+          </div>
+          <div style="text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+            <span class="mkt-status ativa">Ativa</span>
+            <span class="mkt-camp-spend">R$ 147</span>
+          </div>
+        </div>
+        <div class="mkt-camp-item">
+          <div class="mkt-camp-thumb" style="background:linear-gradient(135deg,var(--border),var(--accent-light))">🏪</div>
+          <div style="flex:1;">
+            <div class="mkt-camp-nome">Divulgação da loja</div>
+            <div class="mkt-camp-meta">Iniciada há 14 dias · 19 visitas</div>
+          </div>
+          <div style="text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+            <span class="mkt-status pausada">Pausada</span>
+            <span class="mkt-camp-spend">R$ 88</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+<!-- ===== /MARKETING IA ===== -->
+
+<script>
+// ===== MARKETING IA — Estado global =====
+const MKT = {
+  step: 1, totalSteps: 5,
+  tipo: null, produtoId: null, publico: '', objetivo: null,
+  raio: 15, orcIdx: 1,
+  geradoTitulo: '', geradoHeadline: '', geradoBody: '', geradoCta: '',
+};
+const MKT_ORCAMENTOS = [10,20,30,50,100];
+const MKT_PREVISOES = [
+  '3 a 8 conversas por semana',
+  '8 a 22 conversas por semana',
+  '14 a 35 conversas por semana',
+  '28 a 60 conversas por semana',
+  '60 a 130 conversas por semana',
+];
+const MKT_LOC_RECS = {
+  5:'5 km — cobre a vizinhança imediata. Ótimo para fluxo local.',
+  10:'10 km — abrange vários bairros da cidade.',
+  15:'15 km cobre o centro e principais bairros — ótimo para moda feminina.',
+  20:'20 km — alcança distritos e municípios vizinhos.',
+  30:'30 km — campanha regional para marcas já conhecidas.',
+  50:'50 km — máximo alcance regional.',
+};
+
+function renderMktSteps() {
+  const el = document.getElementById('mkt-step-indicator');
+  let h = '';
+  for (let i = 1; i <= MKT.totalSteps; i++) {
+    if (i > 1) h += `<div class="mkt-step-line${i <= MKT.step ? ' done' : ''}"></div>`;
+    h += `<div class="mkt-step-dot${i < MKT.step ? ' done' : i === MKT.step ? ' active' : ''}"></div>`;
+  }
+  el.innerHTML = h;
+}
+
+function mktRenderProdutos(filtro) {
+  const prods = getProdutos ? getProdutos() : [];
+  const lista = filtro ? prods.filter(p => (p.nome||'').toLowerCase().includes(filtro.toLowerCase()) || (p.ref||'').toLowerCase().includes(filtro.toLowerCase())) : prods.slice(0, 20);
+  const el = document.getElementById('mkt-prod-list');
+  if (!lista.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px;">Nenhum produto encontrado</div>'; return; }
+  el.innerHTML = lista.map(p => {
+    const img = p.foto ? `<img src="${p.foto}" alt="">` : (p.emoji || '👗');
+    const preco = p.preco ? `R$ ${Number(p.preco).toFixed(2).replace('.',',')}` : '—';
+    const est = p.estoque != null ? `${p.estoque} un.` : '';
+    return `<div class="mkt-prod-item${MKT.produtoId === p.id ? ' sel' : ''}" onclick="mktSelecionarProduto('${p.id}')">
+      <div class="mkt-prod-thumb">${typeof img === 'string' && img.startsWith('data:') ? `<img src="${img}">` : img}</div>
+      <div class="mkt-prod-info">
+        <div class="mkt-prod-nome">${esc ? esc(p.nome) : p.nome}</div>
+        <div class="mkt-prod-meta">${p.ref || ''} ${est ? '· ' + est : ''}</div>
+      </div>
+      <div class="mkt-prod-preco">${preco}</div>
+    </div>`;
+  }).join('');
+}
+
+function mktFiltrarProdutos(v) { mktRenderProdutos(v); }
+
+function mktSelecionarProduto(id) {
+  MKT.produtoId = id;
+  mktRenderProdutos();
+  document.getElementById('mkt-btn-step1').style.display = 'block';
+}
+
+function mktSelectTipo(tipo, el) {
+  MKT.tipo = tipo;
+  document.querySelectorAll('.mkt-tipo').forEach(e => e.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('mkt-tipo-produto').style.display = 'none';
+  document.getElementById('mkt-tipo-loja').style.display = 'none';
+  document.getElementById('mkt-tipo-evento').style.display = 'none';
+  document.getElementById('mkt-btn-step1').style.display = 'none';
+  if (tipo === 'produto') {
+    document.getElementById('mkt-tipo-produto').style.display = 'block';
+    mktRenderProdutos();
+  } else if (tipo === 'loja') {
+    document.getElementById('mkt-tipo-loja').style.display = 'block';
+    // preencher nome da loja das configs
+    const nomeLoja = document.querySelector('.header-loja-nome')?.textContent || 'Minha Loja';
+    const el2 = document.getElementById('mkt-nome-loja');
+    if (el2) el2.textContent = nomeLoja;
+    document.getElementById('mkt-btn-step1').style.display = 'block';
+  } else {
+    document.getElementById('mkt-tipo-evento').style.display = 'block';
+    document.getElementById('mkt-btn-step1').style.display = 'block';
+  }
+}
+
+function mktPublicoInput(v) {
+  const prev = document.getElementById('mkt-publico-preview');
+  const interp = document.getElementById('mkt-publico-interpreted');
+  MKT.publico = v;
+  if (v.length > 15) {
+    prev.style.display = 'block';
+    // Interpreta localmente (a IA real virá no momento de criar)
+    interp.innerHTML = '<div class="mkt-typing"><span></span><span></span><span></span></div>';
+    clearTimeout(window._mktPublicoTimer);
+    window._mktPublicoTimer = setTimeout(() => {
+      let resumo = 'Público feminino · Faixa etária 28-52 anos · Interesse em moda · Região de JF';
+      if (/homem|masculin/i.test(v)) resumo = resumo.replace('feminino','masculino');
+      if (/jovem|teen|adolescente/i.test(v)) resumo = 'Jovens 18-28 anos · Interesse em moda casual · Região de JF';
+      interp.textContent = resumo;
+    }, 900);
+  } else {
+    prev.style.display = 'none';
+  }
+}
+
+function mktSelectObj(obj, el) {
+  MKT.objetivo = obj;
+  document.querySelectorAll('.mkt-obj').forEach(e => e.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('mkt-btn-step3').style.display = 'block';
+}
+
+function mktRaio(v) {
+  MKT.raio = parseInt(v);
+  document.getElementById('mkt-raio-val').textContent = v + ' km';
+  const closest = [5,10,15,20,30,50].reduce((a,b) => Math.abs(b-MKT.raio)<Math.abs(a-MKT.raio)?b:a);
+  document.getElementById('mkt-loc-insight').textContent = '💡 ' + (MKT_LOC_RECS[closest] || `${v} km de raio ao redor da loja.`);
+}
+
+function mktOrcamento(v) {
+  const i = parseInt(v);
+  MKT.orcIdx = i;
+  document.getElementById('mkt-orc-val').textContent = 'R$ ' + MKT_ORCAMENTOS[i];
+  document.getElementById('mkt-orc-preview-val').textContent = MKT_PREVISOES[i];
+}
+
+function mktNextStep() {
+  if (MKT.step < MKT.totalSteps) {
+    document.getElementById('mkt-step-' + MKT.step).style.display = 'none';
+    MKT.step++;
+    document.getElementById('mkt-step-' + MKT.step).style.display = 'block';
+    renderMktSteps();
+    // Pré-preencher cidade com config da loja no step 4
+    if (MKT.step === 4) mktPreencherCidade();
+  }
+}
+
+function mktPreencherCidade() {
+  // Tenta pegar endereço das configurações já carregadas
+  try {
+    const cfgEnd = localStorage.getItem('mkt_cidade_loja');
+    if (cfgEnd) { document.getElementById('mkt-cidade').value = cfgEnd; return; }
+    // Fallback: busca em loja_configuracoes
+    if (typeof sbGet === 'function') {
+      sbGet('loja_configuracoes','select=chave,valor&chave=in.(endereco,cidade)').then(rows => {
+        if (!rows?.length) return;
+        const end = rows.find(r=>r.chave==='endereco')?.valor || rows.find(r=>r.chave==='cidade')?.valor || '';
+        if (end) {
+          document.getElementById('mkt-cidade').value = end.split('·')[0].trim() || end;
+          localStorage.setItem('mkt_cidade_loja', document.getElementById('mkt-cidade').value);
+        }
+      }).catch(()=>{});
+    }
+  } catch(e) {}
+}
+
+function mktView(id) {
+  ['wizard','proc','camp','dash'].forEach(v => {
+    document.getElementById('mkt-view-' + v).style.display = v === id ? 'block' : 'none';
+  });
+}
+
+async function mktCriarCampanha() {
+  mktView('proc');
+  const steps = document.querySelectorAll('.mkt-proc-step');
+  let i = 0;
+  // Animação de etapas enquanto chama a API
+  const interval = setInterval(() => {
+    if (i > 0) { steps[i-1].classList.remove('active'); steps[i-1].classList.add('done'); steps[i-1].querySelector('.mkt-proc-step-icon').textContent = '✓'; }
+    if (i < steps.length) { steps[i].classList.add('active'); i++; }
+  }, 700);
+
+  // Monta contexto do ERP
+  let ctx = '';
+  try {
+    if (MKT.tipo === 'produto' && MKT.produtoId) {
+      const prods = getProdutos ? getProdutos() : [];
+      const p = prods.find(x => String(x.id) === String(MKT.produtoId));
+      if (p) ctx = `Produto: ${p.nome}. Preço: R$${p.preco}. Estoque: ${p.estoque} unidades. Referência: ${p.ref || ''}. Margem: ${p.margem || 'não informada'}.`;
+    } else if (MKT.tipo === 'loja') {
+      ctx = 'Divulgação geral da loja de moda feminina.';
+    } else {
+      ctx = 'Campanha de promoção/evento: ' + (document.getElementById('mkt-evento-desc')?.value || '');
+    }
+    const vendas = getVendas ? getVendas() : [];
+    const ticketMedio = vendas.length ? (vendas.reduce((s,v)=>s+(Number(v.total)||0),0)/vendas.length).toFixed(2) : 'desconhecido';
+    ctx += ` Ticket médio da loja: R$${ticketMedio}. Público-alvo: ${MKT.publico || 'moda feminina geral'}. Objetivo: ${MKT.objetivo || 'mensagens'}. Orçamento: R$${MKT_ORCAMENTOS[MKT.orcIdx]}/dia. Raio: ${MKT.raio}km.`;
+  } catch(e) { ctx = 'Loja de moda feminina. Objetivo: ' + (MKT.objetivo || 'mensagens'); }
+
+  const prompt = `Você é um gestor de tráfego pago sênior especialista em pequenas lojas de moda feminina no Brasil.
+
+Contexto do ERP:
+${ctx}
+
+Sua tarefa: crie um anúncio para Instagram/Facebook em português brasileiro.
+
+Responda APENAS com JSON válido, sem markdown, sem explicações:
+{
+  "titulo_campanha": "nome curto da campanha (máx 30 chars)",
+  "headline": "título do anúncio (máx 50 chars, chamativo, use emoji se ajudar)",
+  "body": "texto do anúncio (2-3 frases, conversacional, foca no benefício)",
+  "cta": "texto do botão (máx 20 chars)",
+  "insight_ia": "insight estratégico curto para o lojista (1 frase, em português)",
+  "objetivo_meta": "MESSAGES ou REACH ou TRAFFIC",
+  "alcance_min": 2000,
+  "alcance_max": 7000
+}`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    const raw = (data.content||[]).map(c=>c.text||'').join('');
+    const json = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    MKT.geradoTitulo    = json.titulo_campanha || 'Campanha';
+    MKT.geradoHeadline  = json.headline || '';
+    MKT.geradoBody      = json.body || '';
+    MKT.geradoCta       = json.cta || 'Ver mais';
+    const insight       = json.insight_ia || '';
+    const alcMin        = json.alcance_min || 2000;
+    const alcMax        = json.alcance_max || 7000;
+    const objLabel      = MKT.objetivo === 'mensagens' ? '💬 Mensagens' : MKT.objetivo === 'vendas' ? '🛍️ Vendas' : MKT.objetivo === 'estoque' ? '🔥 Liquidação' : MKT.objetivo === 'visitas' ? '📍 Visitas' : '🚀 Alcance';
+
+    clearInterval(interval);
+    steps.forEach(s => { s.classList.remove('active'); s.classList.add('done'); s.querySelector('.mkt-proc-step-icon').textContent = '✓'; });
+
+    setTimeout(() => {
+      document.getElementById('mkt-camp-title').textContent = MKT.geradoTitulo;
+      document.getElementById('mkt-prev-headline').textContent = MKT.geradoHeadline;
+      document.getElementById('mkt-prev-body').textContent = MKT.geradoBody;
+      document.getElementById('mkt-prev-cta').textContent = MKT.geradoCta;
+      document.getElementById('mkt-camp-insight').textContent = '💡 ' + insight;
+      document.getElementById('mkt-meta-obj').textContent = objLabel;
+      document.getElementById('mkt-meta-inv').textContent = `R$ ${MKT_ORCAMENTOS[MKT.orcIdx]}/dia`;
+      document.getElementById('mkt-meta-alc').textContent = `${alcMin.toLocaleString()}–${alcMax.toLocaleString()}`;
+      // emoji do produto
+      if (MKT.tipo === 'produto' && MKT.produtoId) {
+        try {
+          const p = getProdutos().find(x=>String(x.id)===String(MKT.produtoId));
+          if (p?.foto) document.getElementById('mkt-prev-img').innerHTML = `<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover;">`;
+          else document.getElementById('mkt-prev-img').textContent = p?.emoji || '👗';
+        } catch(e){}
+      } else if (MKT.tipo === 'loja') {
+        document.getElementById('mkt-prev-img').textContent = '🏪';
+      } else {
+        document.getElementById('mkt-prev-img').textContent = '🎯';
+      }
+      mktView('camp');
+    }, 600);
+  } catch(e) {
+    clearInterval(interval);
+    // Fallback com dados genéricos
+    MKT.geradoTitulo   = MKT.tipo === 'loja' ? 'Divulgação da loja' : 'Nova campanha';
+    MKT.geradoHeadline = 'Venha conferir nossas novidades! ✨';
+    MKT.geradoBody     = 'Peças selecionadas com muito cuidado para você. Qualidade e estilo que combinam com seu dia a dia.';
+    MKT.geradoCta      = 'Saiba mais';
+    document.getElementById('mkt-camp-title').textContent = MKT.geradoTitulo;
+    document.getElementById('mkt-prev-headline').textContent = MKT.geradoHeadline;
+    document.getElementById('mkt-prev-body').textContent = MKT.geradoBody;
+    document.getElementById('mkt-prev-cta').textContent = MKT.geradoCta;
+    document.getElementById('mkt-camp-insight').textContent = '💡 Campanha criada com configurações padrão.';
+    document.getElementById('mkt-meta-inv').textContent = `R$ ${MKT_ORCAMENTOS[MKT.orcIdx]}/dia`;
+    steps.forEach(s => { s.classList.remove('active'); s.classList.add('done'); s.querySelector('.mkt-proc-step-icon').textContent = '✓'; });
+    setTimeout(() => mktView('camp'), 400);
+  }
+}
+
+function mktPublicar() {
+  mostrarNotificacao('🚀 Campanha publicada! (simulação — integração Meta em breve)');
+  mktView('dash');
+}
+
+function mktVoltarWizard() {
+  MKT.step = 1;
+  MKT.tipo = null; MKT.produtoId = null; MKT.objetivo = null;
+  document.querySelectorAll('.mkt-step-panel').forEach((p,i) => { p.style.display = i===0?'block':'none'; });
+  document.querySelectorAll('.mkt-tipo').forEach(e=>e.classList.remove('sel'));
+  document.querySelectorAll('.mkt-obj').forEach(e=>e.classList.remove('sel'));
+  document.getElementById('mkt-tipo-produto').style.display='none';
+  document.getElementById('mkt-tipo-loja').style.display='none';
+  document.getElementById('mkt-tipo-evento').style.display='none';
+  document.getElementById('mkt-btn-step1').style.display='none';
+  document.getElementById('mkt-btn-step3').style.display='none';
+  document.querySelectorAll('.mkt-proc-step').forEach(s=>{s.className='mkt-proc-step';s.querySelector('.mkt-proc-step-icon').textContent=s.dataset.i==0?'🔍':s.dataset.i==1?'👥':s.dataset.i==2?'✍️':s.dataset.i==3?'📊':'🚀';});
+  renderMktSteps();
+  mktView('wizard');
+}
+
+async function mktAutopilot() {
+  // Escolhe o melhor produto automaticamente (maior margem com estoque > 5)
+  try {
+    const prods = getProdutos ? getProdutos().filter(p=>Number(p.estoque)>5) : [];
+    if (prods.length) {
+      const best = prods.reduce((a,b)=>(Number(b.margem||0)>Number(a.margem||0)?b:a));
+      MKT.produtoId = best.id; MKT.tipo = 'produto';
+    } else { MKT.tipo = 'loja'; }
+  } catch(e) { MKT.tipo = 'loja'; }
+  MKT.publico   = 'Mulheres 25-50 anos interessadas em moda feminina';
+  MKT.objetivo  = 'mensagens';
+  MKT.orcIdx    = 1;
+  mktCriarCampanha();
+}
+
+// Hook em showPage para inicializar módulo
+const _mktOrigShowPage = showPage;
+function showPage(id) {
+  _mktOrigShowPage(id);
+  if (id === 'marketing') {
+    renderMktSteps();
+    mktPreencherCidade();
+    // Mostra botão no nav se loja tem flag (simulação: sempre visível ao entrar)
+    const btn = document.getElementById('nav-btn-marketing');
+    if (btn) btn.style.display = 'block';
+  }
+}
+
+// Ativar botão nav se loja usa marketing (flag usa_marketing na tabela lojas)
+(function() {
+  try {
+    const lojaRow = JSON.parse(localStorage.getItem('legado_loja_row') || '{}');
+    if (lojaRow.usa_marketing) {
+      const btn = document.getElementById('nav-btn-marketing');
+      if (btn) btn.style.display = 'block';
+    }
+  } catch(e) {}
+  // Visibilidade controlada exclusivamente por LOJA_USA_MARKETING (ativado pelo painel)
+})();
 </script>
 </body>
 </html>
