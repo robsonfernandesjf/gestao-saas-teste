@@ -8012,10 +8012,11 @@ async function pvCarregarPainelIndividual(usuario) {
       sbGet('metas_config', `mes_ref=eq.${mesRef}&or=(vendedor_id.eq.${vendedor.id},vendedor_id.is.null)`),
       sbGet('metas_faixas', `mes_ref=eq.${mesRef}&or=(vendedor_id.eq.${vendedor.id},vendedor_id.is.null)&order=valor_ate.asc.nullslast`),
       sbGet('vendas_vendedor', `vendedor_id=eq.${vendedor.id}&data=gte.${mesRef}&data=lt.${proximoMes}&order=data.asc`).catch(() => []),
-      sbGet('vendas', `data=gte.${mesRef}&data=lt.${proximoMes}&order=data.asc`).catch(() => [])
+      sbGet('vendas', 'order=created_at.desc').catch(() => [])
     ]);
 
-    const vendas = gcCombinarVendas(vends, vendasManual, vendasPDV)
+    const vendasPDVMes = (vendasPDV || []).filter(v => gcVendaNoPeriodo(v, mesRef, proximoMes));
+    const vendas = gcCombinarVendas(vends, vendasManual, vendasPDVMes)
       .filter(v => v.vendedor_id === vendedor.id);
 
     const metaPropria = (metas || []).find(m => m.vendedor_id === vendedor.id);
@@ -8081,7 +8082,7 @@ async function pvCarregarPainelIndividual(usuario) {
         .pv-faixa-row,.pv-hist-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid #EEF1F5}
         .pv-badge{padding:5px 9px;border-radius:99px;font-size:11px;font-weight:800;background:#F3E8FF;color:#7C3AED}
         @media(max-width:900px){.pv-kpis{grid-template-columns:repeat(2,1fr)}.pv-grid{grid-template-columns:1fr}#pv-int-body{margin-top:-20px;padding:0 12px 24px}}
-        @media(max-width:520px){.pv-kpis{grid-template-columns:1fr}.pv-value{font-size:24px}}
+        @media(max-width:520px){.pv-kpis{grid-template-columns:1fr}.pv-value{font-size:24px}#pv-int-body .pv-section>div[style*="repeat(3,1fr)"]{grid-template-columns:1fr!important}}
       </style>
 
       <div class="pv-kpis">
@@ -8104,6 +8105,25 @@ async function pvCarregarPainelIndividual(usuario) {
           <div class="pv-label">COMISSÃO ESTIMADA</div>
           <div class="pv-value" style="color:#059669">${pvMoeda(comissao)}</div>
           <div class="pv-sub">${comissaoPct}% retroativo sobre o total vendido</div>
+        </div>
+      </div>
+
+      <div class="pv-card pv-section" style="margin-top:14px">
+        <div class="pv-title" style="margin-bottom:14px">Jornada da meta</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+          ${[
+            {nome:'Bronze', valor:metaMensal/3, ico:'🥉', cor:'#B45309'},
+            {nome:'Prata', valor:metaMensal*2/3, ico:'🥈', cor:'#64748B'},
+            {nome:'Ouro', valor:metaMensal, ico:'🥇', cor:'#D97706'}
+          ].map(n => {
+            const atingida = metaMensal > 0 && totalMes >= n.valor;
+            return `<div style="border:1px solid ${atingida?n.cor:'#E5E7EB'};background:${atingida?'#FFFBEB':'#F8FAFC'};border-radius:14px;padding:14px;text-align:center">
+              <div style="font-size:25px">${n.ico}</div>
+              <div style="font-size:13px;font-weight:900;color:${n.cor};margin-top:5px">${n.nome}</div>
+              <div style="font-size:12px;font-weight:800;margin-top:4px">${metaMensal>0?pvMoeda(n.valor):'—'}</div>
+              <div style="font-size:10px;color:#64748B;margin-top:4px">${atingida?'Conquistada':'Faltam '+pvMoeda(Math.max(n.valor-totalMes,0))}</div>
+            </div>`;
+          }).join('')}
         </div>
       </div>
 
@@ -8216,7 +8236,7 @@ function initUsuarios() {
 async function carregarDadosNuvem() {
   mostrarLoading(true);
   try {
-    const [produtos, vendas, clientes, debitos, contas, vendedores, taxasCartao, lojaRow, trocasSB, vouchersSB, caixaSessoesSB] = await Promise.all([
+    const [produtos, vendas, clientes, debitos, contas, vendedores, taxasCartao, lojaRow, trocasSB, vouchersSB, caixaSessoesSB, vendasVendedorSB] = await Promise.all([
       sbGet('produtos', 'order=ref.asc'),
       sbGet('vendas', 'order=created_at.desc'),
       sbGet('clientes', 'order=nome.asc'),
@@ -8228,6 +8248,7 @@ async function carregarDadosNuvem() {
       sbGet('trocas', 'order=data.desc').catch(() => []),
       sbGet('vouchers', 'order=criado_em.desc').catch(() => []),
       sbGet('caixa_sessoes', 'order=created_at.desc').catch(() => []),
+      sbGet('vendas_vendedor', 'origem=eq.manual&order=data.desc').catch(() => []),
     ]);
     _cache.produtos = produtos;
     _cache.vendas = vendas;
@@ -8239,6 +8260,7 @@ async function carregarDadosNuvem() {
     _cache.trocas = trocasSB;
     _cache.vouchers = vouchersSB;
     _cache.caixaSessoes = caixaSessoesSB;
+    _cache.vendasVendedor = vendasVendedorSB;
     if (lojaRow && lojaRow[0] && lojaRow[0].dados_empresa) {
       try {
         _dadosEmpresaCache = typeof lojaRow[0].dados_empresa === 'string'
@@ -19260,6 +19282,35 @@ function renderEvolucaoMargem() {
 
 // ===== RELATÓRIOS POR VENDEDOR =====
 
+function getVendasGerenciaisVendedor(){
+  const vendasPDV = getVendas();
+  const vendedores = getVendedores();
+  const manuais = _cache.vendasVendedor || [];
+
+  const vendasManuaisNormalizadas = manuais.map(m => {
+    const vend = vendedores.find(v => v.id === m.vendedor_id);
+    return {
+      id: `manual-${m.id || Math.random()}`,
+      data: gcDataISO(m.data || m.created_at).split('-').reverse().join('/'),
+      vendedor: vend?.nome || 'Sem vendedor',
+      vendedor_id: m.vendedor_id,
+      produto: 'Lançamento manual de vendas',
+      categoria: 'Gestão Comercial',
+      qtd: 1,
+      valor: Number(m.valor || 0),
+      valor_unit: Number(m.valor || 0),
+      valor_total: Number(m.valor || 0),
+      custo: 0,
+      custo_unit: 0,
+      lucro: 0,
+      margem: 0,
+      origem: 'manual_meta'
+    };
+  });
+
+  return [...vendasPDV, ...vendasManuaisNormalizadas];
+}
+
 // Agrupa vendas (já filtradas por período) por vendedor
 function agruparVendasPorVendedor(vendas) {
   const map = {};
@@ -19276,7 +19327,7 @@ function agruparVendasPorVendedor(vendas) {
 
 // Vendas por vendedor (visão geral, tabela completa)
 function renderVendasPorVendedor() {
-  const vendas = gerFiltrarVendas(getVendas());
+  const vendas = gerFiltrarVendas(getVendasGerenciaisVendedor());
   const grupos = agruparVendasPorVendedor(vendas)
     .map(g => ({ ...g, ticket: g.qtdVendas > 0 ? g.fat / g.qtdVendas : 0, margem: g.fat > 0 ? g.lucro / g.fat * 100 : 0 }))
     .sort((a, b) => b.fat - a.fat);
@@ -19307,7 +19358,7 @@ function renderVendasPorVendedor() {
 
 // Ranking de vendedores (foco em comparação/posição)
 function renderRankingVendedores() {
-  const vendas = gerFiltrarVendas(getVendas());
+  const vendas = gerFiltrarVendas(getVendasGerenciaisVendedor());
   const grupos = agruparVendasPorVendedor(vendas)
     .filter(g => g.vendedor !== 'Sem vendedor')
     .sort((a, b) => b.fat - a.fat);
@@ -19334,7 +19385,7 @@ function renderRankingVendedores() {
 }
 
 function renderTicketMedioVendedor() {
-  const vendas = gerFiltrarVendas(getVendas());
+  const vendas = gerFiltrarVendas(getVendasGerenciaisVendedor());
   const grupos = agruparVendasPorVendedor(vendas)
     .filter(g => g.vendedor !== 'Sem vendedor' && g.qtdVendas > 0)
     .map(g => ({ ...g, ticket: g.fat / g.qtdVendas }))
@@ -19386,7 +19437,7 @@ function renderTicketMedioVendedor() {
 
 // Comissão por vendedor (usa % cadastrado em Vendedores)
 function renderComissaoVendedores() {
-  const vendas = gerFiltrarVendas(getVendas());
+  const vendas = gerFiltrarVendas(getVendasGerenciaisVendedor());
   const vendedoresCadastrados = getVendedores();
   const grupos = agruparVendasPorVendedor(vendas).filter(g => g.vendedor !== 'Sem vendedor');
 
@@ -19420,7 +19471,7 @@ function renderComissaoVendedores() {
 
 // Produtos por vendedor (o que cada vendedor mais vendeu)
 function renderProdutosPorVendedor() {
-  const vendas = gerFiltrarVendas(getVendas()).filter(v => (v.vendedor || '').trim());
+  const vendas = gerFiltrarVendas(getVendasGerenciaisVendedor()).filter(v => (v.vendedor || '').trim());
   const vendedoresUnicos = [...new Set(vendas.map(v => v.vendedor))].sort();
 
   const cont = document.getElementById('ger-conteudo');
@@ -21248,6 +21299,26 @@ function gcValorVendaPDV(v){
   return Number(v.valor || 0) * qtd;
 }
 
+function gcDataISO(valor){
+  const s = String(valor || '').trim();
+  if (!s) return '';
+
+  // ISO: 2026-07-22 ou 2026-07-22T...
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  // Legado/PDV: 22/07/2026 ou 22/07/2026 14:30
+  const br = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (br) return `${br[3]}-${String(br[2]).padStart(2,'0')}-${String(br[1]).padStart(2,'0')}`;
+
+  return '';
+}
+
+function gcVendaNoPeriodo(v, inicio, fim){
+  const data = gcDataISO(v.data || v.created_at);
+  return data && data >= inicio && data < fim;
+}
+
 function gcCombinarVendas(vends, vendasManual, vendasPDV){
   const mapa = new Map((vends || []).map(v => [gcNormalizarNome(v.nome), v.id]));
   const resultado = [];
@@ -21258,7 +21329,7 @@ function gcCombinarVendas(vends, vendasManual, vendasPDV){
     .filter(v => !v.origem || v.origem === 'manual')
     .forEach(v => resultado.push({
       vendedor_id: v.vendedor_id,
-      data: String(v.data || v.created_at || '').slice(0,10),
+      data: gcDataISO(v.data || v.created_at),
       valor: Number(v.valor || 0),
       origem: 'manual'
     }));
@@ -21269,7 +21340,7 @@ function gcCombinarVendas(vends, vendasManual, vendasPDV){
     if (!vendedorId) return;
     resultado.push({
       vendedor_id: vendedorId,
-      data: String(v.data || v.created_at || '').slice(0,10),
+      data: gcDataISO(v.data || v.created_at),
       valor: gcValorVendaPDV(v),
       origem: 'pdv'
     });
@@ -21335,9 +21406,10 @@ async function pmCarregarDesempenho() {
       sbGet('metas_config',`mes_ref=eq.${mesRef}`),
       sbGet('metas_faixas',`mes_ref=eq.${mesRef}&order=valor_ate.asc.nullslast`),
       sbGet('vendas_vendedor',`data=gte.${mesRef}&data=lt.${proxMes}&order=data.asc`).catch(()=>[]),
-      sbGet('vendas',`data=gte.${mesRef}&data=lt.${proxMes}&order=data.asc`).catch(()=>[]),
+      sbGet('vendas','order=created_at.desc').catch(()=>[]),
     ]);
-    const vendas7 = gcCombinarVendas(vends, vendasManual, vendasPDV);
+    const vendasPDVMes = (vendasPDV || []).filter(v => gcVendaNoPeriodo(v, mesRef, proxMes));
+    const vendas7 = gcCombinarVendas(vends, vendasManual, vendasPDVMes);
     const resumos = pmCalcularResumos(vends, metas, faixas, vendas7);
 
     const totalVendido  = (resumos||[]).reduce((s,r)=>s+Number(r.total_vendido||0),0);
@@ -21502,9 +21574,10 @@ async function pmCarregarMetas() {
       sbGet('metas_config',`mes_ref=eq.${mesRef}`),
       sbGet('metas_faixas',`mes_ref=eq.${mesRef}&order=valor_ate.asc.nullslast`),
       sbGet('vendas_vendedor',`data=gte.${mesRef}&data=lt.${proxMes}`).catch(()=>[]),
-      sbGet('vendas',`data=gte.${mesRef}&data=lt.${proxMes}`).catch(()=>[]),
+      sbGet('vendas','order=created_at.desc').catch(()=>[]),
     ]);
-    const vendasMes = gcCombinarVendas(vends, vendasManual, vendasPDV);
+    const vendasPDVMes = (vendasPDV || []).filter(v => gcVendaNoPeriodo(v, mesRef, proxMes));
+    const vendasMes = gcCombinarVendas(vends, vendasManual, vendasPDVMes);
     const resumos = pmCalcularResumos(vends, metas, faixas, vendasMes);
     const itens = [{id:null,nome:'🌐 Global (todos os vendedores)',isGlobal:true},...vends.map(v=>({id:v.id,nome:v.nome,isGlobal:false,idx:vends.indexOf(v)}))];
     body.innerHTML = itens.map(item=>{
@@ -21575,6 +21648,7 @@ async function pmLancar() {
   try{
     mostrarLoading(true);
     await sbPost('vendas_vendedor',{vendedor_id:vendedorId,data,valor,origem:'manual',observacao:obs,lancado_por:usr?.nome||usr?.login||''});
+    _cache.vendasVendedor = await sbGet('vendas_vendedor','origem=eq.manual&order=data.desc').catch(()=>_cache.vendasVendedor||[]);
     await sbPost('audit_gestao_comercial',{vendedor_id:vendedorId,operacao:'lancamento_manual',valor,observacao:obs,usuario_id:usr?.id||''}).catch(()=>{});
     mostrarNotificacao('✅ Venda registrada!');
     document.getElementById('pm-lanc-valor').value='';
