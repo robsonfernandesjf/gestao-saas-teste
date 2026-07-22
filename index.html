@@ -8112,9 +8112,9 @@ async function pvCarregarPainelIndividual(usuario) {
         <div class="pv-title" style="margin-bottom:14px">Jornada da meta</div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
           ${[
-            {nome:'Bronze', valor:metaMensal/3, ico:'🥉', cor:'#B45309'},
-            {nome:'Prata', valor:metaMensal*2/3, ico:'🥈', cor:'#64748B'},
-            {nome:'Ouro', valor:metaMensal, ico:'🥇', cor:'#D97706'}
+            {nome:'Bronze', valor:Number((metaPropria||metaGlobal)?.bronze_valor || metaMensal/3), ico:'🥉', cor:'#B45309'},
+            {nome:'Prata', valor:Number((metaPropria||metaGlobal)?.prata_valor || metaMensal*2/3), ico:'🥈', cor:'#64748B'},
+            {nome:'Ouro', valor:Number((metaPropria||metaGlobal)?.ouro_valor || metaMensal), ico:'🥇', cor:'#D97706'}
           ].map(n => {
             const atingida = metaMensal > 0 && totalMes >= n.valor;
             return `<div style="border:1px solid ${atingida?n.cor:'#E5E7EB'};background:${atingida?'#FFFBEB':'#F8FAFC'};border-radius:14px;padding:14px;text-align:center">
@@ -21193,10 +21193,46 @@ atualizarHora();
         <label>Meta mensal *</label>
         <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--bg);">
           <span style="padding:10px 12px;background:var(--border);color:var(--muted);font-size:13px;font-weight:700;border-right:1px solid var(--border);flex-shrink:0;">R$</span>
-          <input type="text" id="gc-meta-valor" placeholder="Ex: 30.000,00" oninput="mascaraMoeda(this)"
+          <input type="text" id="gc-meta-valor" placeholder="Ex: 30.000,00" oninput="mascaraMoeda(this);gcRecalcularMedalhasAutomaticas()"
             style="border:none;background:transparent;padding:10px 12px;font-size:14px;font-weight:700;color:var(--text);flex:1;outline:none;font-family:inherit;">
         </div>
       </div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+        <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px;">Jornada Bronze, Prata e Ouro</div>
+
+        <div style="display:flex;gap:10px;margin-bottom:12px;">
+          <label style="flex:1;display:flex;align-items:center;gap:8px;padding:11px 12px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;background:var(--bg);">
+            <input type="radio" name="gc-modo-medalhas" value="automatico" checked onchange="gcAtualizarModoMedalhas()">
+            <span><strong>Automático</strong><br><small style="color:var(--muted);">Bronze 33,33%, Prata 66,67% e Ouro 100%</small></span>
+          </label>
+          <label style="flex:1;display:flex;align-items:center;gap:8px;padding:11px 12px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;background:var(--bg);">
+            <input type="radio" name="gc-modo-medalhas" value="manual" onchange="gcAtualizarModoMedalhas()">
+            <span><strong>Manual</strong><br><small style="color:var(--muted);">A loja define os três valores</small></span>
+          </label>
+        </div>
+
+        <div id="gc-medalhas-campos" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+          <div class="form-row">
+            <label>🥉 Bronze</label>
+            <input type="text" id="gc-meta-bronze" class="form-input" placeholder="10.000,00"
+              oninput="mascaraMoeda(this)" readonly>
+          </div>
+          <div class="form-row">
+            <label>🥈 Prata</label>
+            <input type="text" id="gc-meta-prata" class="form-input" placeholder="20.000,00"
+              oninput="mascaraMoeda(this)" readonly>
+          </div>
+          <div class="form-row">
+            <label>🥇 Ouro</label>
+            <input type="text" id="gc-meta-ouro" class="form-input" placeholder="30.000,00"
+              oninput="mascaraMoeda(this)" readonly>
+          </div>
+        </div>
+        <div id="gc-medalhas-ajuda" style="font-size:11px;color:var(--muted);margin-top:4px;">
+          Os valores serão calculados automaticamente a partir da meta mensal.
+        </div>
+      </div>
+
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
           <div style="font-size:13px;font-weight:700;color:var(--text);">Faixas de comissão</div>
@@ -21661,16 +21697,108 @@ async function pmLancar() {
 // alias
 async function gcLancarVenda(){ await pmLancar(); }
 
-function pmAbrirMeta(vendedorId, mesRef) {
+function gcNumeroMoeda(valor){
+  const s = String(valor || '').replace(/\./g,'').replace(',','.');
+  return Number.parseFloat(s) || 0;
+}
+
+function gcExibirMoedaCampo(valor){
+  return Number(valor || 0).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function gcModoMedalhasAtual(){
+  return document.querySelector('input[name="gc-modo-medalhas"]:checked')?.value || 'automatico';
+}
+
+function gcAtualizarModoMedalhas(){
+  const modo = gcModoMedalhasAtual();
+  const manual = modo === 'manual';
+  ['gc-meta-bronze','gc-meta-prata','gc-meta-ouro'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.readOnly = !manual;
+    el.style.background = manual ? 'var(--bg)' : 'var(--border)';
+    el.style.cursor = manual ? 'text' : 'not-allowed';
+  });
+  const ajuda = document.getElementById('gc-medalhas-ajuda');
+  if (ajuda) ajuda.textContent = manual
+    ? 'Informe os valores desejados. Regra: Bronze < Prata ≤ Ouro ≤ Meta mensal.'
+    : 'Os valores serão calculados automaticamente a partir da meta mensal.';
+  if (!manual) gcRecalcularMedalhasAutomaticas();
+}
+
+function gcRecalcularMedalhasAutomaticas(){
+  if (gcModoMedalhasAtual() !== 'automatico') return;
+  const meta = gcNumeroMoeda(document.getElementById('gc-meta-valor')?.value);
+  const bronze = meta / 3;
+  const prata = meta * 2 / 3;
+  const ouro = meta;
+  const valores = {
+    'gc-meta-bronze': bronze,
+    'gc-meta-prata': prata,
+    'gc-meta-ouro': ouro
+  };
+  Object.entries(valores).forEach(([id, valor]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = meta > 0 ? gcExibirMoedaCampo(valor) : '';
+  });
+}
+
+async function pmAbrirMeta(vendedorId, mesRef) {
   _gcFaixas = [{valor_ate:'',percentual:''}];
   document.getElementById('gc-meta-id').value='';
   const mes = mesRef?mesRef.slice(0,7):(document.getElementById('pm-mes')?.value||new Date().toISOString().slice(0,7));
   document.getElementById('gc-meta-mes').value=mes;
   const sel=document.getElementById('gc-meta-vendedor');
   if(sel) sel.value=vendedorId||'';
+
   document.getElementById('gc-meta-valor').value='';
+  document.querySelector('input[name="gc-modo-medalhas"][value="automatico"]').checked = true;
+  document.getElementById('gc-meta-bronze').value='';
+  document.getElementById('gc-meta-prata').value='';
+  document.getElementById('gc-meta-ouro').value='';
+  gcAtualizarModoMedalhas();
   gcRenderFaixas();
   document.getElementById('modal-gc-meta').classList.add('open');
+
+  const mesRefIso = mes + '-01';
+  try {
+    const [metas, faixas] = await Promise.all([
+      sbGet('metas_config', `mes_ref=eq.${mesRefIso}&vendedor_id=${vendedorId?'eq.'+vendedorId:'is.null'}`),
+      sbGet('metas_faixas', `mes_ref=eq.${mesRefIso}&vendedor_id=${vendedorId?'eq.'+vendedorId:'is.null'}&order=ordem.asc`)
+    ]);
+
+    const meta = metas?.[0];
+    if (!meta) return;
+
+    document.getElementById('gc-meta-id').value = meta.id || '';
+    document.getElementById('gc-meta-valor').value = gcExibirMoedaCampo(meta.meta_mensal);
+
+    const modo = meta.modo_medalhas || 'automatico';
+    const radio = document.querySelector(`input[name="gc-modo-medalhas"][value="${modo}"]`);
+    if (radio) radio.checked = true;
+
+    document.getElementById('gc-meta-bronze').value = meta.bronze_valor != null
+      ? gcExibirMoedaCampo(meta.bronze_valor) : '';
+    document.getElementById('gc-meta-prata').value = meta.prata_valor != null
+      ? gcExibirMoedaCampo(meta.prata_valor) : '';
+    document.getElementById('gc-meta-ouro').value = meta.ouro_valor != null
+      ? gcExibirMoedaCampo(meta.ouro_valor) : '';
+
+    _gcFaixas = (faixas || []).map(f => ({
+      valor_ate: f.valor_ate == null ? '' : gcExibirMoedaCampo(f.valor_ate),
+      percentual: f.percentual
+    }));
+    if (!_gcFaixas.length) _gcFaixas = [{valor_ate:'',percentual:''}];
+
+    gcAtualizarModoMedalhas();
+    gcRenderFaixas();
+  } catch (e) {
+    console.warn('Não foi possível carregar a meta para edição:', e);
+  }
 }
 
 let _gcFaixas=[];
@@ -21702,6 +21830,23 @@ async function gcSalvarMeta(){
   const mesRef=mesStr+'-01';
   const vendedorId=document.getElementById('gc-meta-vendedor').value||null;
   const metaVal=parseFloat(valorStr)||0;
+  const modoMedalhas=gcModoMedalhasAtual();
+  let bronzeVal=gcNumeroMoeda(document.getElementById('gc-meta-bronze').value);
+  let prataVal=gcNumeroMoeda(document.getElementById('gc-meta-prata').value);
+  let ouroVal=gcNumeroMoeda(document.getElementById('gc-meta-ouro').value);
+
+  if(modoMedalhas==='automatico'){
+    bronzeVal=metaVal/3;
+    prataVal=metaVal*2/3;
+    ouroVal=metaVal;
+  }
+
+  if(metaVal<=0){alert('A meta mensal deve ser maior que zero.');return;}
+  if(!(bronzeVal>0 && prataVal>bronzeVal && ouroVal>=prataVal && ouroVal<=metaVal)){
+    alert('Revise as medalhas: Bronze deve ser menor que Prata, Prata deve ser menor ou igual a Ouro, e Ouro não pode ultrapassar a meta mensal.');
+    return;
+  }
+
   try{
     mostrarLoading(true);
     const exist=await sbGet('metas_config',`mes_ref=eq.${mesRef}&vendedor_id=${vendedorId?'eq.'+vendedorId:'is.null'}`);
@@ -21710,7 +21855,16 @@ async function gcSalvarMeta(){
       const fex=await sbGet('metas_faixas',`mes_ref=eq.${mesRef}&vendedor_id=${vendedorId?'eq.'+vendedorId:'is.null'}`);
       for(const ef of(fex||[]))await sbDelete('metas_faixas',ef.id).catch(()=>{});
     }
-    await sbPost('metas_config',{mes_ref:mesRef,vendedor_id:vendedorId,meta_mensal:metaVal,criado_por:usuarioAtual()?.id||''});
+    await sbPost('metas_config',{
+      mes_ref:mesRef,
+      vendedor_id:vendedorId,
+      meta_mensal:metaVal,
+      modo_medalhas:modoMedalhas,
+      bronze_valor:bronzeVal,
+      prata_valor:prataVal,
+      ouro_valor:ouroVal,
+      criado_por:usuarioAtual()?.id||''
+    });
     const fv=_gcFaixas.filter(f=>f.percentual).map((f,i)=>({
       mes_ref:mesRef,vendedor_id:vendedorId,
       valor_ate:f.valor_ate?parseFloat(f.valor_ate.replace(/\./g,'').replace(',','.'))||null:null,
