@@ -21165,7 +21165,7 @@ function gcRenderFaixas(){
       <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--bg);">
         <span style="padding:8px 10px;background:var(--border);color:var(--muted);font-size:11px;font-weight:700;border-right:1px solid var(--border);flex-shrink:0;">Até R$</span>
         <input type="text" placeholder="${i===_gcFaixas.length-1?'vazio = acima de tudo':'ex: 30.000,00'}" value="${f.valor_ate}"
-          oninput="_gcFaixas[${i}].valor_ate=this.value;mascaraMoeda(this)"
+          oninput="mascaraMoeda(this);_gcFaixas[${i}].valor_ate=this.value"
           style="border:none;background:transparent;padding:8px 10px;font-size:13px;color:var(--text);flex:1;outline:none;font-family:inherit;">
       </div>
       <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--bg);">
