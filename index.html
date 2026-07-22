@@ -14888,17 +14888,38 @@ async function salvarVendedor() {
           ? dcodeIO.bcrypt.hashSync(senhaProv, 10)
           : senhaProv; // fallback sem hash se lib não carregada
 
-        const novoUsr = {
-          nome,                          // nome do vendedor
-          login:            loginPainel,
-          senha:            senhaHash,
-          perfil:           'vendedor_painel',
-          senha_provisoria: true,
-          vendedor_id:      vendedorId,
-          ativo:            true,
-          modulos:          JSON.stringify([]),
+        // Campos básicos compatíveis com a tabela usuarios já existente.
+        // vendedor_id e senha_provisoria são opcionais: se ainda não existirem
+        // no banco, o acesso continua sendo criado e o vínculo fica em
+        // vendedores.usuario_id.
+        const novoUsrBase = {
+          nome,
+          login:   loginPainel.toLowerCase(),
+          senha:   senhaHash,
+          perfil:  'vendedor_painel',
+          ativo:   true,
+          modulos: [],
         };
-        const resUsr   = await sbPost('usuarios', novoUsr);
+
+        let resUsr;
+        try {
+          resUsr = await sbPost('usuarios', {
+            ...novoUsrBase,
+            senha_provisoria: true,
+            vendedor_id: vendedorId,
+          });
+        } catch (erroSchema) {
+          // PGRST204 = coluna ainda não existente no schema cache.
+          // Faz fallback seguro usando somente colunas já utilizadas pelo
+          // cadastro normal de usuários.
+          if (String(erroSchema?.message || '').includes('PGRST204')) {
+            console.warn('Campos opcionais do painel ainda não existem; criando usuário básico.', erroSchema);
+            resUsr = await sbPost('usuarios', novoUsrBase);
+          } else {
+            throw erroSchema;
+          }
+        }
+
         const usrCriado = Array.isArray(resUsr) ? resUsr[0] : resUsr;
         if (usrCriado?.id) {
           await sbPatch('vendedores', vendedorId, { usuario_id: usrCriado.id });
