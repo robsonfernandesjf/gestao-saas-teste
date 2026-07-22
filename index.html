@@ -14847,7 +14847,10 @@ async function salvarVendedor() {
   const loginPainel = document.getElementById('vend-login')?.value.trim() || '';
   const senhaProv   = document.getElementById('vend-senha-prov')?.value || '';
 
-  if (painelAtivo && !id) {
+  const vendedorExistente = id ? getVendedores().find(v => v.id === id) : null;
+  const precisaCriarUsuarioPainel = painelAtivo && !(vendedorExistente?.usuario_id);
+
+  if (precisaCriarUsuarioPainel) {
     if (!loginPainel) { alert('Informe o login para o painel do vendedor.'); return; }
     if (!senhaProv)   { alert('Informe a senha provisória.'); return; }
   }
@@ -14877,8 +14880,8 @@ async function salvarVendedor() {
       vendedores.push(criado || { ...dados, id: vendedorId });
     }
 
-    // Cria usuário automaticamente se painel ativado em novo vendedor
-    if (painelAtivo && !id && loginPainel && senhaProv) {
+    // Cria usuário automaticamente se o painel foi ativado e o vendedor ainda não possui usuário
+    if (precisaCriarUsuarioPainel && loginPainel && senhaProv) {
       try {
         // Hash bcrypt igual ao salvarUsuario
         const senhaHash = typeof dcodeIO !== 'undefined' && dcodeIO.bcrypt
