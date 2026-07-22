@@ -7996,22 +7996,27 @@ async function pvIniciarPainelInterno(usuario) {
 async function pvCarregarPainelIndividual(usuario) {
   const body = document.getElementById('pv-int-body');
   body.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:12px;">
-      <div style="width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:pvIntSpin 1s linear infinite;"></div>
-      <div style="font-size:13px;color:var(--muted);">Carregando seus dados...</div>
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:55vh;gap:14px;">
+      <div style="width:42px;height:42px;border:4px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:pvIntSpin 1s linear infinite;"></div>
+      <div style="font-size:13px;color:var(--muted);">Carregando seu desempenho...</div>
     </div>`;
 
   try {
     const vendedor = await pvLocalizarVendedor(usuario);
+    const vends = getVendedores().filter(v => v.ativo !== false);
     const mesRef = pvPrimeiroDiaMes();
     const proximoMes = pvProximoMes(mesRef);
     const hoje = new Date().toISOString().slice(0, 10);
 
-    const [metas, faixas, vendas] = await Promise.all([
+    const [metas, faixas, vendasManual, vendasPDV] = await Promise.all([
       sbGet('metas_config', `mes_ref=eq.${mesRef}&or=(vendedor_id.eq.${vendedor.id},vendedor_id.is.null)`),
       sbGet('metas_faixas', `mes_ref=eq.${mesRef}&or=(vendedor_id.eq.${vendedor.id},vendedor_id.is.null)&order=valor_ate.asc.nullslast`),
-      sbGet('vendas_vendedor', `vendedor_id=eq.${vendedor.id}&data=gte.${mesRef}&data=lt.${proximoMes}&order=data.asc`)
+      sbGet('vendas_vendedor', `vendedor_id=eq.${vendedor.id}&data=gte.${mesRef}&data=lt.${proximoMes}&order=data.asc`).catch(() => []),
+      sbGet('vendas', `data=gte.${mesRef}&data=lt.${proximoMes}&order=data.asc`).catch(() => [])
     ]);
+
+    const vendas = gcCombinarVendas(vends, vendasManual, vendasPDV)
+      .filter(v => v.vendedor_id === vendedor.id);
 
     const metaPropria = (metas || []).find(m => m.vendedor_id === vendedor.id);
     const metaGlobal = (metas || []).find(m => !m.vendedor_id);
@@ -8021,117 +8026,166 @@ async function pvCarregarPainelIndividual(usuario) {
     const faixasGlobais = (faixas || []).filter(f => !f.vendedor_id);
     const faixasEfetivas = faixasProprias.length ? faixasProprias : faixasGlobais;
 
-    const totalMes = (vendas || []).reduce((s, v) => s + Number(v.valor || 0), 0);
-    const totalHoje = (vendas || [])
-      .filter(v => String(v.data).slice(0, 10) === hoje)
+    const totalMes = vendas.reduce((s, v) => s + Number(v.valor || 0), 0);
+    const totalHoje = vendas
+      .filter(v => v.data === hoje)
       .reduce((s, v) => s + Number(v.valor || 0), 0);
 
     const percentual = metaMensal > 0 ? Math.min((totalMes / metaMensal) * 100, 100) : 0;
     const faixa = pvFaixaAtual(totalMes, faixasEfetivas);
     const comissaoPct = Number(faixa?.percentual || vendedor.comissao || 0);
     const comissao = totalMes * comissaoPct / 100;
+    const faltaMeta = Math.max(metaMensal - totalMes, 0);
 
     const faixasOrdenadas = faixasEfetivas.slice().sort((a,b) => {
       if (a.valor_ate == null) return 1;
       if (b.valor_ate == null) return -1;
       return Number(a.valor_ate) - Number(b.valor_ate);
     });
-    const proxima = faixasOrdenadas.find(f => f.valor_ate != null && Number(f.valor_ate) > totalMes);
-    const faltaProxima = proxima ? Math.max(Number(proxima.valor_ate) - totalMes, 0) : 0;
-    const faltaMeta = Math.max(metaMensal - totalMes, 0);
+    const indiceAtual = faixa ? faixasOrdenadas.findIndex(f => f.id === faixa.id) : -1;
+    const proxima = indiceAtual >= 0
+      ? faixasOrdenadas[indiceAtual + 1]
+      : faixasOrdenadas.find(f => f.valor_ate == null || Number(f.valor_ate) > totalMes);
+    const inicioProxima = proxima
+      ? (indiceAtual >= 0 && faixa?.valor_ate != null
+          ? Number(faixa.valor_ate)
+          : Number(faixasOrdenadas[Math.max(0, faixasOrdenadas.indexOf(proxima)-1)]?.valor_ate || 0))
+      : 0;
+    const faltaProxima = proxima
+      ? Math.max((proxima.valor_ate == null ? inicioProxima : Number(proxima.valor_ate)) - totalMes, 0)
+      : 0;
 
     const porDia = {};
-    (vendas || []).forEach(v => {
-      const dia = String(v.data).slice(0, 10);
-      porDia[dia] = (porDia[dia] || 0) + Number(v.valor || 0);
+    vendas.forEach(v => {
+      porDia[v.data] = (porDia[v.data] || 0) + Number(v.valor || 0);
     });
     const historico = Object.entries(porDia).sort((a,b) => b[0].localeCompare(a[0]));
+    const melhorDia = historico.slice().sort((a,b) => b[1]-a[1])[0];
+    const mediaDia = historico.length ? totalMes / historico.length : 0;
 
     body.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;padding-top:0;">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
-          <div style="font-size:11px;color:var(--muted);font-weight:700;">VENDA DE HOJE</div>
-          <div style="font-size:22px;font-weight:800;margin-top:6px;">${pvMoeda(totalHoje)}</div>
+      <style>
+        #pv-int-body{max-width:1480px;margin:-42px auto 0;padding:0 22px 34px;position:relative;z-index:2}
+        .pv-card{background:#fff;border:1px solid #E7EAF0;border-radius:18px;box-shadow:0 8px 28px rgba(15,23,42,.06)}
+        .pv-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+        .pv-kpi{padding:20px;min-height:118px;position:relative;overflow:hidden}
+        .pv-kpi:after{content:"";position:absolute;width:92px;height:92px;border-radius:50%;right:-28px;top:-28px;background:var(--soft)}
+        .pv-label{font-size:11px;letter-spacing:.04em;color:#64748B;font-weight:800}
+        .pv-value{font-size:27px;line-height:1.1;font-weight:900;color:#0F172A;margin-top:9px}
+        .pv-sub{font-size:12px;color:#64748B;margin-top:7px}
+        .pv-grid{display:grid;grid-template-columns:1.45fr .85fr;gap:14px;margin-top:14px}
+        .pv-section{padding:22px}
+        .pv-title{font-size:14px;font-weight:900;color:#0F172A}
+        .pv-progress{height:14px;background:#EEF2F7;border-radius:99px;overflow:hidden;margin-top:17px}
+        .pv-progress>div{height:100%;border-radius:99px;background:linear-gradient(90deg,#2563EB,#7C3AED)}
+        .pv-faixa-row,.pv-hist-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid #EEF1F5}
+        .pv-badge{padding:5px 9px;border-radius:99px;font-size:11px;font-weight:800;background:#F3E8FF;color:#7C3AED}
+        @media(max-width:900px){.pv-kpis{grid-template-columns:repeat(2,1fr)}.pv-grid{grid-template-columns:1fr}#pv-int-body{margin-top:-20px;padding:0 12px 24px}}
+        @media(max-width:520px){.pv-kpis{grid-template-columns:1fr}.pv-value{font-size:24px}}
+      </style>
+
+      <div class="pv-kpis">
+        <div class="pv-card pv-kpi" style="--soft:#EFF6FF">
+          <div class="pv-label">VENDA DE HOJE</div>
+          <div class="pv-value">${pvMoeda(totalHoje)}</div>
+          <div class="pv-sub">${hoje.split('-').reverse().join('/')}</div>
         </div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
-          <div style="font-size:11px;color:var(--muted);font-weight:700;">VENDA DO MÊS</div>
-          <div style="font-size:22px;font-weight:800;margin-top:6px;">${pvMoeda(totalMes)}</div>
+        <div class="pv-card pv-kpi" style="--soft:#ECFDF5">
+          <div class="pv-label">VENDA DO MÊS</div>
+          <div class="pv-value">${pvMoeda(totalMes)}</div>
+          <div class="pv-sub">${vendas.length} lançamento${vendas.length===1?'':'s'} entre PDV e manual</div>
         </div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
-          <div style="font-size:11px;color:var(--muted);font-weight:700;">META MENSAL</div>
-          <div style="font-size:22px;font-weight:800;margin-top:6px;">${metaMensal > 0 ? pvMoeda(metaMensal) : 'Não definida'}</div>
+        <div class="pv-card pv-kpi" style="--soft:#FFF7ED">
+          <div class="pv-label">META MENSAL</div>
+          <div class="pv-value">${metaMensal > 0 ? pvMoeda(metaMensal) : 'Não definida'}</div>
+          <div class="pv-sub">${metaPropria ? 'Meta individual' : metaGlobal ? 'Meta global da loja' : 'Aguardando configuração'}</div>
         </div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
-          <div style="font-size:11px;color:var(--muted);font-weight:700;">COMISSÃO ESTIMADA</div>
-          <div style="font-size:22px;font-weight:800;color:#059669;margin-top:6px;">${pvMoeda(comissao)}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:3px;">${comissaoPct}% sobre o total</div>
+        <div class="pv-card pv-kpi" style="--soft:#F5F3FF">
+          <div class="pv-label">COMISSÃO ESTIMADA</div>
+          <div class="pv-value" style="color:#059669">${pvMoeda(comissao)}</div>
+          <div class="pv-sub">${comissaoPct}% retroativo sobre o total vendido</div>
         </div>
       </div>
 
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-top:14px;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;">
+      <div class="pv-card pv-section" style="margin-top:14px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:15px;flex-wrap:wrap">
           <div>
-            <div style="font-size:12px;color:var(--muted);font-weight:700;">ATINGIMENTO DA META</div>
-            <div style="font-size:32px;font-weight:900;margin-top:4px;">${metaMensal > 0 ? percentual.toFixed(1).replace('.', ',') + '%' : '—'}</div>
+            <div class="pv-label">ATINGIMENTO DA META</div>
+            <div class="pv-value" style="font-size:36px">${metaMensal>0?percentual.toFixed(1).replace('.',',')+'%':'—'}</div>
           </div>
-          <div style="text-align:right;font-size:12px;color:var(--muted);">
-            ${metaMensal > 0
-              ? (faltaMeta > 0 ? `Faltam <strong>${pvMoeda(faltaMeta)}</strong>` : '<strong style="color:#059669;">Meta atingida! 🎉</strong>')
-              : 'A loja ainda não definiu sua meta.'}
+          <div style="text-align:right">
+            ${metaMensal<=0
+              ? '<span class="pv-sub">A loja ainda não definiu uma meta.</span>'
+              : faltaMeta>0
+                ? `<div class="pv-sub">Faltam</div><strong style="font-size:19px">${pvMoeda(faltaMeta)}</strong>`
+                : '<span class="pv-badge" style="background:#DCFCE7;color:#15803D">Meta atingida 🎉</span>'}
           </div>
         </div>
-        <div style="height:12px;background:var(--border);border-radius:999px;overflow:hidden;margin-top:14px;">
-          <div style="height:100%;width:${percentual}%;background:linear-gradient(90deg,#2563EB,#7C3AED);border-radius:999px;"></div>
-        </div>
+        <div class="pv-progress"><div style="width:${percentual}%"></div></div>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:14px;">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;">
-          <div style="font-size:13px;font-weight:800;margin-bottom:12px;">Sua faixa atual</div>
-          <div style="font-size:30px;font-weight:900;color:#7C3AED;">${comissaoPct}%</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px;">Comissão retroativa sobre ${pvMoeda(totalMes)}</div>
+      <div class="pv-grid">
+        <div class="pv-card pv-section">
+          <div style="display:flex;justify-content:space-between;align-items:start;gap:12px">
+            <div>
+              <div class="pv-title">Sua faixa atual</div>
+              <div style="font-size:42px;font-weight:900;color:#7C3AED;margin-top:12px">${comissaoPct}%</div>
+              <div class="pv-sub">Comissão estimada de <strong>${pvMoeda(comissao)}</strong></div>
+            </div>
+            <span class="pv-badge">Regime retroativo</span>
+          </div>
           ${proxima
-            ? `<div style="margin-top:14px;padding:12px;background:var(--bg);border-radius:10px;font-size:12px;">
-                 Faltam <strong>${pvMoeda(faltaProxima)}</strong> para chegar a <strong>${proxima.percentual}%</strong>.
+            ? `<div style="margin-top:20px;background:#F8FAFC;border-radius:13px;padding:15px">
+                 <div class="pv-label">PRÓXIMA CONQUISTA</div>
+                 <div style="font-size:14px;margin-top:7px">Faltam <strong>${pvMoeda(faltaProxima)}</strong> para alcançar <strong>${proxima.percentual}%</strong>.</div>
                </div>`
-            : '<div style="margin-top:14px;color:#059669;font-size:12px;font-weight:700;">Você está na maior faixa disponível.</div>'}
+            : '<div style="margin-top:20px;background:#ECFDF5;color:#047857;border-radius:13px;padding:15px;font-weight:800">Você está na maior faixa disponível.</div>'}
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px">
+            <div style="background:#F8FAFC;border-radius:12px;padding:13px"><div class="pv-label">MELHOR DIA</div><strong>${melhorDia?pvMoeda(melhorDia[1]):pvMoeda(0)}</strong></div>
+            <div style="background:#F8FAFC;border-radius:12px;padding:13px"><div class="pv-label">MÉDIA POR DIA</div><strong>${pvMoeda(mediaDia)}</strong></div>
+          </div>
         </div>
 
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;">
-          <div style="font-size:13px;font-weight:800;margin-bottom:12px;">Suas faixas de comissão</div>
-          ${(faixasOrdenadas.length ? faixasOrdenadas.map((f, i) => {
-            const anterior = i === 0 ? 0 : Number(faixasOrdenadas[i-1]?.valor_ate || 0);
-            const rotulo = f.valor_ate == null
-              ? `Acima de ${pvMoeda(anterior)}`
-              : i === 0
-                ? `Até ${pvMoeda(f.valor_ate)}`
-                : `${pvMoeda(anterior)} até ${pvMoeda(f.valor_ate)}`;
-            const ativa = faixa && faixa.id === f.id;
-            return `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px;${ativa?'font-weight:800;color:#7C3AED;':''}">
-              <span>${rotulo}</span><span>${f.percentual}% ${ativa?'• atual':''}</span>
-            </div>`;
-          }).join('') : '<div style="font-size:12px;color:var(--muted);">Nenhuma faixa configurada.</div>')}
+        <div class="pv-card pv-section">
+          <div class="pv-title">Suas faixas de comissão</div>
+          <div style="margin-top:8px">
+            ${faixasOrdenadas.length ? faixasOrdenadas.map((f,i)=>{
+              const anterior=i===0?0:Number(faixasOrdenadas[i-1]?.valor_ate||0);
+              const rotulo=f.valor_ate==null
+                ? `Acima de ${pvMoeda(anterior)}`
+                : i===0?`Até ${pvMoeda(f.valor_ate)}`:`${pvMoeda(anterior)} até ${pvMoeda(f.valor_ate)}`;
+              const ativa=faixa&&faixa.id===f.id;
+              return `<div class="pv-faixa-row" style="${ativa?'color:#7C3AED;font-weight:900':''}">
+                <span>${rotulo}</span><span>${f.percentual}% ${ativa?'<span class="pv-badge">Atual</span>':''}</span>
+              </div>`;
+            }).join(''):'<div class="pv-sub" style="padding:20px 0">Nenhuma faixa configurada.</div>'}
+          </div>
         </div>
       </div>
 
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-top:14px;">
-        <div style="font-size:13px;font-weight:800;margin-bottom:12px;">Suas vendas dia a dia</div>
-        ${historico.length
-          ? historico.map(([data, valor]) => `
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border);">
-                <span style="font-size:12px;color:var(--muted);">${new Date(data + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
-                <strong style="font-size:13px;">${pvMoeda(valor)}</strong>
-              </div>`).join('')
-          : '<div style="font-size:12px;color:var(--muted);padding:18px 0;text-align:center;">Nenhuma venda registrada neste mês.</div>'}
-      </div>
-    `;
+      <div class="pv-card pv-section" style="margin-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="pv-title">Suas vendas dia a dia</div>
+          <span class="pv-badge">${historico.length} dia${historico.length===1?'':'s'} com vendas</span>
+        </div>
+        <div style="margin-top:8px">
+          ${historico.length ? historico.map(([data,valor])=>`
+            <div class="pv-hist-row">
+              <div>
+                <strong style="font-size:13px">${new Date(data+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})}</strong>
+                <div class="pv-sub">${vendas.filter(v=>v.data===data&&v.origem==='pdv').length} PDV · ${vendas.filter(v=>v.data===data&&v.origem==='manual').length} manual</div>
+              </div>
+              <strong>${pvMoeda(valor)}</strong>
+            </div>`).join('')
+          : '<div class="pv-sub" style="padding:30px 0;text-align:center">Nenhuma venda registrada neste mês.</div>'}
+        </div>
+      </div>`;
   } catch (e) {
     console.error('Erro no painel individual:', e);
-    body.innerHTML = `
-      <div style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:14px;padding:18px;margin-top:10px;">
-        <strong>Não foi possível carregar seu painel.</strong>
-        <div style="font-size:12px;margin-top:6px;">${esc(e.message)}</div>
-      </div>`;
+    body.innerHTML = `<div style="max-width:800px;margin:40px auto;background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:16px;padding:20px">
+      <strong>Não foi possível carregar seu painel.</strong>
+      <div style="font-size:12px;margin-top:7px">${esc(e.message)}</div>
+    </div>`;
   }
 }
 
@@ -21178,6 +21232,52 @@ function pmProximoMes(mesRef){
   return d.toISOString().slice(0,10);
 }
 
+function gcNormalizarNome(valor){
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function gcValorVendaPDV(v){
+  const qtd = Number(v.qtd || 1);
+  if (Number(v.valor_total || 0) > 0) return Number(v.valor_total);
+  if (Number(v.valor_unit || 0) > 0) return Number(v.valor_unit) * qtd;
+  return Number(v.valor || 0) * qtd;
+}
+
+function gcCombinarVendas(vends, vendasManual, vendasPDV){
+  const mapa = new Map((vends || []).map(v => [gcNormalizarNome(v.nome), v.id]));
+  const resultado = [];
+
+  // A tabela vendas_vendedor será usada somente para lançamentos manuais,
+  // evitando duplicar uma venda caso futuramente o PDV também grave nela.
+  (vendasManual || [])
+    .filter(v => !v.origem || v.origem === 'manual')
+    .forEach(v => resultado.push({
+      vendedor_id: v.vendedor_id,
+      data: String(v.data || v.created_at || '').slice(0,10),
+      valor: Number(v.valor || 0),
+      origem: 'manual'
+    }));
+
+  // Vendas históricas e novas do PDV já existentes na tabela vendas.
+  (vendasPDV || []).forEach(v => {
+    const vendedorId = v.vendedor_id || mapa.get(gcNormalizarNome(v.vendedor));
+    if (!vendedorId) return;
+    resultado.push({
+      vendedor_id: vendedorId,
+      data: String(v.data || v.created_at || '').slice(0,10),
+      valor: gcValorVendaPDV(v),
+      origem: 'pdv'
+    });
+  });
+
+  return resultado.filter(v => v.vendedor_id && v.data && Number(v.valor) > 0);
+}
+
 function pmCalcularResumos(vends, metas, faixas, vendas){
   return vends.map(v => {
     const vendasV = (vendas || []).filter(x => x.vendedor_id === v.id);
@@ -21231,11 +21331,13 @@ async function pmCarregarDesempenho() {
 
   try {
     const proxMes = pmProximoMes(mesRef);
-    const [metas, faixas, vendas7] = await Promise.all([
+    const [metas, faixas, vendasManual, vendasPDV] = await Promise.all([
       sbGet('metas_config',`mes_ref=eq.${mesRef}`),
       sbGet('metas_faixas',`mes_ref=eq.${mesRef}&order=valor_ate.asc.nullslast`),
-      sbGet('vendas_vendedor',`data=gte.${mesRef}&data=lt.${proxMes}&order=data.asc&select=vendedor_id,data,valor`).catch(()=>[]),
+      sbGet('vendas_vendedor',`data=gte.${mesRef}&data=lt.${proxMes}&order=data.asc`).catch(()=>[]),
+      sbGet('vendas',`data=gte.${mesRef}&data=lt.${proxMes}&order=data.asc`).catch(()=>[]),
     ]);
+    const vendas7 = gcCombinarVendas(vends, vendasManual, vendasPDV);
     const resumos = pmCalcularResumos(vends, metas, faixas, vendas7);
 
     const totalVendido  = (resumos||[]).reduce((s,r)=>s+Number(r.total_vendido||0),0);
@@ -21396,11 +21498,13 @@ async function pmCarregarMetas() {
   if (sel) sel.innerHTML = '<option value="">🌐 Global (todos)</option>'+vends.map(v=>`<option value="${v.id}">${v.nome}</option>`).join('');
   try {
     const proxMes = pmProximoMes(mesRef);
-    const [metas,faixas,vendasMes] = await Promise.all([
+    const [metas,faixas,vendasManual,vendasPDV] = await Promise.all([
       sbGet('metas_config',`mes_ref=eq.${mesRef}`),
       sbGet('metas_faixas',`mes_ref=eq.${mesRef}&order=valor_ate.asc.nullslast`),
-      sbGet('vendas_vendedor',`data=gte.${mesRef}&data=lt.${proxMes}&select=vendedor_id,data,valor`).catch(()=>[]),
+      sbGet('vendas_vendedor',`data=gte.${mesRef}&data=lt.${proxMes}`).catch(()=>[]),
+      sbGet('vendas',`data=gte.${mesRef}&data=lt.${proxMes}`).catch(()=>[]),
     ]);
+    const vendasMes = gcCombinarVendas(vends, vendasManual, vendasPDV);
     const resumos = pmCalcularResumos(vends, metas, faixas, vendasMes);
     const itens = [{id:null,nome:'🌐 Global (todos os vendedores)',isGlobal:true},...vends.map(v=>({id:v.id,nome:v.nome,isGlobal:false,idx:vends.indexOf(v)}))];
     body.innerHTML = itens.map(item=>{
