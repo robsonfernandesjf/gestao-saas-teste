@@ -8122,7 +8122,7 @@ async function pvCarregarPainelIndividual(usuario) {
                 : '<span class="pv-badge" style="background:#DCFCE7;color:#15803D">Meta atingida 🎉</span>'}
           </div>
         </div>
-        <div class="pv-progress"><div style="width:${percentual}%"></div></div>
+        <div class="pv-progress"><div style="width:${Number(percentual || 0).toFixed(2).replace('.', ',')}%"></div></div>
       </div>
 
       <div class="pv-grid">
@@ -13732,7 +13732,7 @@ function renderRelatoriosCrediario() {
         <span style="color:#3b82f6;font-weight:700;">${R(v.total)}</span>
       </div>
       <div style="background:#f1f5f9;border-radius:4px;height:8px;">
-        <div style="background:#3b82f6;height:100%;width:${pct}%;border-radius:4px;"></div>
+        <div style="background:#3b82f6;height:100%;width:${Number(pct || 0).toFixed(2).replace('.', ',')}%;border-radius:4px;"></div>
       </div>
       <div style="font-size:10px;color:#94a3b8;margin-top:2px;">Recebido: ${R(v.pago)} · Aberto: ${R(v.aberto)}</div>
     </div>`;
@@ -13775,7 +13775,7 @@ function renderRelatoriosCrediario() {
         <span style="color:#7c3aed;font-weight:700;">${R(porMes[k].total)}</span>
       </div>
       <div style="background:#f1f5f9;border-radius:4px;height:8px;">
-        <div style="background:#7c3aed;height:100%;width:${pct}%;border-radius:4px;"></div>
+        <div style="background:#7c3aed;height:100%;width:${Number(pct || 0).toFixed(2).replace('.', ',')}%;border-radius:4px;"></div>
       </div>
     </div>`;
   }).join('') : '<div class="empty">Sem dados no período.</div>';
@@ -19038,7 +19038,7 @@ function renderPicoVendas() {
     const pct = Math.round(qtd/maxVendas*100);
     return `<tr>
       <td style="width:60px">${String(h).padStart(2,'0')}:00</td>
-      <td><div style="background:var(--accent);height:18px;border-radius:4px;width:${pct}%;min-width:4px;"></div></td>
+      <td><div style="background:var(--accent);height:18px;border-radius:4px;width:${Number(pct || 0).toFixed(2).replace('.', ',')}%;min-width:4px;"></div></td>
       <td style="width:50px;text-align:center">${qtd}</td>
       <td style="width:100px">${R(fat[h])}</td>
     </tr>`;
@@ -19397,7 +19397,7 @@ function renderTicketMedioVendedor() {
             <span style="font-weight:700;color:${cor};font-size:15px;">${R(g.ticket)}</span>
           </div>
           <div style="background:var(--border);border-radius:6px;overflow:hidden;height:22px;">
-            <div style="background:${cor};height:100%;width:${pct}%;border-radius:6px;transition:width .4s;display:flex;align-items:center;padding-left:8px;">
+            <div style="background:${cor};height:100%;width:${Number(pct || 0).toFixed(2).replace('.', ',')}%;border-radius:6px;transition:width .4s;display:flex;align-items:center;padding-left:8px;">
               <span style="font-size:11px;color:#fff;font-weight:600;white-space:nowrap;">${g.qtdVendas} venda${g.qtdVendas > 1 ? 's' : ''}</span>
             </div>
           </div>
@@ -21781,7 +21781,6 @@ function gcRecalcularMedalhasAutomaticas(){
 }
 
 async function pmAbrirMeta(vendedorId, mesRef) {
-  _gcFaixas = [{valor_ate:'',percentual:''}];
   document.getElementById('gc-meta-id').value='';
   const mes = mesRef?mesRef.slice(0,7):(document.getElementById('pm-mes')?.value||new Date().toISOString().slice(0,7));
   document.getElementById('gc-meta-mes').value=mes;
@@ -21797,7 +21796,6 @@ async function pmAbrirMeta(vendedorId, mesRef) {
   document.getElementById('gc-comissao-prata').value='';
   document.getElementById('gc-comissao-ouro').value='';
   gcAtualizarModoMedalhas();
-  gcRenderFaixas();
   document.getElementById('modal-gc-meta').classList.add('open');
 
   const mesRefIso = mes + '-01';
@@ -21830,25 +21828,10 @@ async function pmAbrirMeta(vendedorId, mesRef) {
   }
 }
 
-let _gcFaixas=[];
 function gcRenderFaixas(){
-  document.getElementById('gc-faixas-lista').innerHTML=_gcFaixas.map((f,i)=>`
-    <div style="display:grid;grid-template-columns:1fr 110px auto;gap:8px;align-items:center;">
-      <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--bg);">
-        <span style="padding:8px 10px;background:var(--border);color:var(--muted);font-size:11px;font-weight:700;border-right:1px solid var(--border);flex-shrink:0;">Até R$</span>
-        <input type="text" placeholder="${i===_gcFaixas.length-1?'vazio = acima de tudo':'ex: 30.000,00'}" value="${f.valor_ate}"
-          oninput="mascaraMoeda(this);_gcFaixas[${i}].valor_ate=this.value"
-          style="border:none;background:transparent;padding:8px 10px;font-size:13px;color:var(--text);flex:1;outline:none;font-family:inherit;">
-      </div>
-      <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--bg);">
-        <input type="number" placeholder="%" step="0.1" min="0" max="100" value="${f.percentual}"
-          oninput="_gcFaixas[${i}].percentual=this.value"
-          style="border:none;background:transparent;padding:8px 8px;font-size:13px;color:var(--text);width:54px;outline:none;font-family:inherit;">
-        <span style="padding-right:8px;color:var(--muted);font-size:13px;font-weight:700;">%</span>
-      </div>
-      ${_gcFaixas.length>1?`<button onclick="_gcFaixas.splice(${i},1);gcRenderFaixas()"
-        style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;background:var(--bg);font-size:14px;color:var(--muted);font-family:inherit;">×</button>`:'<div style="width:36px;"></div>'}
-    </div>`).join('');
+  // Compatibilidade com versões anteriores.
+  // A seção antiga de faixas foi substituída por Bronze, Prata e Ouro.
+  return;
 }
 function gcAddFaixa(){_gcFaixas.push({valor_ate:'',percentual:''});gcRenderFaixas();}
 
@@ -21888,8 +21871,6 @@ async function gcSalvarMeta(){
     const exist=await sbGet('metas_config',`mes_ref=eq.${mesRef}&vendedor_id=${vendedorId?'eq.'+vendedorId:'is.null'}`);
     for(const e of(exist||[])){
       await sbDelete('metas_config',e.id).catch(()=>{});
-      const fex=await sbGet('metas_faixas',`mes_ref=eq.${mesRef}&vendedor_id=${vendedorId?'eq.'+vendedorId:'is.null'}`);
-      for(const ef of(fex||[]))await sbDelete('metas_faixas',ef.id).catch(()=>{});
     }
     await sbPost('metas_config',{
       mes_ref:mesRef,
@@ -21919,8 +21900,6 @@ async function gcExcluirMeta(id){
     const meta=await sbGet('metas_config',`id=eq.${id}`);
     if(meta?.[0]){
       const m=meta[0];
-      const fex=await sbGet('metas_faixas',`mes_ref=eq.${m.mes_ref}&vendedor_id=${m.vendedor_id?'eq.'+m.vendedor_id:'is.null'}`);
-      for(const f of(fex||[]))await sbDelete('metas_faixas',f.id).catch(()=>{});
     }
     await sbDelete('metas_config',id);
     mostrarNotificacao('✅ Meta excluída!');
