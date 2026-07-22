@@ -8012,7 +8012,7 @@ async function pvCarregarPainelIndividual(usuario) {
       sbGet('metas_config', `mes_ref=eq.${mesRef}&or=(vendedor_id.eq.${vendedor.id},vendedor_id.is.null)`),
       sbGet('metas_faixas', `mes_ref=eq.${mesRef}&or=(vendedor_id.eq.${vendedor.id},vendedor_id.is.null)&order=valor_ate.asc.nullslast`),
       sbGet('vendas_vendedor', `vendedor_id=eq.${vendedor.id}&data=gte.${mesRef}&data=lt.${proximoMes}&order=data.asc`).catch(() => []),
-      sbGet('vendas', 'order=created_at.desc').catch(() => [])
+      sbGet('vendas', '').catch(() => [])
     ]);
 
     const vendasPDVMes = (vendasPDV || []).filter(v => gcVendaNoPeriodo(v, mesRef, proximoMes));
@@ -8131,7 +8131,7 @@ async function pvCarregarPainelIndividual(usuario) {
         <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:15px;flex-wrap:wrap">
           <div>
             <div class="pv-label">ATINGIMENTO DA META</div>
-            <div class="pv-value" style="font-size:36px">${metaMensal>0?percentual.toFixed(1).replace('.',',')+'%':'—'}</div>
+            <div class="pv-value" style="font-size:36px">${metaMensal>0?percentual.toFixed(2).replace('.',',')+'%':'—'}</div>
           </div>
           <div style="text-align:right">
             ${metaMensal<=0
@@ -21355,8 +21355,42 @@ function gcVendaNoPeriodo(v, inicio, fim){
   return data && data >= inicio && data < fim;
 }
 
+function gcResolverVendedorId(venda, vends){
+  const lista = vends || [];
+
+  if (venda?.vendedor_id && lista.some(v => String(v.id) === String(venda.vendedor_id))) {
+    return lista.find(v => String(v.id) === String(venda.vendedor_id))?.id || venda.vendedor_id;
+  }
+
+  const bruto = String(venda?.vendedor || venda?.nome_vendedor || venda?.vendedor_nome || '').trim();
+  if (!bruto) return null;
+
+  const porId = lista.find(v => String(v.id) === bruto);
+  if (porId) return porId.id;
+
+  const nome = gcNormalizarNome(bruto);
+  if (!nome) return null;
+
+  const exato = lista.find(v => gcNormalizarNome(v.nome) === nome);
+  if (exato) return exato.id;
+
+  const candidatos = lista.filter(v => {
+    const cadastrado = gcNormalizarNome(v.nome);
+    return cadastrado && (nome.includes(cadastrado) || cadastrado.includes(nome));
+  });
+  if (candidatos.length === 1) return candidatos[0].id;
+
+  const tokensVenda = nome.split(' ').filter(t => t.length > 2);
+  const porTokens = lista.filter(v => {
+    const tokensCadastro = gcNormalizarNome(v.nome).split(' ').filter(t => t.length > 2);
+    const comuns = tokensVenda.filter(t => tokensCadastro.includes(t));
+    return comuns.length >= Math.min(2, tokensCadastro.length, tokensVenda.length);
+  });
+
+  return porTokens.length === 1 ? porTokens[0].id : null;
+}
+
 function gcCombinarVendas(vends, vendasManual, vendasPDV){
-  const mapa = new Map((vends || []).map(v => [gcNormalizarNome(v.nome), v.id]));
   const resultado = [];
 
   // A tabela vendas_vendedor será usada somente para lançamentos manuais,
@@ -21372,7 +21406,7 @@ function gcCombinarVendas(vends, vendasManual, vendasPDV){
 
   // Vendas históricas e novas do PDV já existentes na tabela vendas.
   (vendasPDV || []).forEach(v => {
-    const vendedorId = v.vendedor_id || mapa.get(gcNormalizarNome(v.vendedor));
+    const vendedorId = gcResolverVendedorId(v, vends);
     if (!vendedorId) return;
     resultado.push({
       vendedor_id: vendedorId,
@@ -21382,7 +21416,21 @@ function gcCombinarVendas(vends, vendasManual, vendasPDV){
     });
   });
 
-  return resultado.filter(v => v.vendedor_id && v.data && Number(v.valor) > 0);
+  const validas = resultado.filter(v => v.vendedor_id && v.data && Number(v.valor) > 0);
+
+  const naoVinculadas = (vendasPDV || []).filter(v =>
+    gcVendaNoPeriodo(v, '1900-01-01', '2999-12-31') &&
+    !gcResolverVendedorId(v, vends)
+  );
+  if (naoVinculadas.length) {
+    console.warn('Vendas do PDV sem vínculo com cadastro de vendedor:', naoVinculadas.map(v => ({
+      vendedor: v.vendedor || v.nome_vendedor || v.vendedor_nome,
+      data: v.data,
+      valor: v.valor_total || v.valor || v.valor_unit
+    })));
+  }
+
+  return validas;
 }
 
 function pmCalcularResumos(vends, metas, faixas, vendas){
@@ -21442,7 +21490,7 @@ async function pmCarregarDesempenho() {
       sbGet('metas_config',`mes_ref=eq.${mesRef}`),
       sbGet('metas_faixas',`mes_ref=eq.${mesRef}&order=valor_ate.asc.nullslast`),
       sbGet('vendas_vendedor',`data=gte.${mesRef}&data=lt.${proxMes}&order=data.asc`).catch(()=>[]),
-      sbGet('vendas','order=created_at.desc').catch(()=>[]),
+      sbGet('vendas','').catch(()=>[]),
     ]);
     const vendasPDVMes = (vendasPDV || []).filter(v => gcVendaNoPeriodo(v, mesRef, proxMes));
     const vendas7 = gcCombinarVendas(vends, vendasManual, vendasPDVMes);
@@ -21610,7 +21658,7 @@ async function pmCarregarMetas() {
       sbGet('metas_config',`mes_ref=eq.${mesRef}`),
       sbGet('metas_faixas',`mes_ref=eq.${mesRef}&order=valor_ate.asc.nullslast`),
       sbGet('vendas_vendedor',`data=gte.${mesRef}&data=lt.${proxMes}`).catch(()=>[]),
-      sbGet('vendas','order=created_at.desc').catch(()=>[]),
+      sbGet('vendas','').catch(()=>[]),
     ]);
     const vendasPDVMes = (vendasPDV || []).filter(v => gcVendaNoPeriodo(v, mesRef, proxMes));
     const vendasMes = gcCombinarVendas(vends, vendasManual, vendasPDVMes);
@@ -21634,7 +21682,7 @@ async function pmCarregarMetas() {
             <div class="pm-meta-nome">${item.nome}</div>
             <div class="pm-meta-sub">${meta?`Meta: ${pmR(metaVal)}`:'⚠️ Sem meta definida'}</div>
           </div>
-          ${pct!==null?`<div style="text-align:right;margin-right:8px;"><div style="font-size:14px;font-weight:800;color:${cor};">${pct}%</div><div style="font-size:11px;color:#64748B;">atingido</div></div>`:''}
+          ${pct!==null?`<div style="text-align:right;margin-right:8px;"><div style="font-size:14px;font-weight:800;color:${cor};">${pct.toFixed(2).replace('.',',')}%</div><div style="font-size:11px;color:#64748B;">atingido</div></div>`:''}
           <button class="btn btn-sm ${meta?'':'btn-primary'}" onclick="pmAbrirMeta('${item.id||''}','${mesRef}')">${meta?'✏️':'+ Meta'}</button>
           ${meta?`<button class="btn btn-sm btn-danger" onclick="gcExcluirMeta('${meta.id}')" style="margin-left:4px;">🗑</button>`:''}
         </div>
