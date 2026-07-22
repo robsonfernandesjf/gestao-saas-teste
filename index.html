@@ -8023,38 +8023,19 @@ async function pvCarregarPainelIndividual(usuario) {
     const metaGlobal = (metas || []).find(m => !m.vendedor_id);
     const metaMensal = Number(metaPropria?.meta_mensal || metaGlobal?.meta_mensal || 0);
 
-    const faixasProprias = (faixas || []).filter(f => f.vendedor_id === vendedor.id);
-    const faixasGlobais = (faixas || []).filter(f => !f.vendedor_id);
-    const faixasEfetivas = faixasProprias.length ? faixasProprias : faixasGlobais;
-
     const totalMes = vendas.reduce((s, v) => s + Number(v.valor || 0), 0);
     const totalHoje = vendas
       .filter(v => v.data === hoje)
       .reduce((s, v) => s + Number(v.valor || 0), 0);
 
     const percentual = metaMensal > 0 ? Math.min((totalMes / metaMensal) * 100, 100) : 0;
-    const faixa = pvFaixaAtual(totalMes, faixasEfetivas);
-    const comissaoPct = Number(faixa?.percentual || vendedor.comissao || 0);
+    const metaAtiva = metaPropria || metaGlobal;
+    const nivelMeta = gcCalcularNivelMeta(totalMes, metaAtiva);
+    const comissaoPct = Number(nivelMeta.percentual || 0);
     const comissao = totalMes * comissaoPct / 100;
     const faltaMeta = Math.max(metaMensal - totalMes, 0);
-
-    const faixasOrdenadas = faixasEfetivas.slice().sort((a,b) => {
-      if (a.valor_ate == null) return 1;
-      if (b.valor_ate == null) return -1;
-      return Number(a.valor_ate) - Number(b.valor_ate);
-    });
-    const indiceAtual = faixa ? faixasOrdenadas.findIndex(f => f.id === faixa.id) : -1;
-    const proxima = indiceAtual >= 0
-      ? faixasOrdenadas[indiceAtual + 1]
-      : faixasOrdenadas.find(f => f.valor_ate == null || Number(f.valor_ate) > totalMes);
-    const inicioProxima = proxima
-      ? (indiceAtual >= 0 && faixa?.valor_ate != null
-          ? Number(faixa.valor_ate)
-          : Number(faixasOrdenadas[Math.max(0, faixasOrdenadas.indexOf(proxima)-1)]?.valor_ate || 0))
-      : 0;
-    const faltaProxima = proxima
-      ? Math.max((proxima.valor_ate == null ? inicioProxima : Number(proxima.valor_ate)) - totalMes, 0)
-      : 0;
+    const proxima = nivelMeta.proximo;
+    const faltaProxima = proxima ? Math.max(Number(proxima.valor || 0) - totalMes, 0) : 0;
 
     const porDia = {};
     vendas.forEach(v => {
@@ -8157,7 +8138,7 @@ async function pvCarregarPainelIndividual(usuario) {
           ${proxima
             ? `<div style="margin-top:20px;background:#F8FAFC;border-radius:13px;padding:15px">
                  <div class="pv-label">PRÓXIMA CONQUISTA</div>
-                 <div style="font-size:14px;margin-top:7px">Faltam <strong>${pvMoeda(faltaProxima)}</strong> para alcançar <strong>${proxima.percentual}%</strong>.</div>
+                 <div style="font-size:14px;margin-top:7px">Faltam <strong>${pvMoeda(faltaProxima)}</strong> para alcançar <strong>${proxima.nome} (${proxima.percentual}%)</strong>.</div>
                </div>`
             : '<div style="margin-top:20px;background:#ECFDF5;color:#047857;border-radius:13px;padding:15px;font-weight:800">Você está na maior faixa disponível.</div>'}
           <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px">
@@ -8167,18 +8148,19 @@ async function pvCarregarPainelIndividual(usuario) {
         </div>
 
         <div class="pv-card pv-section">
-          <div class="pv-title">Suas faixas de comissão</div>
+          <div class="pv-title">Metas e comissões</div>
           <div style="margin-top:8px">
-            ${faixasOrdenadas.length ? faixasOrdenadas.map((f,i)=>{
-              const anterior=i===0?0:Number(faixasOrdenadas[i-1]?.valor_ate||0);
-              const rotulo=f.valor_ate==null
-                ? `Acima de ${pvMoeda(anterior)}`
-                : i===0?`Até ${pvMoeda(f.valor_ate)}`:`${pvMoeda(anterior)} até ${pvMoeda(f.valor_ate)}`;
-              const ativa=faixa&&faixa.id===f.id;
-              return `<div class="pv-faixa-row" style="${ativa?'color:#7C3AED;font-weight:900':''}">
-                <span>${rotulo}</span><span>${f.percentual}% ${ativa?'<span class="pv-badge">Atual</span>':''}</span>
+            ${[
+              {nome:'Bronze', valor:Number(metaAtiva?.bronze_valor||0), percentual:Number(metaAtiva?.bronze_percentual||0), ico:'🥉'},
+              {nome:'Prata', valor:Number(metaAtiva?.prata_valor||0), percentual:Number(metaAtiva?.prata_percentual||0), ico:'🥈'},
+              {nome:'Ouro', valor:Number(metaAtiva?.ouro_valor||metaMensal||0), percentual:Number(metaAtiva?.ouro_percentual||0), ico:'🥇'}
+            ].map(n=>{
+              const atingida=n.valor>0&&totalMes>=n.valor;
+              return `<div class="pv-faixa-row" style="${atingida?'color:#7C3AED;font-weight:900':''}">
+                <span>${n.ico} ${n.nome} · ${pvMoeda(n.valor)}</span>
+                <span>${n.percentual}% ${atingida?'<span class="pv-badge">Conquistada</span>':''}</span>
               </div>`;
-            }).join(''):'<div class="pv-sub" style="padding:20px 0">Nenhuma faixa configurada.</div>'}
+            }).join('')}
           </div>
         </div>
       </div>
@@ -21212,20 +21194,29 @@ atualizarHora();
         </div>
 
         <div id="gc-medalhas-campos" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
-          <div class="form-row">
-            <label>🥉 Bronze</label>
+          <div style="border:1px solid #D6A46B;border-radius:12px;padding:12px;background:#FFF9F2;">
+            <div style="font-weight:800;margin-bottom:9px;">🥉 Bronze</div>
+            <label style="font-size:11px;color:var(--muted);">Valor para atingir</label>
             <input type="text" id="gc-meta-bronze" class="form-input" placeholder="10.000,00"
               oninput="mascaraMoeda(this)" readonly>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-top:8px;">Comissão (%)</label>
+            <input type="number" id="gc-comissao-bronze" class="form-input" min="0" max="100" step="0.01" placeholder="1">
           </div>
-          <div class="form-row">
-            <label>🥈 Prata</label>
+          <div style="border:1px solid #AAB4C3;border-radius:12px;padding:12px;background:#F8FAFC;">
+            <div style="font-weight:800;margin-bottom:9px;">🥈 Prata</div>
+            <label style="font-size:11px;color:var(--muted);">Valor para atingir</label>
             <input type="text" id="gc-meta-prata" class="form-input" placeholder="20.000,00"
               oninput="mascaraMoeda(this)" readonly>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-top:8px;">Comissão (%)</label>
+            <input type="number" id="gc-comissao-prata" class="form-input" min="0" max="100" step="0.01" placeholder="2">
           </div>
-          <div class="form-row">
-            <label>🥇 Ouro</label>
+          <div style="border:1px solid #E0B13D;border-radius:12px;padding:12px;background:#FFFCED;">
+            <div style="font-weight:800;margin-bottom:9px;">🥇 Ouro</div>
+            <label style="font-size:11px;color:var(--muted);">Valor para atingir</label>
             <input type="text" id="gc-meta-ouro" class="form-input" placeholder="30.000,00"
               oninput="mascaraMoeda(this)" readonly>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-top:8px;">Comissão (%)</label>
+            <input type="number" id="gc-comissao-ouro" class="form-input" min="0" max="100" step="0.01" placeholder="3">
           </div>
         </div>
         <div id="gc-medalhas-ajuda" style="font-size:11px;color:var(--muted);margin-top:4px;">
@@ -21233,14 +21224,6 @@ atualizarHora();
         </div>
       </div>
 
-      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-          <div style="font-size:13px;font-weight:700;color:var(--text);">Faixas de comissão</div>
-          <button class="btn btn-outline btn-sm" onclick="gcAddFaixa()">+ Adicionar faixa</button>
-        </div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Deixe "Até" vazio na última faixa para indicar "acima de tudo".</div>
-        <div id="gc-faixas-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
-      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="fecharModal('modal-gc-meta')">Cancelar</button>
@@ -21433,36 +21416,37 @@ function gcCombinarVendas(vends, vendasManual, vendasPDV){
   return validas;
 }
 
+function gcConfigMetaVendedor(metas, vendedorId){
+  return (metas || []).find(m => m.vendedor_id === vendedorId)
+    || (metas || []).find(m => !m.vendedor_id)
+    || null;
+}
+
+function gcCalcularNivelMeta(total, meta){
+  if (!meta) return { nivel:'Sem nível', percentual:0, proximo:null };
+
+  const bronze = Number(meta.bronze_valor || 0);
+  const prata = Number(meta.prata_valor || 0);
+  const ouro = Number(meta.ouro_valor || meta.meta_mensal || 0);
+
+  const cb = Number(meta.bronze_percentual || 0);
+  const cp = Number(meta.prata_percentual || 0);
+  const co = Number(meta.ouro_percentual || 0);
+
+  if (ouro > 0 && total >= ouro) return { nivel:'Ouro', percentual:co, proximo:null };
+  if (prata > 0 && total >= prata) return { nivel:'Prata', percentual:cp, proximo:{nome:'Ouro',valor:ouro,percentual:co} };
+  if (bronze > 0 && total >= bronze) return { nivel:'Bronze', percentual:cb, proximo:{nome:'Prata',valor:prata,percentual:cp} };
+  return { nivel:'A caminho do Bronze', percentual:0, proximo:{nome:'Bronze',valor:bronze,percentual:cb} };
+}
+
 function pmCalcularResumos(vends, metas, faixas, vendas){
   return vends.map(v => {
     const vendasV = (vendas || []).filter(x => x.vendedor_id === v.id);
     const totalVendido = vendasV.reduce((s,x) => s + Number(x.valor || 0), 0);
-    const metaPropria = (metas || []).find(m => m.vendedor_id === v.id);
-    const metaMensal = Number(metaPropria?.meta_mensal || 0);
-
-    const faixasProprias = (faixas || []).filter(f => f.vendedor_id === v.id);
-    const faixasEfetivas = (faixasProprias.length
-      ? faixasProprias
-      : (faixas || []).filter(f => !f.vendedor_id)
-    ).slice().sort((a,b) => {
-      if (a.valor_ate == null) return 1;
-      if (b.valor_ate == null) return -1;
-      return Number(a.valor_ate) - Number(b.valor_ate);
-    });
-
-    let faixaPercentual = 0;
-    for (let i = 0; i < faixasEfetivas.length; i++) {
-      const f = faixasEfetivas[i];
-      const limiteAnterior = i === 0 ? 0 : Number(faixasEfetivas[i-1]?.valor_ate || 0);
-      const limiteAtual = f.valor_ate == null ? null : Number(f.valor_ate);
-      const pertence = limiteAtual == null
-        ? totalVendido >= limiteAnterior
-        : totalVendido >= limiteAnterior && totalVendido < limiteAtual;
-      if (pertence) {
-        faixaPercentual = Number(f.percentual || 0);
-        break;
-      }
-    }
+    const metaConfig = gcConfigMetaVendedor(metas, v.id);
+    const metaMensal = Number(metaConfig?.meta_mensal || 0);
+    const nivel = gcCalcularNivelMeta(totalVendido, metaConfig);
+    const faixaPercentual = Number(nivel.percentual || 0);
 
     const percentualAtingido = metaMensal > 0
       ? Math.min((totalVendido / metaMensal) * 100, 100)
@@ -21474,6 +21458,7 @@ function pmCalcularResumos(vends, metas, faixas, vendas){
       meta_mensal: metaMensal,
       percentual_atingido: percentualAtingido,
       faixa_percentual: faixaPercentual,
+      nivel_meta: nivel.nivel,
       comissao_estimada: totalVendido * faixaPercentual / 100,
     };
   }).sort((a,b) => Number(b.total_vendido) - Number(a.total_vendido));
@@ -21808,17 +21793,16 @@ async function pmAbrirMeta(vendedorId, mesRef) {
   document.getElementById('gc-meta-bronze').value='';
   document.getElementById('gc-meta-prata').value='';
   document.getElementById('gc-meta-ouro').value='';
+  document.getElementById('gc-comissao-bronze').value='';
+  document.getElementById('gc-comissao-prata').value='';
+  document.getElementById('gc-comissao-ouro').value='';
   gcAtualizarModoMedalhas();
   gcRenderFaixas();
   document.getElementById('modal-gc-meta').classList.add('open');
 
   const mesRefIso = mes + '-01';
   try {
-    const [metas, faixas] = await Promise.all([
-      sbGet('metas_config', `mes_ref=eq.${mesRefIso}&vendedor_id=${vendedorId?'eq.'+vendedorId:'is.null'}`),
-      sbGet('metas_faixas', `mes_ref=eq.${mesRefIso}&vendedor_id=${vendedorId?'eq.'+vendedorId:'is.null'}&order=ordem.asc`)
-    ]);
-
+    const metas = await sbGet('metas_config', `mes_ref=eq.${mesRefIso}&vendedor_id=${vendedorId?'eq.'+vendedorId:'is.null'}`);
     const meta = metas?.[0];
     if (!meta) return;
 
@@ -21836,14 +21820,11 @@ async function pmAbrirMeta(vendedorId, mesRef) {
     document.getElementById('gc-meta-ouro').value = meta.ouro_valor != null
       ? gcExibirMoedaCampo(meta.ouro_valor) : '';
 
-    _gcFaixas = (faixas || []).map(f => ({
-      valor_ate: f.valor_ate == null ? '' : gcExibirMoedaCampo(f.valor_ate),
-      percentual: f.percentual
-    }));
-    if (!_gcFaixas.length) _gcFaixas = [{valor_ate:'',percentual:''}];
+    document.getElementById('gc-comissao-bronze').value = meta.bronze_percentual ?? '';
+    document.getElementById('gc-comissao-prata').value = meta.prata_percentual ?? '';
+    document.getElementById('gc-comissao-ouro').value = meta.ouro_percentual ?? '';
 
     gcAtualizarModoMedalhas();
-    gcRenderFaixas();
   } catch (e) {
     console.warn('Não foi possível carregar a meta para edição:', e);
   }
@@ -21882,6 +21863,9 @@ async function gcSalvarMeta(){
   let bronzeVal=gcNumeroMoeda(document.getElementById('gc-meta-bronze').value);
   let prataVal=gcNumeroMoeda(document.getElementById('gc-meta-prata').value);
   let ouroVal=gcNumeroMoeda(document.getElementById('gc-meta-ouro').value);
+  const bronzePct=Number(document.getElementById('gc-comissao-bronze').value||0);
+  const prataPct=Number(document.getElementById('gc-comissao-prata').value||0);
+  const ouroPct=Number(document.getElementById('gc-comissao-ouro').value||0);
 
   if(modoMedalhas==='automatico'){
     bronzeVal=metaVal/3;
@@ -21892,6 +21876,10 @@ async function gcSalvarMeta(){
   if(metaVal<=0){alert('A meta mensal deve ser maior que zero.');return;}
   if(!(bronzeVal>0 && prataVal>bronzeVal && ouroVal>=prataVal && ouroVal<=metaVal)){
     alert('Revise as medalhas: Bronze deve ser menor que Prata, Prata deve ser menor ou igual a Ouro, e Ouro não pode ultrapassar a meta mensal.');
+    return;
+  }
+  if(!(bronzePct>=0 && prataPct>=bronzePct && ouroPct>=prataPct)){
+    alert('Revise as comissões: Bronze deve ser menor ou igual a Prata, e Prata menor ou igual a Ouro.');
     return;
   }
 
@@ -21911,14 +21899,11 @@ async function gcSalvarMeta(){
       bronze_valor:bronzeVal,
       prata_valor:prataVal,
       ouro_valor:ouroVal,
+      bronze_percentual:bronzePct,
+      prata_percentual:prataPct,
+      ouro_percentual:ouroPct,
       criado_por:usuarioAtual()?.id||''
     });
-    const fv=_gcFaixas.filter(f=>f.percentual).map((f,i)=>({
-      mes_ref:mesRef,vendedor_id:vendedorId,
-      valor_ate:f.valor_ate?parseFloat(f.valor_ate.replace(/\./g,'').replace(',','.'))||null:null,
-      percentual:parseFloat(f.percentual)||0,ordem:i
-    }));
-    for(const f of fv)await sbPost('metas_faixas',f);
     mostrarNotificacao('✅ Meta salva!');
     fecharModal('modal-gc-meta');
     pmCarregarMetas();
