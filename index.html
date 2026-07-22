@@ -8015,7 +8015,10 @@ async function pvCarregarPainelIndividual(usuario) {
 
   try {
     const vendedor = await pvLocalizarVendedor(usuario);
-    const vends = getVendedores().filter(v => v.ativo !== false);
+    const vendedoresCache = getVendedores().filter(v => v.ativo !== false);
+    const vends = vendedoresCache.some(v => String(v.id) === String(vendedor.id))
+      ? vendedoresCache
+      : [...vendedoresCache, vendedor];
     const mesRef = pvPrimeiroDiaMes();
     const proximoMes = pvProximoMes(mesRef);
     const hoje = new Date().toISOString().slice(0, 10);
@@ -8176,6 +8179,10 @@ async function pvCarregarPainelIndividual(usuario) {
               {nome:'Prata', valor:Number(metaAtiva?.prata_valor||0), percentual:Number(metaAtiva?.prata_percentual||0), ico:'🥈'},
               {nome:'Ouro', valor:Number(metaAtiva?.ouro_valor||metaMensal||0), percentual:Number(metaAtiva?.ouro_percentual||0), ico:'🥇'}
             ].map(n=>{
+              const metaCfg = metaAtiva || {};
+              const bronzeV = Number(metaCfg.bronze_valor || 0);
+              const prataV = Number(metaCfg.prata_valor || 0);
+              const ouroV = Number(metaCfg.ouro_valor || metaMensal || 0);
               const atingida = n.nome==='Base'
                 ? totalMes < bronzeV
                 : n.nome==='Bronze'
@@ -8183,10 +8190,6 @@ async function pvCarregarPainelIndividual(usuario) {
                   : n.nome==='Prata'
                     ? totalMes >= prataV && totalMes < ouroV
                     : totalMes >= ouroV;
-              const metaCfg = metaAtiva || {};
-              const bronzeV = Number(metaCfg.bronze_valor || 0);
-              const prataV = Number(metaCfg.prata_valor || 0);
-              const ouroV = Number(metaCfg.ouro_valor || metaMensal || 0);
               const intervalo = n.nome==='Base'
                 ? `Até ${pvMoeda(Math.max(bronzeV-0.01,0))}`
                 : n.nome==='Bronze'
@@ -21443,12 +21446,15 @@ function gcCombinarVendas(vends, vendasManual, vendasPDV){
     gcVendaNoPeriodo(v, '1900-01-01', '2999-12-31') &&
     !gcResolverVendedorId(v, vends)
   );
-  if (naoVinculadas.length) {
-    console.warn('Vendas do PDV sem vínculo com cadastro de vendedor:', naoVinculadas.map(v => ({
-      vendedor: v.vendedor || v.nome_vendedor || v.vendedor_nome,
-      data: v.data,
-      valor: v.valor_total || v.valor || v.valor_unit
-    })));
+  if (naoVinculadas.length && !window.__gcAvisoVendasSemVinculo) {
+    window.__gcAvisoVendasSemVinculo = true;
+    const nomes = [...new Set(naoVinculadas.map(v =>
+      v.vendedor || v.nome_vendedor || v.vendedor_nome || '(sem vendedor)'
+    ))];
+    console.warn(
+      `${naoVinculadas.length} venda(s) do PDV não puderam ser vinculadas a um vendedor.`,
+      { vendedores_encontrados: nomes }
+    );
   }
 
   return validas;
