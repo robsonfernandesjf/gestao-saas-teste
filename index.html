@@ -8042,7 +8042,7 @@ async function pvCarregarPainelIndividual(usuario) {
 
     const percentual = metaMensal > 0 ? Math.min((totalMes / metaMensal) * 100, 100) : 0;
     const metaAtiva = metaPropria || metaGlobal;
-    const nivelMeta = gcCalcularNivelMeta(totalMes, metaAtiva);
+    const nivelMeta = gcCalcularNivelMeta(totalMes, metaAtiva, vendedor.comissao);
     const comissaoPct = Number(nivelMeta.percentual || 0);
     const comissao = totalMes * comissaoPct / 100;
     const faltaMeta = Math.max(metaMensal - totalMes, 0);
@@ -8114,6 +8114,13 @@ async function pvCarregarPainelIndividual(usuario) {
               <div style="font-size:25px">${n.ico}</div>
               <div style="font-size:13px;font-weight:900;color:${n.cor};margin-top:5px">${n.nome}</div>
               <div style="font-size:12px;font-weight:800;margin-top:4px">${metaMensal>0?pvMoeda(n.valor):'—'}</div>
+              <div style="font-size:10px;color:#64748B;margin-top:4px">${
+                n.nome==='Bronze'
+                  ? `${pvMoeda(Number((metaPropria||metaGlobal)?.bronze_valor||0))} até ${pvMoeda(Math.max(Number((metaPropria||metaGlobal)?.prata_valor||0)-0.01,0))}`
+                  : n.nome==='Prata'
+                    ? `${pvMoeda(Number((metaPropria||metaGlobal)?.prata_valor||0))} até ${pvMoeda(Math.max(Number((metaPropria||metaGlobal)?.ouro_valor||metaMensal||0)-0.01,0))}`
+                    : `${pvMoeda(Number((metaPropria||metaGlobal)?.ouro_valor||metaMensal||0))} ou mais`
+              }</div>
               <div style="font-size:10px;color:#64748B;margin-top:4px">${atingida?'Conquistada':'Faltam '+pvMoeda(Math.max(n.valor-totalMes,0))}</div>
             </div>`;
           }).join('')}
@@ -8142,7 +8149,8 @@ async function pvCarregarPainelIndividual(usuario) {
           <div style="display:flex;justify-content:space-between;align-items:start;gap:12px">
             <div>
               <div class="pv-title">Sua faixa atual</div>
-              <div style="font-size:42px;font-weight:900;color:#7C3AED;margin-top:12px">${comissaoPct}%</div>
+              <div style="font-size:13px;font-weight:900;color:#7C3AED;margin-top:12px">${nivelMeta.nivel}</div>
+              <div style="font-size:42px;font-weight:900;color:#7C3AED;margin-top:3px">${comissaoPct}%</div>
               <div class="pv-sub">Comissão estimada de <strong>${pvMoeda(comissao)}</strong></div>
             </div>
             <span class="pv-badge">Regime retroativo</span>
@@ -8163,14 +8171,32 @@ async function pvCarregarPainelIndividual(usuario) {
           <div class="pv-title">Metas e comissões</div>
           <div style="margin-top:8px">
             ${[
+              {nome:'Base', valor:0, percentual:Number(vendedor.comissao||0), ico:'🔹'},
               {nome:'Bronze', valor:Number(metaAtiva?.bronze_valor||0), percentual:Number(metaAtiva?.bronze_percentual||0), ico:'🥉'},
               {nome:'Prata', valor:Number(metaAtiva?.prata_valor||0), percentual:Number(metaAtiva?.prata_percentual||0), ico:'🥈'},
               {nome:'Ouro', valor:Number(metaAtiva?.ouro_valor||metaMensal||0), percentual:Number(metaAtiva?.ouro_percentual||0), ico:'🥇'}
             ].map(n=>{
-              const atingida=n.valor>0&&totalMes>=n.valor;
+              const atingida = n.nome==='Base'
+                ? totalMes < bronzeV
+                : n.nome==='Bronze'
+                  ? totalMes >= bronzeV && totalMes < prataV
+                  : n.nome==='Prata'
+                    ? totalMes >= prataV && totalMes < ouroV
+                    : totalMes >= ouroV;
+              const metaCfg = metaAtiva || {};
+              const bronzeV = Number(metaCfg.bronze_valor || 0);
+              const prataV = Number(metaCfg.prata_valor || 0);
+              const ouroV = Number(metaCfg.ouro_valor || metaMensal || 0);
+              const intervalo = n.nome==='Base'
+                ? `Até ${pvMoeda(Math.max(bronzeV-0.01,0))}`
+                : n.nome==='Bronze'
+                  ? `${pvMoeda(bronzeV)} até ${pvMoeda(Math.max(prataV-0.01,0))}`
+                  : n.nome==='Prata'
+                    ? `${pvMoeda(prataV)} até ${pvMoeda(Math.max(ouroV-0.01,0))}`
+                    : `${pvMoeda(ouroV)} ou mais`;
               return `<div class="pv-faixa-row" style="${atingida?'color:#7C3AED;font-weight:900':''}">
-                <span>${n.ico} ${n.nome} · ${pvMoeda(n.valor)}</span>
-                <span>${n.percentual}% ${atingida?'<span class="pv-badge">Conquistada</span>':''}</span>
+                <span>${n.ico} ${n.nome}<br><small style="color:#64748B">${intervalo}</small></span>
+                <span>${n.percentual}% ${atingida?'<span class="pv-badge">Atual</span>':''}</span>
               </div>`;
             }).join('')}
           </div>
@@ -21434,8 +21460,18 @@ function gcConfigMetaVendedor(metas, vendedorId){
     || null;
 }
 
-function gcCalcularNivelMeta(total, meta){
-  if (!meta) return { nivel:'Sem nível', percentual:0, proximo:null };
+function gcCalcularNivelMeta(total, meta, comissaoBase){
+  const base = Number(comissaoBase || 0);
+
+  if (!meta) {
+    return {
+      nivel:'Base',
+      percentual:base,
+      inicio:0,
+      fim:null,
+      proximo:null
+    };
+  }
 
   const bronze = Number(meta.bronze_valor || 0);
   const prata = Number(meta.prata_valor || 0);
@@ -21445,10 +21481,28 @@ function gcCalcularNivelMeta(total, meta){
   const cp = Number(meta.prata_percentual || 0);
   const co = Number(meta.ouro_percentual || 0);
 
-  if (ouro > 0 && total >= ouro) return { nivel:'Ouro', percentual:co, proximo:null };
-  if (prata > 0 && total >= prata) return { nivel:'Prata', percentual:cp, proximo:{nome:'Ouro',valor:ouro,percentual:co} };
-  if (bronze > 0 && total >= bronze) return { nivel:'Bronze', percentual:cb, proximo:{nome:'Prata',valor:prata,percentual:cp} };
-  return { nivel:'A caminho do Bronze', percentual:0, proximo:{nome:'Bronze',valor:bronze,percentual:cb} };
+  // Regra retroativa por patamar:
+  // abaixo do Bronze = comissão base do cadastro do vendedor
+  // Bronze até antes da Prata = comissão Bronze
+  // Prata até antes do Ouro = comissão Prata
+  // Ouro ou acima = comissão Ouro
+  if (ouro > 0 && total >= ouro) {
+    return { nivel:'Ouro', percentual:co, inicio:ouro, fim:null, proximo:null };
+  }
+  if (prata > 0 && total >= prata) {
+    return { nivel:'Prata', percentual:cp, inicio:prata, fim:ouro, proximo:{nome:'Ouro',valor:ouro,percentual:co} };
+  }
+  if (bronze > 0 && total >= bronze) {
+    return { nivel:'Bronze', percentual:cb, inicio:bronze, fim:prata, proximo:{nome:'Prata',valor:prata,percentual:cp} };
+  }
+
+  return {
+    nivel:'Base',
+    percentual:base,
+    inicio:0,
+    fim:bronze,
+    proximo:{nome:'Bronze',valor:bronze,percentual:cb}
+  };
 }
 
 function pmCalcularResumos(vends, metas, faixas, vendas){
@@ -21457,7 +21511,7 @@ function pmCalcularResumos(vends, metas, faixas, vendas){
     const totalVendido = vendasV.reduce((s,x) => s + Number(x.valor || 0), 0);
     const metaConfig = gcConfigMetaVendedor(metas, v.id);
     const metaMensal = Number(metaConfig?.meta_mensal || 0);
-    const nivel = gcCalcularNivelMeta(totalVendido, metaConfig);
+    const nivel = gcCalcularNivelMeta(totalVendido, metaConfig, v.comissao);
     const faixaPercentual = Number(nivel.percentual || 0);
 
     const percentualAtingido = metaMensal > 0
