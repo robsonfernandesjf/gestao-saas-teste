@@ -4543,7 +4543,7 @@ body.modo-vitrine-publica{
   <button onclick="showPage('consignado')" id="nav-btn-consignado" style="display:none;">📦 Consignado</button>
   <button onclick="showPage('trocas')">🔄 Trocas</button>
   <button onclick="showPage('marketing')" id="nav-btn-marketing" style="display:none;">🚀 Marketing IA</button>
-  <button onclick="showPage('gestao-comercial')" id="nav-btn-gestao-comercial" style="display:none;">🏆 Gestão Comercial</button>
+  <button onclick="showPage('painel-metas')" id="nav-btn-painel-metas" style="display:none;">🎯 Painel de Metas</button>
   <button id="nav-empresa" onclick="showPage('empresa'); carregarDadosEmpresa();" style="display:none;">⚙️ Config. Empresa</button>
   <button class="btn-logout-mobile" onclick="fazerLogout()" style="display:none;margin-top:auto;color:var(--danger);border-color:var(--danger);">🚪 Sair</button>
 </nav>
@@ -8577,7 +8577,7 @@ function showPage(id) {
   if (id === 'usuarios') { renderUsuarios(); }
   if (id === 'vendas') { popularListaClientesVenda(); popularSelectVendedores(); atualizarWidgetCaixa(); if (!document.getElementById('venda-data').value) { const t = new Date(); document.getElementById('venda-data').value = t.toISOString().slice(0,10); } }
   if (id === 'marketing') { renderMktSteps(); mktPreencherCidade(); }
-  if (id === 'gestao-comercial') { renderGestaoComercial(); }
+  if (id === 'painel-metas') { renderGestaoComercial(); }
   closeMenuMobile();
 }
 
@@ -10933,7 +10933,7 @@ function aplicarFlagCrediario() {
   if (btnConsig) btnConsig.style.setProperty('display', LOJA_USA_CONSIGNADO ? 'flex' : 'none', 'important');
   const btnMkt = document.getElementById('nav-btn-marketing');
   if (btnMkt) btnMkt.style.setProperty('display', LOJA_USA_MARKETING ? 'flex' : 'none', 'important');
-  const btnGC = document.getElementById('nav-btn-gestao-comercial');
+  const btnGC = document.getElementById('nav-btn-painel-metas');
   if (btnGC) btnGC.style.setProperty('display', LOJA_USA_GESTAO_COMERCIAL ? 'flex' : 'none', 'important');
   const wrapCred = document.getElementById('pdv-receber-cred-wrap');
   if (wrapCred) wrapCred.style.display = LOJA_USA_CREDIARIO ? 'block' : 'none';
@@ -14841,20 +14841,23 @@ async function salvarVendedor() {
   if (!nome) { alert('Informe o nome do vendedor.'); return; }
   const id = document.getElementById('vend-id').value;
   const painelAtivo = document.getElementById('vend-painel')?.checked || false;
-  // Validação do painel
+
+  // Lê campos do painel ANTES de qualquer async
+  const loginPainel = document.getElementById('vend-login')?.value.trim() || '';
+  const senhaProv   = document.getElementById('vend-senha-prov')?.value || '';
+
   if (painelAtivo && !id) {
-    const loginPainel = document.getElementById('vend-login').value.trim();
-    const senhaProv   = document.getElementById('vend-senha-prov').value;
     if (!loginPainel) { alert('Informe o login para o painel do vendedor.'); return; }
     if (!senhaProv)   { alert('Informe a senha provisória.'); return; }
   }
+
   const dados = {
     nome,
-    telefone:  document.getElementById('vend-telefone').value.trim(),
-    cpf:       document.getElementById('vend-cpf').value.trim(),
-    email:     document.getElementById('vend-email').value.trim(),
-    comissao:  parseFloat(document.getElementById('vend-comissao').value) || 0,
-    ativo:     document.getElementById('vend-ativo').checked,
+    telefone:     document.getElementById('vend-telefone').value.trim(),
+    cpf:          document.getElementById('vend-cpf').value.trim(),
+    email:        document.getElementById('vend-email').value.trim(),
+    comissao:     parseFloat(document.getElementById('vend-comissao').value) || 0,
+    ativo:        document.getElementById('vend-ativo').checked,
     painel_ativo: painelAtivo,
   };
 
@@ -14867,36 +14870,42 @@ async function salvarVendedor() {
       const idx = vendedores.findIndex(v => v.id === id);
       if (idx >= 0) vendedores[idx] = { ...vendedores[idx], ...dados };
     } else {
-      const novo = await sbPost('vendedores', dados);
+      const novo  = await sbPost('vendedores', dados);
       const criado = Array.isArray(novo) ? novo[0] : novo;
-      vendedorId = criado?.id || 'vnd_' + Date.now();
+      vendedorId  = criado?.id || 'vnd_' + Date.now();
       vendedores.push(criado || { ...dados, id: vendedorId });
     }
 
-    // Cria usuário automaticamente se painel marcado (novo vendedor)
-    if (painelAtivo && !id) {
-      const loginPainel = document.getElementById('vend-login').value.trim();
-      const senhaProv   = document.getElementById('vend-senha-prov').value;
-      const novoUsr = {
-        nome,
-        login:            loginPainel,
-        senha:            senhaProv,
-        perfil:           'vendedor_painel',
-        senha_provisoria: true,
-        vendedor_id:      vendedorId,
-        ativo:            true,
-        modulos:          JSON.stringify([]),
-      };
+    // Cria usuário automaticamente se painel ativado em novo vendedor
+    if (painelAtivo && !id && loginPainel && senhaProv) {
       try {
-        const resUsr = await sbPost('usuarios', novoUsr);
-        const usrCriado = Array.isArray(resUsr)?resUsr[0]:resUsr;
-        // Vincula usuario_id no vendedor
+        // Hash bcrypt igual ao salvarUsuario
+        const senhaHash = typeof dcodeIO !== 'undefined' && dcodeIO.bcrypt
+          ? dcodeIO.bcrypt.hashSync(senhaProv, 10)
+          : senhaProv; // fallback sem hash se lib não carregada
+
+        const novoUsr = {
+          nome,                          // nome do vendedor
+          login:            loginPainel,
+          senha:            senhaHash,
+          perfil:           'vendedor_painel',
+          senha_provisoria: true,
+          vendedor_id:      vendedorId,
+          ativo:            true,
+          modulos:          JSON.stringify([]),
+        };
+        const resUsr   = await sbPost('usuarios', novoUsr);
+        const usrCriado = Array.isArray(resUsr) ? resUsr[0] : resUsr;
         if (usrCriado?.id) {
           await sbPatch('vendedores', vendedorId, { usuario_id: usrCriado.id });
+          // Atualiza cache local
+          const idx2 = vendedores.findIndex(v => v.id === vendedorId);
+          if (idx2 >= 0) vendedores[idx2].usuario_id = usrCriado.id;
         }
         mostrarNotificacao('✅ Vendedor salvo e acesso ao painel criado!');
       } catch(eu) {
-        mostrarNotificacao('⚠️ Vendedor salvo, mas erro ao criar acesso: '+eu.message);
+        console.error('Erro ao criar usuário do painel:', eu);
+        mostrarNotificacao('⚠️ Vendedor salvo, mas erro ao criar acesso: ' + eu.message);
       }
     } else {
       mostrarNotificacao('✅ Vendedor salvo!');
@@ -14906,14 +14915,14 @@ async function salvarVendedor() {
     saveVendedores(vendedores);
     popularSelectVendedores();
     auditLog({
-      operacao:    id ? 'edicao_vendedor' : 'cadastro_vendedor',
-      modulo:      'empresa',
-      registro_id: id || null,
+      operacao:     id ? 'edicao_vendedor' : 'cadastro_vendedor',
+      modulo:       'empresa',
+      registro_id:  id || null,
       dados_depois: { nome: dados.nome, painel_ativo: painelAtivo },
     });
   } catch (e) {
     console.error('Erro ao salvar vendedor:', e);
-    alert('⚠ Erro ao salvar vendedor. Verifique sua conexão.');
+    alert('⚠ Erro ao salvar vendedor: ' + e.message);
   } finally {
     mostrarLoading(false);
   }
@@ -20540,9 +20549,9 @@ atualizarHora();
 </script>
 
 <!-- ===== GESTÃO COMERCIAL ===== -->
-<div id="page-gestao-comercial" class="page">
+<div id="page-painel-metas" class="page">
 <style>
-#page-gestao-comercial { padding:0; background:var(--bg); }
+#page-painel-metas { padding:0; background:var(--bg); }
 .gc-wrap { max-width:900px; margin:0 auto; padding:28px 20px 60px; }
 .gc-tabs { display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:24px; }
 .gc-tab { padding:10px 18px; font-size:13px; font-weight:600; color:var(--muted); border-bottom:2px solid transparent; cursor:pointer; transition:all .15s; background:none; border-top:none; border-left:none; border-right:none; font-family:inherit; }
@@ -20583,8 +20592,8 @@ atualizarHora();
 <div class="gc-wrap">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
     <div>
-      <div style="font-size:20px;font-weight:800;color:var(--text);">🏆 Gestão Comercial</div>
-      <div style="font-size:13px;color:var(--muted);margin-top:2px;">Metas, comissões e desempenho de vendedores</div>
+      <div style="font-size:20px;font-weight:800;color:var(--text);">🎯 Painel de Metas</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:2px;">Acompanhe metas, comissões e desempenho da equipe</div>
     </div>
     <div style="font-size:12px;color:var(--muted);" id="gc-mes-ref"></div>
   </div>
@@ -20596,7 +20605,7 @@ atualizarHora();
   </div>
 
   <!-- ABA DESEMPENHO -->
-  <div id="gc-panel-desempenho" class="gc-panel active">
+  <div id="pm-panel-desempenho" class="gc-panel active">
     <!-- Filtro de mês -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
       <div style="display:flex;align-items:center;gap:8px;">
@@ -20626,7 +20635,7 @@ atualizarHora();
   </div>
 
   <!-- ABA METAS E COMISSÕES -->
-  <div id="gc-panel-metas" class="gc-panel">
+  <div id="pm-panel-metas" class="gc-panel">
     <!-- Seletor mês + botão novo -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
       <div style="display:flex;align-items:center;gap:8px;">
@@ -20651,7 +20660,7 @@ atualizarHora();
   </div>
 
   <!-- ABA LANÇAMENTO MANUAL -->
-  <div id="gc-panel-lancamento" class="gc-panel">
+  <div id="pm-panel-lancamento" class="gc-panel">
     <div class="gc-lancamento-form">
       <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">Registrar venda manualmente</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Use quando a loja ainda não usa o PDV ou para corrigir lançamentos.</div>
@@ -20692,36 +20701,44 @@ atualizarHora();
 <div class="modal-bg" id="modal-gc-meta">
   <div class="modal" style="max-width:540px;">
     <div class="modal-header">
-      <h2>🎯 Definir Meta</h2>
+      <h2>🎯 Definir Meta e Comissões</h2>
       <button class="modal-close" onclick="fecharModal('modal-gc-meta')">×</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="gc-meta-id">
       <div class="form-grid">
         <div class="form-row">
-          <label>Vendedor (vazio = global)</label>
-          <select id="gc-meta-vendedor">
-            <option value="">Global (todos)</option>
+          <label>Vendedor <span style="color:var(--muted);font-weight:400;">(vazio = global)</span></label>
+          <select id="gc-meta-vendedor" class="form-input">
+            <option value="">🌐 Global (todos os vendedores)</option>
           </select>
         </div>
         <div class="form-row">
           <label>Mês de referência *</label>
-          <input type="month" id="gc-meta-mes">
+          <input type="month" id="gc-meta-mes" class="form-input">
         </div>
       </div>
       <div class="form-row">
-        <label>Meta mensal (R$) *</label>
-        <input type="text" id="gc-meta-valor" placeholder="0,00" oninput="mascaraMoeda(this)">
+        <label>Meta mensal *</label>
+        <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--bg);">
+          <span style="padding:10px 12px;background:var(--border);color:var(--muted);font-size:13px;font-weight:700;border-right:1px solid var(--border);flex-shrink:0;">R$</span>
+          <input type="text" id="gc-meta-valor" placeholder="0,00"
+            style="border:none;background:transparent;padding:10px 12px;font-size:14px;font-weight:700;color:var(--text);flex:1;outline:none;font-family:inherit;"
+            oninput="mascaraMoeda(this)">
+        </div>
       </div>
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">Faixas de comissão</div>
-        <div id="gc-faixas-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
-        <button class="btn btn-outline btn-sm" onclick="gcAddFaixa()">+ Adicionar faixa</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-size:13px;font-weight:700;color:var(--text);">Faixas de comissão</div>
+          <button class="btn btn-outline btn-sm" onclick="gcAddFaixa()">+ Adicionar faixa</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Deixe "Até" vazio na última faixa para indicar "acima de tudo".</div>
+        <div id="gc-faixas-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="fecharModal('modal-gc-meta')">Cancelar</button>
-      <button class="btn btn-primary" onclick="gcSalvarMeta()">Salvar meta</button>
+      <button class="btn btn-primary" onclick="gcSalvarMeta()">Salvar meta e faixas</button>
     </div>
   </div>
 </div>
@@ -22802,12 +22819,24 @@ function gcAbrirModalMeta(vendedorId, mesRef) {
 
 function gcRenderFaixas() {
   document.getElementById('gc-faixas-lista').innerHTML = _gcFaixas.map((f,i)=>`
-    <div style="display:flex;gap:8px;align-items:center;">
-      <input type="text" placeholder="${i===_gcFaixas.length-1?'Acima de (deixe vazio)':'Até R$'}" value="${f.valor_ate}"
-        oninput="_gcFaixas[${i}].valor_ate=this.value" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);">
-      <input type="number" placeholder="%" step="0.1" min="0" max="100" value="${f.percentual}"
-        oninput="_gcFaixas[${i}].percentual=this.value" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);">
-      ${_gcFaixas.length>1?`<button onclick="_gcFaixas.splice(${i},1);gcRenderFaixas()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:var(--bg);font-size:13px;">×</button>`:''}
+    <div style="display:grid;grid-template-columns:1fr 110px auto;gap:8px;align-items:center;">
+      <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--bg);">
+        <span style="padding:8px 10px;background:var(--border);color:var(--muted);font-size:12px;font-weight:700;border-right:1px solid var(--border);flex-shrink:0;">Até R$</span>
+        <input type="text" placeholder="${i===_gcFaixas.length-1?'vazio = acima de tudo':'ex: 30.000,00'}" value="${f.valor_ate}"
+          oninput="_gcFaixas[${i}].valor_ate=this.value;mascaraMoeda(this)"
+          style="border:none;background:transparent;padding:8px 10px;font-size:13px;color:var(--text);flex:1;outline:none;font-family:inherit;">
+      </div>
+      <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--bg);">
+        <input type="number" placeholder="%" step="0.1" min="0" max="100" value="${f.percentual}"
+          oninput="_gcFaixas[${i}].percentual=this.value"
+          style="border:none;background:transparent;padding:8px 8px;font-size:13px;color:var(--text);width:56px;outline:none;font-family:inherit;">
+        <span style="padding-right:8px;color:var(--muted);font-size:13px;font-weight:700;">%</span>
+      </div>
+      ${_gcFaixas.length>1
+        ? `<button onclick="_gcFaixas.splice(${i},1);gcRenderFaixas()"
+            style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;background:var(--bg);font-size:14px;color:var(--muted);font-family:inherit;">×</button>`
+        : '<div style="width:38px;"></div>'
+      }
     </div>`).join('');
 }
 
