@@ -4399,7 +4399,22 @@ body.modo-vitrine-publica{
 @media(max-width:900px){.cred-flow,.cred-kpis,.cred-grid-2,.cred-form-grid{grid-template-columns:1fr}.cred-flow-step{text-align:left}.cred-flow-step .ico{margin-left:0}}
 </style>
 
+
+<style id="pv-isolamento-css">
+  body.pv-modo-vendedor > *:not(#pv-interno):not(#pv-interno-senha) {
+    display: none !important;
+  }
+  body.pv-modo-vendedor {
+    margin: 0 !important;
+    overflow-x: hidden;
+    background: var(--bg);
+  }
+  body.pv-modo-vendedor #pv-interno {
+    display: block !important;
+  }
+</style>
 </head>
+
 <body>
 
 <!-- ===== LANDING PAGE (raiz pura, sem subpath nenhum) ===== -->
@@ -7898,10 +7913,231 @@ function getSessao() {
 function saveSessao(s) { sessionStorage.setItem(SES_KEY, JSON.stringify(s)); }
 function clearSessao() { sessionStorage.removeItem(SES_KEY); }
 
+
 function usuarioAtual() {
   const ses = getSessao();
   if (!ses) return null;
   return ses.dados || null;
+}
+
+function ehVendedorPainel(usuario) {
+  return String(usuario?.perfil || '').trim().toLowerCase() === 'vendedor_painel';
+}
+
+function pvMoeda(valor) {
+  return Number(valor || 0).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  });
+}
+
+function pvPrimeiroDiaMes() {
+  return new Date().toISOString().slice(0, 7) + '-01';
+}
+
+function pvProximoMes(mesRef) {
+  const d = new Date(mesRef + 'T12:00:00');
+  d.setMonth(d.getMonth() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function pvFaixaAtual(total, faixas) {
+  const lista = (faixas || []).slice().sort((a, b) => {
+    if (a.valor_ate == null) return 1;
+    if (b.valor_ate == null) return -1;
+    return Number(a.valor_ate) - Number(b.valor_ate);
+  });
+
+  for (let i = 0; i < lista.length; i++) {
+    const atual = lista[i];
+    const anterior = i === 0 ? 0 : Number(lista[i - 1]?.valor_ate || 0);
+    const limite = atual.valor_ate == null ? null : Number(atual.valor_ate);
+    const pertence = limite == null
+      ? total >= anterior
+      : total >= anterior && total < limite;
+    if (pertence) return { ...atual, indice: i, anterior };
+  }
+  return null;
+}
+
+async function pvLocalizarVendedor(usuario) {
+  if (usuario?.vendedor_id) {
+    const direto = await sbGet('vendedores', `id=eq.${usuario.vendedor_id}&limit=1`);
+    if (direto?.[0]) return direto[0];
+  }
+
+  const porUsuario = await sbGet('vendedores', `usuario_id=eq.${usuario.id}&limit=1`).catch(() => []);
+  if (porUsuario?.[0]) return porUsuario[0];
+
+  throw new Error('Este usuário não está vinculado a um vendedor.');
+}
+
+async function pvIniciarPainelInterno(usuario) {
+  document.body.classList.add('pv-modo-vendedor');
+
+  const painel = document.getElementById('pv-interno');
+  const login = document.getElementById('login-screen');
+  if (login) login.classList.add('hidden');
+  if (painel) painel.style.display = 'block';
+
+  document.getElementById('pv-int-nome').textContent = usuario.nome || 'Vendedor';
+  document.getElementById('pv-int-loja').textContent = 'LegadoERP · Meu desempenho';
+  document.getElementById('pv-int-data').textContent = new Date().toLocaleDateString('pt-BR', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+  });
+
+  const hora = new Date().getHours();
+  document.getElementById('pv-int-saudacao').textContent =
+    hora < 12 ? 'Bom dia,' : hora < 18 ? 'Boa tarde,' : 'Boa noite,';
+
+  await pvCarregarPainelIndividual(usuario);
+}
+
+async function pvCarregarPainelIndividual(usuario) {
+  const body = document.getElementById('pv-int-body');
+  body.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:12px;">
+      <div style="width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:pvIntSpin 1s linear infinite;"></div>
+      <div style="font-size:13px;color:var(--muted);">Carregando seus dados...</div>
+    </div>`;
+
+  try {
+    const vendedor = await pvLocalizarVendedor(usuario);
+    const mesRef = pvPrimeiroDiaMes();
+    const proximoMes = pvProximoMes(mesRef);
+    const hoje = new Date().toISOString().slice(0, 10);
+
+    const [metas, faixas, vendas] = await Promise.all([
+      sbGet('metas_config', `mes_ref=eq.${mesRef}&or=(vendedor_id.eq.${vendedor.id},vendedor_id.is.null)`),
+      sbGet('metas_faixas', `mes_ref=eq.${mesRef}&or=(vendedor_id.eq.${vendedor.id},vendedor_id.is.null)&order=valor_ate.asc.nullslast`),
+      sbGet('vendas_vendedor', `vendedor_id=eq.${vendedor.id}&data=gte.${mesRef}&data=lt.${proximoMes}&order=data.asc`)
+    ]);
+
+    const metaPropria = (metas || []).find(m => m.vendedor_id === vendedor.id);
+    const metaGlobal = (metas || []).find(m => !m.vendedor_id);
+    const metaMensal = Number(metaPropria?.meta_mensal || metaGlobal?.meta_mensal || 0);
+
+    const faixasProprias = (faixas || []).filter(f => f.vendedor_id === vendedor.id);
+    const faixasGlobais = (faixas || []).filter(f => !f.vendedor_id);
+    const faixasEfetivas = faixasProprias.length ? faixasProprias : faixasGlobais;
+
+    const totalMes = (vendas || []).reduce((s, v) => s + Number(v.valor || 0), 0);
+    const totalHoje = (vendas || [])
+      .filter(v => String(v.data).slice(0, 10) === hoje)
+      .reduce((s, v) => s + Number(v.valor || 0), 0);
+
+    const percentual = metaMensal > 0 ? Math.min((totalMes / metaMensal) * 100, 100) : 0;
+    const faixa = pvFaixaAtual(totalMes, faixasEfetivas);
+    const comissaoPct = Number(faixa?.percentual || vendedor.comissao || 0);
+    const comissao = totalMes * comissaoPct / 100;
+
+    const faixasOrdenadas = faixasEfetivas.slice().sort((a,b) => {
+      if (a.valor_ate == null) return 1;
+      if (b.valor_ate == null) return -1;
+      return Number(a.valor_ate) - Number(b.valor_ate);
+    });
+    const proxima = faixasOrdenadas.find(f => f.valor_ate != null && Number(f.valor_ate) > totalMes);
+    const faltaProxima = proxima ? Math.max(Number(proxima.valor_ate) - totalMes, 0) : 0;
+    const faltaMeta = Math.max(metaMensal - totalMes, 0);
+
+    const porDia = {};
+    (vendas || []).forEach(v => {
+      const dia = String(v.data).slice(0, 10);
+      porDia[dia] = (porDia[dia] || 0) + Number(v.valor || 0);
+    });
+    const historico = Object.entries(porDia).sort((a,b) => b[0].localeCompare(a[0]));
+
+    body.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;padding-top:0;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:11px;color:var(--muted);font-weight:700;">VENDA DE HOJE</div>
+          <div style="font-size:22px;font-weight:800;margin-top:6px;">${pvMoeda(totalHoje)}</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:11px;color:var(--muted);font-weight:700;">VENDA DO MÊS</div>
+          <div style="font-size:22px;font-weight:800;margin-top:6px;">${pvMoeda(totalMes)}</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:11px;color:var(--muted);font-weight:700;">META MENSAL</div>
+          <div style="font-size:22px;font-weight:800;margin-top:6px;">${metaMensal > 0 ? pvMoeda(metaMensal) : 'Não definida'}</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:11px;color:var(--muted);font-weight:700;">COMISSÃO ESTIMADA</div>
+          <div style="font-size:22px;font-weight:800;color:#059669;margin-top:6px;">${pvMoeda(comissao)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">${comissaoPct}% sobre o total</div>
+        </div>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-top:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;">
+          <div>
+            <div style="font-size:12px;color:var(--muted);font-weight:700;">ATINGIMENTO DA META</div>
+            <div style="font-size:32px;font-weight:900;margin-top:4px;">${metaMensal > 0 ? percentual.toFixed(1).replace('.', ',') + '%' : '—'}</div>
+          </div>
+          <div style="text-align:right;font-size:12px;color:var(--muted);">
+            ${metaMensal > 0
+              ? (faltaMeta > 0 ? `Faltam <strong>${pvMoeda(faltaMeta)}</strong>` : '<strong style="color:#059669;">Meta atingida! 🎉</strong>')
+              : 'A loja ainda não definiu sua meta.'}
+          </div>
+        </div>
+        <div style="height:12px;background:var(--border);border-radius:999px;overflow:hidden;margin-top:14px;">
+          <div style="height:100%;width:${percentual}%;background:linear-gradient(90deg,#2563EB,#7C3AED);border-radius:999px;"></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:14px;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;">
+          <div style="font-size:13px;font-weight:800;margin-bottom:12px;">Sua faixa atual</div>
+          <div style="font-size:30px;font-weight:900;color:#7C3AED;">${comissaoPct}%</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">Comissão retroativa sobre ${pvMoeda(totalMes)}</div>
+          ${proxima
+            ? `<div style="margin-top:14px;padding:12px;background:var(--bg);border-radius:10px;font-size:12px;">
+                 Faltam <strong>${pvMoeda(faltaProxima)}</strong> para chegar a <strong>${proxima.percentual}%</strong>.
+               </div>`
+            : '<div style="margin-top:14px;color:#059669;font-size:12px;font-weight:700;">Você está na maior faixa disponível.</div>'}
+        </div>
+
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;">
+          <div style="font-size:13px;font-weight:800;margin-bottom:12px;">Suas faixas de comissão</div>
+          ${(faixasOrdenadas.length ? faixasOrdenadas.map((f, i) => {
+            const anterior = i === 0 ? 0 : Number(faixasOrdenadas[i-1]?.valor_ate || 0);
+            const rotulo = f.valor_ate == null
+              ? `Acima de ${pvMoeda(anterior)}`
+              : i === 0
+                ? `Até ${pvMoeda(f.valor_ate)}`
+                : `${pvMoeda(anterior)} até ${pvMoeda(f.valor_ate)}`;
+            const ativa = faixa && faixa.id === f.id;
+            return `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px;${ativa?'font-weight:800;color:#7C3AED;':''}">
+              <span>${rotulo}</span><span>${f.percentual}% ${ativa?'• atual':''}</span>
+            </div>`;
+          }).join('') : '<div style="font-size:12px;color:var(--muted);">Nenhuma faixa configurada.</div>')}
+        </div>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-top:14px;">
+        <div style="font-size:13px;font-weight:800;margin-bottom:12px;">Suas vendas dia a dia</div>
+        ${historico.length
+          ? historico.map(([data, valor]) => `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border);">
+                <span style="font-size:12px;color:var(--muted);">${new Date(data + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                <strong style="font-size:13px;">${pvMoeda(valor)}</strong>
+              </div>`).join('')
+          : '<div style="font-size:12px;color:var(--muted);padding:18px 0;text-align:center;">Nenhuma venda registrada neste mês.</div>'}
+      </div>
+    `;
+  } catch (e) {
+    console.error('Erro no painel individual:', e);
+    body.innerHTML = `
+      <div style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:14px;padding:18px;margin-top:10px;">
+        <strong>Não foi possível carregar seu painel.</strong>
+        <div style="font-size:12px;margin-top:6px;">${esc(e.message)}</div>
+      </div>`;
+  }
+}
+
+function pvIntPeriodo() {
+  const usuario = usuarioAtual();
+  if (usuario) pvCarregarPainelIndividual(usuario);
 }
 
 // Inicia usuário admin padrão se não existir
@@ -8067,7 +8303,7 @@ async function fazerLogin() {
     document.getElementById('login-screen').classList.add('hidden');
 
     // Vendedor painel → fluxo isolado dentro do ERP
-    if (usuario.perfil === 'vendedor_painel') {
+    if (ehVendedorPainel(usuario)) {
       await pvIniciarPainelInterno(usuario);
       return;
     }
@@ -19492,6 +19728,12 @@ if (_sessaoAtual) {
       checarAvisoVencimentoLicenca(lic);
 
       document.getElementById('login-screen').classList.add('hidden');
+
+      if (ehVendedorPainel(_usrAtual)) {
+        await pvIniciarPainelInterno(_usrAtual);
+        return;
+      }
+
       await carregarDadosNuvem();
       aplicarPermissoes(_usrAtual);
       atualizarHeaderUsuario(_usrAtual);
