@@ -14897,7 +14897,6 @@ async function salvarVendedor() {
           login:   loginPainel.toLowerCase(),
           senha:   senhaHash,
           perfil:  'vendedor_painel',
-          ativo:   true,
           modulos: [],
         };
 
@@ -20931,17 +20930,71 @@ function pmAtualizar() {
 const PM_CORES = ['#2563EB','#059669','#D97706','#DC2626','#7C3AED','#0891B2','#BE185D'];
 function pmCor(i){ return PM_CORES[i % PM_CORES.length]; }
 
+function pmProximoMes(mesRef){
+  const d = new Date(mesRef + 'T12:00:00');
+  d.setMonth(d.getMonth() + 1);
+  return d.toISOString().slice(0,10);
+}
+
+function pmCalcularResumos(vends, metas, faixas, vendas){
+  return vends.map(v => {
+    const vendasV = (vendas || []).filter(x => x.vendedor_id === v.id);
+    const totalVendido = vendasV.reduce((s,x) => s + Number(x.valor || 0), 0);
+    const metaPropria = (metas || []).find(m => m.vendedor_id === v.id);
+    const metaMensal = Number(metaPropria?.meta_mensal || 0);
+
+    const faixasProprias = (faixas || []).filter(f => f.vendedor_id === v.id);
+    const faixasEfetivas = (faixasProprias.length
+      ? faixasProprias
+      : (faixas || []).filter(f => !f.vendedor_id)
+    ).slice().sort((a,b) => {
+      if (a.valor_ate == null) return 1;
+      if (b.valor_ate == null) return -1;
+      return Number(a.valor_ate) - Number(b.valor_ate);
+    });
+
+    let faixaPercentual = 0;
+    for (let i = 0; i < faixasEfetivas.length; i++) {
+      const f = faixasEfetivas[i];
+      const limiteAnterior = i === 0 ? 0 : Number(faixasEfetivas[i-1]?.valor_ate || 0);
+      const limiteAtual = f.valor_ate == null ? null : Number(f.valor_ate);
+      const pertence = limiteAtual == null
+        ? totalVendido >= limiteAnterior
+        : totalVendido >= limiteAnterior && totalVendido < limiteAtual;
+      if (pertence) {
+        faixaPercentual = Number(f.percentual || 0);
+        break;
+      }
+    }
+
+    const percentualAtingido = metaMensal > 0
+      ? Math.min((totalVendido / metaMensal) * 100, 100)
+      : 0;
+
+    return {
+      vendedor_id: v.id,
+      total_vendido: totalVendido,
+      meta_mensal: metaMensal,
+      percentual_atingido: percentualAtingido,
+      faixa_percentual: faixaPercentual,
+      comissao_estimada: totalVendido * faixaPercentual / 100,
+    };
+  }).sort((a,b) => Number(b.total_vendido) - Number(a.total_vendido));
+}
+
 async function pmCarregarDesempenho() {
   const mesRef = pmMes();
   const vends  = getVendedores().filter(v=>v.ativo!==false);
   document.getElementById('pm-kpis').innerHTML = PM_CORES.slice(0,4).map(()=>`<div class="pm-kpi"><div style="height:60px;background:#F1F5F9;border-radius:8px;animation:pulse 1.5s ease infinite;"></div></div>`).join('');
 
   try {
-    const [resumos, faixas, vendas7] = await Promise.all([
-      sbGet('metas_resumo',`mes_ref=eq.${mesRef}&order=total_vendido.desc`),
+    const proxMes = pmProximoMes(mesRef);
+    const [metas, faixas, vendas7] = await Promise.all([
+      sbGet('metas_config',`mes_ref=eq.${mesRef}`),
       sbGet('metas_faixas',`mes_ref=eq.${mesRef}&order=valor_ate.asc.nullslast`),
-      sbGet('vendas_vendedor',`data=gte.${mesRef}&order=data.asc&select=vendedor_id,data,valor`).catch(()=>[]),
+      sbGet('vendas_vendedor',`data=gte.${mesRef}&data=lt.${proxMes}&order=data.asc&select=vendedor_id,data,valor`).catch(()=>[]),
     ]);
+    const resumos = pmCalcularResumos(vends, metas, faixas, vendas7);
 
     const totalVendido  = (resumos||[]).reduce((s,r)=>s+Number(r.total_vendido||0),0);
     const totalComissao = (resumos||[]).reduce((s,r)=>s+Number(r.comissao_estimada||0),0);
@@ -21084,11 +21137,13 @@ async function pmCarregarMetas() {
   const sel = document.getElementById('gc-meta-vendedor');
   if (sel) sel.innerHTML = '<option value="">🌐 Global (todos)</option>'+vends.map(v=>`<option value="${v.id}">${v.nome}</option>`).join('');
   try {
-    const [metas,faixas,resumos] = await Promise.all([
+    const proxMes = pmProximoMes(mesRef);
+    const [metas,faixas,vendasMes] = await Promise.all([
       sbGet('metas_config',`mes_ref=eq.${mesRef}`),
       sbGet('metas_faixas',`mes_ref=eq.${mesRef}&order=valor_ate.asc.nullslast`),
-      sbGet('metas_resumo',`mes_ref=eq.${mesRef}`).catch(()=>[]),
+      sbGet('vendas_vendedor',`data=gte.${mesRef}&data=lt.${proxMes}&select=vendedor_id,data,valor`).catch(()=>[]),
     ]);
+    const resumos = pmCalcularResumos(vends, metas, faixas, vendasMes);
     const itens = [{id:null,nome:'🌐 Global (todos os vendedores)',isGlobal:true},...vends.map(v=>({id:v.id,nome:v.nome,isGlobal:false,idx:vends.indexOf(v)}))];
     body.innerHTML = itens.map(item=>{
       const meta    = (metas||[]).find(m=>item.isGlobal?!m.vendedor_id:m.vendedor_id===item.id);
