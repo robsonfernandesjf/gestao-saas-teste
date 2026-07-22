@@ -20998,8 +20998,20 @@ async function pmCarregarDesempenho() {
 
     const totalVendido  = (resumos||[]).reduce((s,r)=>s+Number(r.total_vendido||0),0);
     const totalComissao = (resumos||[]).reduce((s,r)=>s+Number(r.comissao_estimada||0),0);
-    const totalMeta     = (resumos||[]).reduce((s,r)=>s+Number(r.meta_mensal||0),0);
-    const pctGeral      = totalMeta>0 ? Math.min(Math.round(totalVendido/totalMeta*100),100) : 0;
+
+    // A meta global representa a meta total da equipe.
+    // Somente quando não existir meta global, soma as metas individuais.
+    const metaGlobal = (metas || []).find(m => !m.vendedor_id);
+    const somaMetasIndividuais = (resumos || []).reduce(
+      (s,r) => s + Number(r.meta_mensal || 0), 0
+    );
+    const totalMeta = metaGlobal
+      ? Number(metaGlobal.meta_mensal || 0)
+      : somaMetasIndividuais;
+
+    const pctGeral = totalMeta > 0
+      ? Math.min(Math.round(totalVendido / totalMeta * 100), 100)
+      : 0;
     const comVendas     = (resumos||[]).filter(r=>Number(r.total_vendido)>0).length;
     const cor = pctGeral>=100?'#059669':pctGeral>=70?'#2563EB':'#F59E0B';
 
@@ -21039,7 +21051,11 @@ async function pmCarregarDesempenho() {
       <div class="pm-gauge-info">
         <div class="pm-gauge-vendido">${pmR(totalVendido)}</div>
         <div class="pm-gauge-de">de ${pmR(totalMeta)}</div>
-        ${totalMeta>totalVendido?`<div class="pm-gauge-falta">Falta ${pmR(totalMeta-totalVendido)}</div>`:'<div style="color:#059669;font-size:12px;font-weight:700;">🎉 Meta atingida!</div>'}
+        ${totalMeta<=0
+          ? '<div style="color:#64748B;font-size:12px;">Sem meta definida</div>'
+          : totalMeta>totalVendido
+            ? `<div class="pm-gauge-falta">Falta ${pmR(totalMeta-totalVendido)}</div>`
+            : '<div style="color:#059669;font-size:12px;font-weight:700;">🎉 Meta atingida!</div>'}
       </div>`;
     document.getElementById('pm-gauge-ft').textContent = totalMeta>0?`Meta global: ${pmR(totalMeta)} · ${vends.length} vendedor${vends.length>1?'es':''}` : 'Sem meta global definida';
 
