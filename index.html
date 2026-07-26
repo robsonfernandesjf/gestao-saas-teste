@@ -4425,6 +4425,58 @@ body.modo-vitrine-publica{
   }
 </style>
 
+
+<style id="fix-barra-branca-mobile-final">
+  @media (max-width: 768px) {
+    html body #app-header {
+      height: 66px !important;
+      min-height: 66px !important;
+      padding: 0 10px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      background: #fff !important;
+      overflow: visible !important;
+    }
+
+    html body #app-header > div:first-child {
+      position: static !important;
+      display: flex !important;
+      align-items: center !important;
+      flex: 1 1 auto !important;
+      min-width: 0 !important;
+      width: auto !important;
+      height: 66px !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      overflow: hidden !important;
+    }
+
+    html body #app-header > div:first-child img {
+      width: 38px !important;
+      height: 38px !important;
+      min-width: 38px !important;
+      max-width: 38px !important;
+    }
+
+    html body #app-header > div:first-child h1 {
+      margin: 0 !important;
+      max-width: calc(100vw - 130px) !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+
+    html body #app-header .header-user {
+      margin-left: auto !important;
+      flex: 0 0 auto !important;
+    }
+  }
+</style>
+
 </head>
 
 <body>
@@ -20886,18 +20938,48 @@ atualizarHora();
   // Correção definitiva de posição do logo (vence qualquer conflito de CSS
   // das camadas visuais anteriores, aplicando via JS com prioridade máxima).
   function fixarPosicaoLogo() {
-    const el = document.querySelector('#app-header > div:first-child');
+    const header = document.getElementById('app-header');
+    let el = header?.querySelector(':scope > div:first-child');
+
+    // No desktop, o bloco da marca fica solto para ocupar o topo da sidebar.
+    // No celular, ele precisa voltar para dentro do header, ao lado do hambúrguer.
+    if (window.innerWidth < 769) {
+      if (!el) {
+        el = Array.from(document.body.children).find(node =>
+          node.tagName === 'DIV' &&
+          node.querySelector?.('img') &&
+          node.querySelector?.('h1')
+        );
+      }
+      if (!el || !header) return;
+
+      if (el.parentElement !== header) {
+        header.insertBefore(el, header.firstChild);
+      }
+
+      el.style.cssText = '';
+      const img = el.querySelector('img');
+      const h1 = el.querySelector('h1');
+      if (img) img.style.cssText = '';
+      if (h1) h1.style.cssText = '';
+
+      const nav = document.getElementById('main-nav');
+      if (nav) nav.style.removeProperty('top');
+      return;
+    }
+
+    if (!el) {
+      el = Array.from(document.body.children).find(node =>
+        node.tagName === 'DIV' &&
+        node.querySelector?.('img') &&
+        node.querySelector?.('h1')
+      );
+    }
     if (!el) return;
-    // Move o elemento de verdade pro final do <body> — ele estava preso
-    // dentro de um container flex (#app-header) que, por algum motivo,
-    // não deixa "position:fixed" funcionar direito nesse filho específico
-    // (o CSS computado dizia left:0, mas a caixa continuava renderizando
-    // deslocada). Tirando ele de dentro do flex, o fixed passa a funcionar
-    // normalmente, igual qualquer elemento solto no body.
+
     if (el.parentElement && el.parentElement.id === 'app-header') {
       document.body.insertBefore(el, document.body.firstChild);
     }
-    if (window.innerWidth < 769) { el.style.cssText = ''; return; }
     el.style.setProperty('position', 'fixed', 'important');
     el.style.setProperty('top', '0', 'important');
     el.style.setProperty('left', '0', 'important');
