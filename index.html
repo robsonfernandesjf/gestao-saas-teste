@@ -4514,9 +4514,45 @@ body.modo-vitrine-publica{
         <input type="password" id="login-pass" placeholder="Senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()">
       </div>
       <button class="btn btn-primary" style="width:100%;padding:12px;font-size:14px;" onclick="fazerLogin()">Entrar</button>
+      <button type="button" id="btn-super-login" onclick="alternarLoginSuper()"
+        style="width:100%;margin-top:9px;padding:9px;border:0;background:transparent;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;">
+        🔐 Acesso Super Administrador
+      </button>
+      <div id="login-super-aviso" style="display:none;margin-top:8px;padding:9px 10px;border-radius:8px;background:#FFF7ED;color:#9A3412;font-size:11px;text-align:left;">
+        Modo Super Admin ativo. O login será validado no ambiente mestre do sistema.
+      </div>
     </div>
   </div>
-  <p style="color:#555;font-size:11px;margin-top:16px;">v19 · Sistema de Gestão</p>
+  <p style="color:#555;font-size:11px;margin-top:16px;">v20 · Sistema de Gestão</p>
+</div>
+
+<!-- ===== PAINEL SUPER ADMIN ===== -->
+<div id="super-admin-screen" style="display:none;min-height:100vh;background:#F4F7FB;">
+  <header style="background:linear-gradient(135deg,#0F172A,#1E293B);color:#fff;padding:22px 24px;">
+    <div style="max-width:1180px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+      <div>
+        <div style="font-size:12px;color:#94A3B8;font-weight:700;">LEGADOERP</div>
+        <h1 style="margin:4px 0 0;font-size:24px;">Painel Super Administrador</h1>
+        <div id="super-admin-nome" style="font-size:12px;color:#CBD5E1;margin-top:4px;"></div>
+      </div>
+      <button onclick="fazerLogout()" style="border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;border-radius:9px;padding:9px 15px;cursor:pointer;">Sair</button>
+    </div>
+  </header>
+  <main style="max-width:1180px;margin:auto;padding:24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;">
+      <div>
+        <h2 style="margin:0;font-size:20px;color:#0F172A;">Escolha uma loja</h2>
+        <p style="margin:4px 0 0;color:#64748B;font-size:13px;">O acesso gera um token exclusivo e limitado à loja selecionada.</p>
+      </div>
+      <button onclick="superCarregarLojas()" class="btn btn-outline">↻ Atualizar</button>
+    </div>
+    <div id="super-lojas-lista" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;"></div>
+  </main>
+</div>
+
+<div id="super-context-bar" style="display:none;position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:10050;background:#0F172A;color:#fff;border-radius:999px;padding:7px 12px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:12px;align-items:center;gap:10px;">
+  <span id="super-context-text">Super Admin</span>
+  <button onclick="superVoltarPainel()" style="border:0;background:#2563EB;color:#fff;border-radius:999px;padding:5px 10px;cursor:pointer;font-size:11px;">Voltar ao painel mestre</button>
 </div>
 
 <!-- BLOCKED SCREEN -->
@@ -8398,6 +8434,129 @@ const EDGE_LOGIN_URL = `${SB_URL}/functions/v1/clever-action`;
 // URL da Edge Function que assina os pedidos do QZ Tray (impressão silenciosa)
 const EDGE_QZ_SIGN_URL = `${SB_URL}/functions/v1/qz-sign`;
 
+let LOGIN_SUPER_MODO = false;
+const SUPER_MASTER_KEY = 'legado_super_master_v1';
+
+function alternarLoginSuper() {
+  LOGIN_SUPER_MODO = !LOGIN_SUPER_MODO;
+  const aviso = document.getElementById('login-super-aviso');
+  const btn = document.getElementById('btn-super-login');
+  if (aviso) aviso.style.display = LOGIN_SUPER_MODO ? 'block' : 'none';
+  if (btn) btn.textContent = LOGIN_SUPER_MODO
+    ? '↩ Voltar ao acesso da loja'
+    : '🔐 Acesso Super Administrador';
+}
+
+function ehSuperAdminMaster(usuario) {
+  return usuario?.perfil === 'super_admin' &&
+    usuario?.super_admin === true &&
+    usuario?.escopo === 'master';
+}
+
+function ehSuperAdminLoja(usuario) {
+  return usuario?.perfil === 'super_admin' &&
+    usuario?.super_admin === true &&
+    usuario?.escopo === 'loja';
+}
+
+function superRenderPainel(lojas, usuario) {
+  document.getElementById('login-screen')?.classList.add('hidden');
+  document.getElementById('super-admin-screen').style.display = 'block';
+  document.getElementById('super-admin-nome').textContent =
+    `${usuario?.nome || 'Super Administrador'} · sessão mestre`;
+
+  const lista = document.getElementById('super-lojas-lista');
+  if (!Array.isArray(lojas) || !lojas.length) {
+    lista.innerHTML = '<div style="padding:25px;background:#fff;border:1px solid #E2E8F0;border-radius:14px;color:#64748B;">Nenhuma loja encontrada.</div>';
+    return;
+  }
+
+  lista.innerHTML = lojas.map(loja => `
+    <article style="background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:18px;box-shadow:0 8px 24px rgba(15,23,42,.05);">
+      <div style="width:42px;height:42px;border-radius:12px;background:#EFF6FF;color:#2563EB;display:grid;place-items:center;font-size:20px;">🏬</div>
+      <h3 style="margin:13px 0 4px;font-size:16px;color:#0F172A;">${esc(loja.nome || loja.id)}</h3>
+      <div style="font-size:12px;color:#64748B;margin-bottom:15px;">${esc(loja.id)}</div>
+      <button onclick="superAcessarLoja('${String(loja.id).replace(/'/g, "\\'")}')"
+        style="width:100%;border:0;border-radius:10px;background:#2563EB;color:#fff;padding:10px 12px;font-weight:700;cursor:pointer;">
+        Acessar loja
+      </button>
+    </article>
+  `).join('');
+}
+
+async function superCarregarLojas() {
+  const master = JSON.parse(sessionStorage.getItem(SUPER_MASTER_KEY) || 'null') || getSessao();
+  if (!master?.token) return fazerLogout();
+
+  const lista = document.getElementById('super-lojas-lista');
+  if (lista) lista.innerHTML = '<div style="color:#64748B;">Carregando lojas...</div>';
+
+  try {
+    const resp = await fetch(EDGE_LOGIN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + master.token
+      },
+      body: JSON.stringify({ action: 'listar_lojas' })
+    });
+    const corpo = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(corpo.error || 'Falha ao listar lojas.');
+    superRenderPainel(corpo.lojas || [], master.dados);
+  } catch (e) {
+    if (lista) lista.innerHTML = `<div style="padding:20px;background:#FEF2F2;color:#991B1B;border-radius:12px;">${esc(e.message)}</div>`;
+  }
+}
+
+async function superAcessarLoja(lojaId) {
+  const master = JSON.parse(sessionStorage.getItem(SUPER_MASTER_KEY) || 'null') || getSessao();
+  if (!master?.token) return fazerLogout();
+
+  try {
+    const resp = await fetch(EDGE_LOGIN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + master.token
+      },
+      body: JSON.stringify({
+        action: 'assumir_loja',
+        target_loja_id: lojaId
+      })
+    });
+    const corpo = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(corpo.error || 'Não foi possível acessar a loja.');
+
+    sessionStorage.setItem(SUPER_MASTER_KEY, JSON.stringify(master));
+    saveSessao({
+      id: corpo.usuario.id,
+      token: corpo.token,
+      dados: corpo.usuario
+    });
+
+    location.href = `${location.origin}/${encodeURIComponent(lojaId)}`;
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+function superMostrarContextoLoja(usuario) {
+  if (!ehSuperAdminLoja(usuario)) return;
+  const barra = document.getElementById('super-context-bar');
+  const texto = document.getElementById('super-context-text');
+  if (texto) texto.textContent = `Super Admin · ${usuario.loja_id}`;
+  if (barra) barra.style.display = 'flex';
+}
+
+function superVoltarPainel() {
+  const master = JSON.parse(sessionStorage.getItem(SUPER_MASTER_KEY) || 'null');
+  if (!master?.token) return fazerLogout();
+  saveSessao(master);
+  location.href = location.origin + '/';
+}
+
 async function fazerLogin() {
   const login = document.getElementById('login-user').value.trim();
   const senha = document.getElementById('login-pass').value;
@@ -8420,7 +8579,7 @@ async function fazerLogin() {
         'apikey': SB_KEY,
         'Authorization': 'Bearer ' + SB_KEY
       },
-      body: JSON.stringify({ loja_id: LOJA_ID, login, senha })
+      body: JSON.stringify({ loja_id: LOGIN_SUPER_MODO ? 'sistema' : LOJA_ID, login, senha })
     });
 
     if (!resp.ok) {
@@ -8430,7 +8589,15 @@ async function fazerLogin() {
       return;
     }
 
-    const { token, usuario } = await resp.json();
+    const { token, usuario, lojas } = await resp.json();
+
+    if (ehSuperAdminMaster(usuario)) {
+      const masterSessao = { id: usuario.id, token, dados: usuario };
+      saveSessao(masterSessao);
+      sessionStorage.setItem(SUPER_MASTER_KEY, JSON.stringify(masterSessao));
+      superRenderPainel(lojas || [], usuario);
+      return;
+    }
 
     // Verificar licença
     const lic = await getLicencaSB().catch(() => ({ validade: null }));
@@ -8462,6 +8629,7 @@ async function fazerLogin() {
     await carregarDadosNuvem();
     aplicarPermissoes(usuario);
     atualizarHeaderUsuario(usuario);
+    superMostrarContextoLoja(usuario);
     renderDashboard();
     populateCatFilter();
     popularSelectVendedores();
@@ -8478,6 +8646,7 @@ async function fazerLogin() {
 
 function fazerLogout() {
   clearSessao();
+  sessionStorage.removeItem(SUPER_MASTER_KEY);
   location.reload();
 }
 
@@ -19885,13 +20054,22 @@ if (_sessaoAtual) {
       // tabelas protegidas por RLS exigem esse token pra devolver dados.
       if (_sessaoAtual.token) SB_HEADS.Authorization = 'Bearer ' + _sessaoAtual.token;
 
-      const lista = await sbGet('usuarios', `id=eq.${_sessaoAtual.id}`);
-      const _usrAtual = lista && lista[0] ? lista[0] : null;
+      let _usrAtual = _sessaoAtual.dados || null;
 
-      if (!_usrAtual) { clearSessao(); return; }
+      if (ehSuperAdminMaster(_usrAtual)) {
+        sessionStorage.setItem(SUPER_MASTER_KEY, JSON.stringify(_sessaoAtual));
+        await superCarregarLojas();
+        return;
+      }
 
-      // Atualizar sessão com dados completos (preserva o token já validado)
-      saveSessao({ id: _usrAtual.id, token: _sessaoAtual.token, dados: _usrAtual });
+      if (!ehSuperAdminLoja(_usrAtual)) {
+        const lista = await sbGet('usuarios', `id=eq.${_sessaoAtual.id}`);
+        _usrAtual = lista && lista[0] ? lista[0] : null;
+        if (!_usrAtual) { clearSessao(); return; }
+
+        // Atualizar sessão com dados completos (preserva o token já validado)
+        saveSessao({ id: _usrAtual.id, token: _sessaoAtual.token, dados: _usrAtual });
+      }
 
       const lic = await getLicencaSB().catch(() => ({ validade: null }));
       if (lic && lic.validade) {
@@ -19917,6 +20095,7 @@ if (_sessaoAtual) {
       await carregarDadosNuvem();
       aplicarPermissoes(_usrAtual);
       atualizarHeaderUsuario(_usrAtual);
+      superMostrarContextoLoja(_usrAtual);
       renderDashExecutivo();
       populateCatFilter();
       popularSelectVendedores();
