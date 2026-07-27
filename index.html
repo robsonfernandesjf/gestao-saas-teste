@@ -4523,7 +4523,7 @@ body.modo-vitrine-publica{
       </div>
     </div>
   </div>
-  <p style="color:#555;font-size:11px;margin-top:16px;">v21 · Sistema de Gestão</p>
+  <p style="color:#555;font-size:11px;margin-top:16px;">v22 · Sistema de Gestão</p>
 </div>
 
 <!-- ===== PAINEL SUPER ADMIN ===== -->
@@ -16631,8 +16631,12 @@ function dentroDoPeriodoFin(dataISO) { return dentroDoPeriodo('fin', dataISO); }
 // só pela data — assim, se um dia tiver duas aberturas (turno manhã/tarde),
 // cada uma soma só o que é dela. Armazenado localmente por enquanto (mesmo
 // motivo de sempre: sem tabela própria confirmada no Supabase pra isso ainda).
-const CAIXA_ATUAL_KEY = 'oi2026_caixa_atual';
-const CAIXA_HISTORICO_KEY = 'oi2026_caixa_historico';
+// Chaves isoladas por loja.
+// Antes eram globais no navegador, fazendo uma loja nova herdar o caixa
+// aberto e o contador usados em outra loja no mesmo computador.
+const CAIXA_ATUAL_KEY = `oi2026_caixa_atual_${LOJA_ID}`;
+const CAIXA_HISTORICO_KEY = `oi2026_caixa_historico_${LOJA_ID}`;
+const CAIXA_SEQ_KEY = `oi2026_caixa_seq_${LOJA_ID}`;
 
 // Converte uma linha da tabela caixa_sessoes (Supabase) pro mesmo formato
 // que o resto do sistema já usa localmente.
@@ -16652,7 +16656,16 @@ function normalizarSessaoCaixaSB(s) {
 }
 function ehIdRealCaixa(id) { return !!id && !String(id).startsWith('caixa_'); }
 
+function limparCaixaLegadoGlobal() {
+  // Remove apenas as chaves antigas sem loja. As novas chaves são preservadas.
+  // Os registros persistidos no Supabase não são alterados.
+  localStorage.removeItem('oi2026_caixa_atual');
+  localStorage.removeItem('oi2026_caixa_historico');
+  localStorage.removeItem('oi2026_caixa_seq');
+}
+
 function getCaixaAtual() {
+  limparCaixaLegadoGlobal();
   const local = JSON.parse(localStorage.getItem(CAIXA_ATUAL_KEY) || 'null');
   if (local) return local;
   const remotoAberto = (_cache.caixaSessoes || []).find(s => s.status === 'aberto');
@@ -16740,10 +16753,28 @@ function saveHistoricoCaixas(lista) {
   });
 }
 function proximoNumeroCaixa() {
-  const chave = 'oi2026_caixa_seq';
-  const atual = parseInt(localStorage.getItem(chave) || '0') + 1;
-  localStorage.setItem(chave, atual);
-  return atual;
+  // O sequencial é calculado somente com dados da loja atual.
+  // Isso também evita voltar para 1 ao trocar de navegador ou limpar cache.
+  const numeros = [];
+
+  const atualLocal = JSON.parse(localStorage.getItem(CAIXA_ATUAL_KEY) || 'null');
+  if (atualLocal?.numero) numeros.push(Number(atualLocal.numero));
+
+  const historicoLocal = JSON.parse(localStorage.getItem(CAIXA_HISTORICO_KEY) || '[]');
+  historicoLocal.forEach(s => {
+    if (s?.numero) numeros.push(Number(s.numero));
+  });
+
+  (_cache.caixaSessoes || []).forEach(s => {
+    if (s?.numero) numeros.push(Number(s.numero));
+  });
+
+  const seqLocal = Number(localStorage.getItem(CAIXA_SEQ_KEY) || 0);
+  if (seqLocal) numeros.push(seqLocal);
+
+  const proximo = (numeros.length ? Math.max(...numeros) : 0) + 1;
+  localStorage.setItem(CAIXA_SEQ_KEY, String(proximo));
+  return proximo;
 }
 function labelForma(fm) { return (typeof PDV_FORMA_LABELS !== 'undefined' && PDV_FORMA_LABELS[fm]) || fm; }
 function ehFormaDinheiro(fm) { return (fm || '').toLowerCase().includes('vista') || (fm || '').toLowerCase().includes('dinheiro'); }
