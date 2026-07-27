@@ -19946,9 +19946,40 @@ let LOJA_CATALOGO_WHATSAPP = '';
 
 
 // ===== PWA MULTITENANT: nome, link e ícone da loja atual =====
-let _pwaManifestObjectUrl = null;
+function carregarImagemPwa(origem) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = origem;
+  });
+}
 
-function atualizarPwaDaLoja(nomeLoja, logoLoja, coresLoja) {
+async function gerarIconePwa(origem, tamanho) {
+  if (!origem) return '';
+
+  const img = await carregarImagemPwa(origem);
+  const canvas = document.createElement('canvas');
+  canvas.width = tamanho;
+  canvas.height = tamanho;
+
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, tamanho, tamanho);
+
+  // Mantém a logo inteira, centralizada, sem distorcer ou cortar.
+  const margem = Math.round(tamanho * 0.08);
+  const area = tamanho - (margem * 2);
+  const escala = Math.min(area / img.naturalWidth, area / img.naturalHeight);
+  const largura = Math.round(img.naturalWidth * escala);
+  const altura = Math.round(img.naturalHeight * escala);
+  const x = Math.round((tamanho - largura) / 2);
+  const y = Math.round((tamanho - altura) / 2);
+
+  ctx.drawImage(img, x, y, largura, altura);
+  return canvas.toDataURL('image/png');
+}
+
+async function atualizarPwaDaLoja(nomeLoja, logoLoja, coresLoja) {
   try {
     const caminhoAtual = window.location.pathname || '/';
     const partes = caminhoAtual.split('/').filter(Boolean);
@@ -19959,10 +19990,39 @@ function atualizarPwaDaLoja(nomeLoja, logoLoja, coresLoja) {
       ? `${nomeLoja} · LegadoERP`
       : 'LegadoERP';
 
-    const icones = logoLoja ? [
-      { src: logoLoja, sizes: '192x192', type: logoLoja.startsWith('data:image/png') ? 'image/png' : 'image/jpeg', purpose: 'any' },
-      { src: logoLoja, sizes: '512x512', type: logoLoja.startsWith('data:image/png') ? 'image/png' : 'image/jpeg', purpose: 'any maskable' }
-    ] : [];
+    let icone192 = '';
+    let icone512 = '';
+    let iconeApple = '';
+
+    if (logoLoja) {
+      try {
+        [icone192, icone512, iconeApple] = await Promise.all([
+          gerarIconePwa(logoLoja, 192),
+          gerarIconePwa(logoLoja, 512),
+          gerarIconePwa(logoLoja, 180)
+        ]);
+      } catch (erroLogo) {
+        console.warn('Não foi possível preparar a logo para o PWA:', erroLogo);
+      }
+    }
+
+    const icones = [];
+    if (icone192) {
+      icones.push({
+        src: icone192,
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'any'
+      });
+    }
+    if (icone512) {
+      icones.push({
+        src: icone512,
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'any maskable'
+      });
+    }
 
     const manifesto = {
       id: `/${slugLoja}`,
@@ -19978,21 +20038,37 @@ function atualizarPwaDaLoja(nomeLoja, logoLoja, coresLoja) {
       icons: icones
     };
 
-    const blob = new Blob([JSON.stringify(manifesto)], { type: 'application/manifest+json' });
-    if (_pwaManifestObjectUrl) URL.revokeObjectURL(_pwaManifestObjectUrl);
-    _pwaManifestObjectUrl = URL.createObjectURL(blob);
+    // Data URL evita depender de arquivo externo e mantém cada loja com seu próprio manifesto.
+    const manifestDataUrl =
+      'data:application/manifest+json;charset=utf-8,' +
+      encodeURIComponent(JSON.stringify(manifesto));
 
     const linkManifest = document.getElementById('pwa-manifest');
-    if (linkManifest) linkManifest.href = _pwaManifestObjectUrl;
+    if (linkManifest) linkManifest.href = manifestDataUrl;
 
+    // iPhone/iPad usa apple-touch-icon.
     const appleIcon = document.getElementById('apple-touch-icon');
-    if (appleIcon && logoLoja) appleIcon.href = logoLoja;
+    if (appleIcon && iconeApple) appleIcon.href = iconeApple;
+
+    // Também atualiza o favicon da aba.
+    let favicon = document.querySelector('link[rel="icon"]');
+    if (!favicon) {
+      favicon = document.createElement('link');
+      favicon.rel = 'icon';
+      document.head.appendChild(favicon);
+    }
+    if (icone192) {
+      favicon.type = 'image/png';
+      favicon.href = icone192;
+    }
 
     const appleTitle = document.getElementById('apple-mobile-web-app-title');
     if (appleTitle) appleTitle.content = (nomeLoja || 'LegadoERP').slice(0, 30);
 
     const themeMeta = document.getElementById('theme-color-meta');
     if (themeMeta) themeMeta.content = manifesto.theme_color;
+
+    window.__PWA_LOJA_PRONTO__ = true;
   } catch (erro) {
     console.warn('Não foi possível atualizar os dados do PWA:', erro);
   }
@@ -20047,7 +20123,7 @@ async function aplicarConfigLoja() {
   }
 
   // Atualiza instalação PWA para esta loja e para o endereço atual
-  atualizarPwaDaLoja(nomeLojaPwa, logoBase64, cores);
+  await atualizarPwaDaLoja(nomeLojaPwa, logoBase64, cores);
 
   // Título da aba
   document.title = tituloAba;
