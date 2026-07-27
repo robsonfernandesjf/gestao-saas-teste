@@ -596,61 +596,26 @@
   tfoot td { font-weight: 700; background: var(--bg); border-top: 2px solid var(--border); padding: 10px 14px; font-size: 13px; }
 
 
-/* ===== v25 Responsividade Global ===== */
-html,body{
-  max-width:100%;
-  overflow-x:hidden;
-}
-*,
-*::before,
-*::after{
-  box-sizing:border-box;
-}
-img,canvas,svg,video{
-  max-width:100%;
-  height:auto;
-}
-table{
-  display:block;
-  max-width:100%;
-  overflow-x:auto;
-  -webkit-overflow-scrolling:touch;
-}
-input,select,textarea,button{
-  max-width:100%;
-}
+/* v26 - Correção segura menu mobile */
 @media (max-width:768px){
-  .container,.content,.main,.page,.card,.modal,.modal-content{
-    width:100%!important;
-    max-width:100%!important;
+  .sidebar,
+  .menu,
+  .sidebar-menu,
+  nav{
+    max-height:100dvh !important;
+    overflow-y:auto !important;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:90px !important;
   }
-  .grid,
-  [class*="grid"]{
-    grid-template-columns:1fr!important;
+  .sidebar .logout,
+  .sidebar .btn-sair,
+  .menu .logout,
+  .menu .btn-sair{
+    position:sticky;
+    bottom:0;
+    background:inherit;
+    z-index:5;
   }
-  .row,
-  [class*="row"],
-  .toolbar,
-  .actions{
-    flex-wrap:wrap!important;
-  }
-  .modal{
-    padding:12px!important;
-  }
-  .modal-content{
-    max-height:90vh!important;
-    overflow:auto!important;
-  }
-  .table-responsive{
-    overflow-x:auto!important;
-  }
-}
-@supports (padding:max(0px)){
- body{
-   padding-left:max(env(safe-area-inset-left),0px);
-   padding-right:max(env(safe-area-inset-right),0px);
-   padding-bottom:max(env(safe-area-inset-bottom),0px);
- }
 }
 
 </style>
@@ -4581,7 +4546,7 @@ body.modo-vitrine-publica{
       </div>
     </div>
   </div>
-  <p style="color:#555;font-size:11px;margin-top:16px;">v25 · Sistema de Gestão</p>
+  <p style="color:#555;font-size:11px;margin-top:16px;">v26 · Sistema de Gestão</p>
 </div>
 
 <!-- ===== PAINEL SUPER ADMIN ===== -->
