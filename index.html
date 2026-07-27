@@ -595,6 +595,64 @@
   .print-header p { color: #666; font-size: 12px; }
   tfoot td { font-weight: 700; background: var(--bg); border-top: 2px solid var(--border); padding: 10px 14px; font-size: 13px; }
 
+
+/* ===== v25 Responsividade Global ===== */
+html,body{
+  max-width:100%;
+  overflow-x:hidden;
+}
+*,
+*::before,
+*::after{
+  box-sizing:border-box;
+}
+img,canvas,svg,video{
+  max-width:100%;
+  height:auto;
+}
+table{
+  display:block;
+  max-width:100%;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+}
+input,select,textarea,button{
+  max-width:100%;
+}
+@media (max-width:768px){
+  .container,.content,.main,.page,.card,.modal,.modal-content{
+    width:100%!important;
+    max-width:100%!important;
+  }
+  .grid,
+  [class*="grid"]{
+    grid-template-columns:1fr!important;
+  }
+  .row,
+  [class*="row"],
+  .toolbar,
+  .actions{
+    flex-wrap:wrap!important;
+  }
+  .modal{
+    padding:12px!important;
+  }
+  .modal-content{
+    max-height:90vh!important;
+    overflow:auto!important;
+  }
+  .table-responsive{
+    overflow-x:auto!important;
+  }
+}
+@supports (padding:max(0px)){
+ body{
+   padding-left:max(env(safe-area-inset-left),0px);
+   padding-right:max(env(safe-area-inset-right),0px);
+   padding-bottom:max(env(safe-area-inset-bottom),0px);
+ }
+}
+
 </style>
 
 <!-- =========================================================
@@ -4523,7 +4581,7 @@ body.modo-vitrine-publica{
       </div>
     </div>
   </div>
-  <p style="color:#555;font-size:11px;margin-top:16px;">v23 · Sistema de Gestão</p>
+  <p style="color:#555;font-size:11px;margin-top:16px;">v25 · Sistema de Gestão</p>
 </div>
 
 <!-- ===== PAINEL SUPER ADMIN ===== -->
@@ -11845,9 +11903,15 @@ function registrarVendaRapida(ref) {
 }
 
 function calcularLucroPreview() {
-  // Informação de lucro ocultada na tela de registro de venda.
+  if (!produtoSelecionado) return;
+  const qtd = parseInt(document.getElementById('venda-qtd').value)||1;
+  const val = valorMoeda('venda-valor');
+  const lucro = (val - (produtoSelecionado.custo||0)) * qtd;
   const box = document.getElementById('lucro-preview-box');
-  if (box) box.style.display = 'none';
+  box.style.display = 'block';
+  box.className = 'lucro-preview' + (lucro < 0 ? ' negativo' : '');
+  const margem = val > 0 ? (lucro/val/qtd*100) : 0;
+  box.innerHTML = `💰 Lucro previsto: ${R(lucro)} &nbsp;|&nbsp; Margem: ${pct(margem)} &nbsp;|&nbsp; Subtotal: ${R(val * qtd)}`;
 }
 
 
