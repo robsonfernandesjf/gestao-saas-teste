@@ -20631,8 +20631,7 @@ if (ehRotaCatalogoPublico()) {
 // aceitam registrar Service Worker a partir de uma URL blob: inline.
 // Lembre-se de subir o arquivo sw.js junto com este HTML no Vercel.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW falhou:', err));
-}
+  }
 
 // ===== INIT =====
 initUsuarios();
@@ -22938,6 +22937,25 @@ async function gcResetSenhaVendedor(usuarioId) {
   finally { mostrarLoading(false); }
 }
 
+</script>
+
+<script id="sw-cleanup-v36">
+window.addEventListener('load', async () => {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) {
+        await reg.unregister();
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    }
+  } catch (e) {
+    console.warn('Limpeza do Service Worker não concluída:', e);
+  }
+});
 </script>
 </body>
 </html>
