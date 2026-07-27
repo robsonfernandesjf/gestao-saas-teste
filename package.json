@@ -1,0 +1,11 @@
+{
+  "name": "legadoerp-pwa-multitenant",
+  "private": true,
+  "version": "1.0.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "sharp": "^0.33.5"
+  }
+}
