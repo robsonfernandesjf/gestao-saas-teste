@@ -19998,16 +19998,27 @@ function impIniciar(){impLimparProduto();const e=document.getElementById('imp-co
 function impAlterarQtd(d){const e=document.getElementById('imp-qtd');if(e)e.value=Math.max(1,(parseInt(e.value,10)||1)+d)}
 async function impValidarProduto(){
  const campo=document.getElementById('imp-codigo'),codigo=String(campo?.value||'').trim();if(!codigo)return impFocarCodigo();
+ const msg=document.getElementById('imp-msg');
+ if(msg){msg.textContent='Localizando produto...';msg.className='imp-msg ok'}
  try{
-  const produtos=await getProdutosAsync(),alvo=codigo.toLowerCase();
-  const p=(produtos||[]).find(x=>String(x.ref||'').trim().toLowerCase()===alvo||String(x.ean13||'').trim().toLowerCase()===alvo||String(x.codigo_barras||'').trim().toLowerCase()===alvo);
+  // Consulta somente o código informado no Supabase.
+  // Não baixa mais o cadastro inteiro de produtos a cada leitura.
+  const valor=encodeURIComponent(codigo);
+  const produtos=await sbGet('produtos','select=*&or=(ref.eq.'+valor+',ean13.eq.'+valor+',codigo_barras.eq.'+valor+')&limit=1');
+  const p=produtos&&produtos[0];
   if(!p){impLimparProduto();impMensagem('Produto não cadastrado.','erro',true);campo.value='';impFocarCodigo();return}
   _impProdutoAtual=p;
   document.getElementById('imp-produto-nome').textContent=p.produto||p.descricao||p.ref||'Produto';
   document.getElementById('imp-produto-dados').textContent=[p.ref?'Ref.: '+p.ref:'',p.cor?'Cor: '+p.cor:'',p.tamanho?'Tamanho: '+p.tamanho:''].filter(Boolean).join(' • ');
   document.getElementById('imp-estoque').textContent=Number(p.estoque||0);
-  document.getElementById('imp-qtd').value=1;document.getElementById('imp-produto').classList.add('open');
- }catch(e){impMensagem('Erro ao consultar produto: '+e.message,'erro',false)}
+  document.getElementById('imp-qtd').value=1;
+  document.getElementById('imp-produto').classList.add('open');
+  if(msg){msg.textContent='';msg.className='imp-msg'}
+  setTimeout(()=>document.getElementById('imp-qtd')?.select(),30);
+ }catch(e){
+  if(msg){msg.textContent='';msg.className='imp-msg'}
+  impMensagem('Erro ao consultar produto: '+e.message,'erro',false)
+ }
 }
 async function impConfirmarBaixa(){
  if(!_impProdutoAtual)return;
@@ -20018,7 +20029,10 @@ async function impConfirmarBaixa(){
   if(b){b.disabled=true;b.textContent='PROCESSANDO...'}
   await sbPatch('produtos',_impProdutoAtual.id,{estoque:novo});
   _impUltimaBaixa={produtoId:_impProdutoAtual.id,nome:_impProdutoAtual.produto||_impProdutoAtual.descricao||_impProdutoAtual.ref,quantidade:qtd};
-  invalidarCache('produtos');
+  if(Array.isArray(_cache.produtos)){
+    const itemCache=_cache.produtos.find(x=>x.id===_impProdutoAtual.id);
+    if(itemCache)itemCache.estoque=novo;
+  }
   document.getElementById('imp-ultima-texto').textContent=_impUltimaBaixa.nome+' • Qtd. '+qtd+' • Estoque '+anterior+' → '+novo;
   document.getElementById('imp-ultima').classList.add('open');
   impMensagem('Baixa realizada com sucesso.','ok',true);document.getElementById('imp-codigo').value='';impLimparProduto();impFocarCodigo()
