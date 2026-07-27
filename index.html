@@ -19,25 +19,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>LegadoERP · Gestão Empresarial</title>
-<script>
-(function configurarPwaEstatico(){
-  var partes = location.pathname.split('/').filter(function(p){ return p && !p.includes('.') && p !== 'index' && p !== 'loja'; });
-  var slug = partes[0] || 'fatima-cigani';
-
-  var manifest = document.createElement('link');
-  manifest.id = 'pwa-manifest';
-  manifest.rel = 'manifest';
-  manifest.href = '/api/pwa/manifest?loja=' + encodeURIComponent(slug);
-  document.head.appendChild(manifest);
-
-  var apple = document.createElement('link');
-  apple.id = 'apple-touch-icon';
-  apple.rel = 'apple-touch-icon';
-  apple.sizes = '180x180';
-  apple.href = '/api/pwa/icon?loja=' + encodeURIComponent(slug) + '&size=180';
-  document.head.appendChild(apple);
-})();
-</script>
+<link id="pwa-manifest" rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22id%22%3A%22/%22%2C%22name%22%3A%22LegadoERP%22%2C%22short_name%22%3A%22LegadoERP%22%2C%22description%22%3A%22Sistema%20de%20gest%C3%A3o%20empresarial%20para%20lojas.%22%2C%22start_url%22%3A%22/%22%2C%22scope%22%3A%22/%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23FDF8F8%22%2C%22theme_color%22%3A%22%23B56B7A%22%2C%22orientation%22%3A%22portrait-primary%22%2C%22icons%22%3A%5B%5D%7D">
+<link id="apple-touch-icon" rel="apple-touch-icon" href="">
 <meta id="theme-color-meta" name="theme-color" content="#B56B7A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -19962,8 +19945,58 @@ let LOJA_USA_GESTAO_COMERCIAL = false;
 let LOJA_CATALOGO_WHATSAPP = '';
 
 
-// ===== PWA MULTITENANT =====
-// Manifesto e ícones agora são fornecidos por rotas reais da Vercel.
+// ===== PWA MULTITENANT: nome, link e ícone da loja atual =====
+let _pwaManifestObjectUrl = null;
+
+function atualizarPwaDaLoja(nomeLoja, logoLoja, coresLoja) {
+  try {
+    const caminhoAtual = window.location.pathname || '/';
+    const partes = caminhoAtual.split('/').filter(Boolean);
+    const slugLoja = partes[0] || LOJA_ID || 'legadoerp';
+    const inicio = caminhoAtual + (window.location.search || '');
+    const escopo = `/${slugLoja}/`;
+    const nomePwa = nomeLoja && nomeLoja !== 'LegadoERP'
+      ? `${nomeLoja} · LegadoERP`
+      : 'LegadoERP';
+
+    const icones = logoLoja ? [
+      { src: logoLoja, sizes: '192x192', type: logoLoja.startsWith('data:image/png') ? 'image/png' : 'image/jpeg', purpose: 'any' },
+      { src: logoLoja, sizes: '512x512', type: logoLoja.startsWith('data:image/png') ? 'image/png' : 'image/jpeg', purpose: 'any maskable' }
+    ] : [];
+
+    const manifesto = {
+      id: `/${slugLoja}`,
+      name: nomePwa,
+      short_name: (nomeLoja || 'LegadoERP').slice(0, 12),
+      description: `Sistema de gestão da loja ${nomeLoja || 'LegadoERP'}`,
+      start_url: inicio,
+      scope: escopo,
+      display: 'standalone',
+      background_color: (coresLoja && coresLoja.bg) || '#FDF8F8',
+      theme_color: (coresLoja && coresLoja.accent) || '#B56B7A',
+      orientation: 'portrait-primary',
+      icons: icones
+    };
+
+    const blob = new Blob([JSON.stringify(manifesto)], { type: 'application/manifest+json' });
+    if (_pwaManifestObjectUrl) URL.revokeObjectURL(_pwaManifestObjectUrl);
+    _pwaManifestObjectUrl = URL.createObjectURL(blob);
+
+    const linkManifest = document.getElementById('pwa-manifest');
+    if (linkManifest) linkManifest.href = _pwaManifestObjectUrl;
+
+    const appleIcon = document.getElementById('apple-touch-icon');
+    if (appleIcon && logoLoja) appleIcon.href = logoLoja;
+
+    const appleTitle = document.getElementById('apple-mobile-web-app-title');
+    if (appleTitle) appleTitle.content = (nomeLoja || 'LegadoERP').slice(0, 30);
+
+    const themeMeta = document.getElementById('theme-color-meta');
+    if (themeMeta) themeMeta.content = manifesto.theme_color;
+  } catch (erro) {
+    console.warn('Não foi possível atualizar os dados do PWA:', erro);
+  }
+}
 
 // ===== APLICAR CONFIG_LOJA NA INTERFACE =====
 async function aplicarConfigLoja() {
@@ -20012,6 +20045,9 @@ async function aplicarConfigLoja() {
   } catch (e) {
     console.warn('Não foi possível buscar config visual da loja no Supabase, usando CONFIG_LOJA local:', e.message);
   }
+
+  // Atualiza instalação PWA para esta loja e para o endereço atual
+  atualizarPwaDaLoja(nomeLojaPwa, logoBase64, cores);
 
   // Título da aba
   document.title = tituloAba;
@@ -22505,15 +22541,6 @@ async function gcResetSenhaVendedor(usuarioId) {
   finally { mostrarLoading(false); }
 }
 
-</script>
-
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function () {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      .catch(function (erro) { console.warn('Service Worker não registrado:', erro); });
-  });
-}
 </script>
 </body>
 </html>
