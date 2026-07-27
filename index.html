@@ -4523,7 +4523,7 @@ body.modo-vitrine-publica{
       </div>
     </div>
   </div>
-  <p style="color:#555;font-size:11px;margin-top:16px;">v20 · Sistema de Gestão</p>
+  <p style="color:#555;font-size:11px;margin-top:16px;">v21 · Sistema de Gestão</p>
 </div>
 
 <!-- ===== PAINEL SUPER ADMIN ===== -->
@@ -8476,10 +8476,16 @@ function superRenderPainel(lojas, usuario) {
       <div style="width:42px;height:42px;border-radius:12px;background:#EFF6FF;color:#2563EB;display:grid;place-items:center;font-size:20px;">🏬</div>
       <h3 style="margin:13px 0 4px;font-size:16px;color:#0F172A;">${esc(loja.nome || loja.id)}</h3>
       <div style="font-size:12px;color:#64748B;margin-bottom:15px;">${esc(loja.id)}</div>
-      <button onclick="superAcessarLoja('${String(loja.id).replace(/'/g, "\\'")}')"
-        style="width:100%;border:0;border-radius:10px;background:#2563EB;color:#fff;padding:10px 12px;font-weight:700;cursor:pointer;">
-        Acessar loja
-      </button>
+      <div style="display:grid;grid-template-columns:1fr;gap:8px;">
+        <button onclick="superAcessarLoja('${String(loja.id).replace(/'/g, "\\'")}')"
+          style="width:100%;border:0;border-radius:10px;background:#2563EB;color:#fff;padding:10px 12px;font-weight:700;cursor:pointer;">
+          Acessar loja
+        </button>
+        <button onclick="superRedefinirSenhaLoja('${String(loja.id).replace(/'/g, "\\'")}','${String(loja.nome || loja.id).replace(/'/g, "\\'")}')"
+          style="width:100%;border:1px solid #CBD5E1;border-radius:10px;background:#fff;color:#0F172A;padding:9px 12px;font-weight:700;cursor:pointer;">
+          🔑 Redefinir senha
+        </button>
+      </div>
     </article>
   `).join('');
 }
@@ -8506,6 +8512,66 @@ async function superCarregarLojas() {
     superRenderPainel(corpo.lojas || [], master.dados);
   } catch (e) {
     if (lista) lista.innerHTML = `<div style="padding:20px;background:#FEF2F2;color:#991B1B;border-radius:12px;">${esc(e.message)}</div>`;
+  }
+}
+
+async function superRedefinirSenhaLoja(lojaId, lojaNome) {
+  const master = JSON.parse(sessionStorage.getItem(SUPER_MASTER_KEY) || 'null') || getSessao();
+  if (!master?.token) return fazerLogout();
+
+  const login = prompt(`Redefinir senha em ${lojaNome}\n\nInforme o login do usuário:`, 'admin');
+  if (login === null) return;
+
+  const novaSenha = prompt(
+    'Informe a nova senha provisória.\n\nMínimo de 8 caracteres, com maiúscula, minúscula e número:'
+  );
+  if (novaSenha === null) return;
+
+  const confirmacao = prompt('Digite novamente a nova senha:');
+  if (confirmacao === null) return;
+
+  if (novaSenha !== confirmacao) {
+    alert('As senhas não conferem.');
+    return;
+  }
+
+  if (
+    novaSenha.length < 8 ||
+    !/[A-Z]/.test(novaSenha) ||
+    !/[a-z]/.test(novaSenha) ||
+    !/\d/.test(novaSenha)
+  ) {
+    alert('A senha deve ter pelo menos 8 caracteres, com maiúscula, minúscula e número.');
+    return;
+  }
+
+  try {
+    const resp = await fetch(EDGE_LOGIN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + master.token
+      },
+      body: JSON.stringify({
+        action: 'resetar_senha_loja',
+        target_loja_id: lojaId,
+        target_login: login.trim(),
+        nova_senha: novaSenha
+      })
+    });
+
+    const corpo = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(corpo.error || 'Não foi possível redefinir a senha.');
+
+    alert(
+      `Senha redefinida com sucesso!\n\n` +
+      `Loja: ${lojaNome}\n` +
+      `Usuário: ${corpo.usuario?.login || login}\n\n` +
+      `A senha foi marcada como provisória.`
+    );
+  } catch (e) {
+    alert(e.message);
   }
 }
 
