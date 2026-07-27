@@ -4523,7 +4523,7 @@ body.modo-vitrine-publica{
       </div>
     </div>
   </div>
-  <p style="color:#555;font-size:11px;margin-top:16px;">v22 · Sistema de Gestão</p>
+  <p style="color:#555;font-size:11px;margin-top:16px;">v23 · Sistema de Gestão</p>
 </div>
 
 <!-- ===== PAINEL SUPER ADMIN ===== -->
@@ -5945,7 +5945,7 @@ body.modo-vitrine-publica{
           <th>Telefone</th>
           <th>Comissão %</th>
           <th>Status</th>
-          <th>Painel</th>
+          <th id="vendedores-th-painel">Painel</th>
           <th>Ações</th>
         </tr>
       </thead>
@@ -6069,7 +6069,7 @@ body.modo-vitrine-publica{
       </div>
 
       <!-- ACESSO AO PAINEL -->
-      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <div id="vend-painel-wrap" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
         <label style="display:flex;align-items:center;gap:8px;font-weight:700;color:var(--text);cursor:pointer;margin-bottom:12px;">
           <input type="checkbox" id="vend-painel" style="width:auto;margin:0;" onchange="vVendPainelToggle(this)">
           📱 Liberar acesso ao Painel do Vendedor
@@ -15401,6 +15401,25 @@ function setValorMoeda(idOuEl, valorNumerico) {
   el.dataset.valor = `${inteiroRaw}.${centavos}`;
 }
 
+function atualizarPainelVendedorFeatureUI() {
+  const liberado = !!LOJA_USA_GESTAO_COMERCIAL;
+
+  const wrap = document.getElementById('vend-painel-wrap');
+  if (wrap) wrap.style.display = liberado ? 'block' : 'none';
+
+  const th = document.getElementById('vendedores-th-painel');
+  if (th) th.style.display = liberado ? '' : 'none';
+
+  // Em loja sem o módulo, vendedor novo jamais recebe painel_ativo.
+  if (!liberado) {
+    const chk = document.getElementById('vend-painel');
+    if (chk) {
+      chk.checked = false;
+      vVendPainelToggle(chk);
+    }
+  }
+}
+
 function abrirModalVendedor() {
   document.getElementById('vend-id').value = '';
   document.getElementById('vend-nome').value = '';
@@ -15422,6 +15441,7 @@ function abrirModalVendedor() {
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:4px;">⚠️ O vendedor será obrigado a trocar a senha no primeiro acesso.</div>`;
   }
+  atualizarPainelVendedorFeatureUI();
   document.getElementById('modal-vendedor-titulo').textContent = '+ Novo Vendedor';
   document.getElementById('modal-vendedor').classList.add('open');
 }
@@ -15455,6 +15475,7 @@ function editarVendedor(id) {
     camposPainel.innerHTML = '<div style="font-size:12px;color:var(--success);padding:8px 0;">✅ Acesso ao painel já configurado. Para alterar a senha, use o botão abaixo.</div>' +
       `<button class="btn btn-outline btn-sm" onclick="gcResetSenhaVendedor('${v.usuario_id}')">🔑 Redefinir senha</button>`;
   }
+  atualizarPainelVendedorFeatureUI();
   document.getElementById('modal-vendedor-titulo').textContent = '✏️ Editar Vendedor';
   document.getElementById('modal-vendedor').classList.add('open');
 }
@@ -15463,7 +15484,9 @@ async function salvarVendedor() {
   const nome = document.getElementById('vend-nome').value.trim();
   if (!nome) { alert('Informe o nome do vendedor.'); return; }
   const id = document.getElementById('vend-id').value;
-  const painelAtivo = document.getElementById('vend-painel')?.checked || false;
+  const painelAtivo = LOJA_USA_GESTAO_COMERCIAL
+    ? (document.getElementById('vend-painel')?.checked || false)
+    : false;
 
   // Lê campos do painel ANTES de qualquer async
   const loginPainel = document.getElementById('vend-login')?.value.trim() || '';
@@ -15618,7 +15641,9 @@ function renderVendedores() {
   document.getElementById('cards-vendedores').innerHTML = `
     <div class="card"><div class="card-label">Total de Vendedores</div><div class="card-value">${vendedores.length}</div></div>
     <div class="card"><div class="card-label">Ativos</div><div class="card-value" style="color:var(--success)">${vendedores.filter(v=>v.ativo!==false).length}</div></div>
-    <div class="card"><div class="card-label">Com painel</div><div class="card-value" style="color:var(--accent)">${vendedores.filter(v=>v.painel_ativo).length}</div></div>
+    ${LOJA_USA_GESTAO_COMERCIAL
+      ? `<div class="card"><div class="card-label">Com painel</div><div class="card-value" style="color:var(--accent)">${vendedores.filter(v=>v.painel_ativo).length}</div></div>`
+      : ''}
   `;
 
   let filtrados = vendedores.filter(v => v.nome.toLowerCase().includes(busca));
@@ -15631,13 +15656,17 @@ function renderVendedores() {
       <td>${v.telefone || '—'}</td>
       <td>${v.comissao ? v.comissao + '%' : '—'}</td>
       <td><span class="badge ${v.ativo!==false?'badge-ok':'badge-out'}">${v.ativo!==false?'Ativo':'Inativo'}</span></td>
-      <td>${v.painel_ativo?'<span class="badge badge-ok">📱 Ativo</span>':'<span style="color:var(--muted);font-size:12px;">—</span>'}</td>
+      ${LOJA_USA_GESTAO_COMERCIAL
+        ? `<td>${v.painel_ativo?'<span class="badge badge-ok">📱 Ativo</span>':'<span style="color:var(--muted);font-size:12px;">—</span>'}</td>`
+        : ''}
       <td>
         <button class="btn btn-sm" onclick="editarVendedor('${v.id}')">✏️</button>
         <button class="btn btn-sm btn-danger" onclick="abrirModalExcluirVendedor('${v.id}')">🗑</button>
       </td>
     </tr>
-  `).join('') : `<tr><td colspan="7" class="empty">Nenhum vendedor cadastrado ainda.</td></tr>`;
+  `).join('') : `<tr><td colspan="${LOJA_USA_GESTAO_COMERCIAL ? 7 : 6}" class="empty">Nenhum vendedor cadastrado ainda.</td></tr>`;
+
+  atualizarPainelVendedorFeatureUI();
 }
 
 function popularSelectVendedores() {
@@ -19893,6 +19922,7 @@ async function aplicarConfigLoja() {
         LOJA_USA_GESTAO_COMERCIAL = !!loja.usa_gestao_comercial;
         LOJA_CATALOGO_WHATSAPP = loja.catalogo_whatsapp || '';
         aplicarFeatureFlagsUI();
+        atualizarPainelVendedorFeatureUI();
         // Carregar configs salvas no banco (carnê, categorias)
         _carregarConfigsBanco().catch(e => console.warn('Configs banco:', e.message));
       }
