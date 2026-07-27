@@ -20001,12 +20001,39 @@ async function impValidarProduto(){
  const msg=document.getElementById('imp-msg');
  if(msg){msg.textContent='Localizando produto...';msg.className='imp-msg ok'}
  try{
-  // Consulta somente o código informado no Supabase.
-  // Não baixa mais o cadastro inteiro de produtos a cada leitura.
-  const valor=encodeURIComponent(codigo);
-  const produtos=await sbGet('produtos','select=*&or=(ref.eq.'+valor+',ean13.eq.'+valor+')&limit=1');
-  const p=produtos&&produtos[0];
-  if(!p){impLimparProduto();impMensagem('Produto não cadastrado.','erro',true);campo.value='';impFocarCodigo();return}
+  const alvo=codigo.toLowerCase();
+  let p=null;
+
+  // 1. Usa imediatamente o cache já carregado, quando disponível.
+  if(Array.isArray(_cache.produtos)){
+    p=_cache.produtos.find(x=>
+      String(x.ref||'').trim().toLowerCase()===alvo ||
+      String(x.ean13||'').trim()===codigo
+    )||null;
+  }
+
+  // 2. Consulta direta por referência, sem diferenciar maiúsculas/minúsculas.
+  if(!p){
+    const refValor=encodeURIComponent(codigo);
+    const porRef=await sbGet('produtos','select=*&ref=ilike.'+refValor+'&limit=1');
+    p=porRef&&porRef[0]||null;
+  }
+
+  // 3. Se não achou pela referência, procura pelo EAN-13.
+  if(!p && /^\d+$/.test(codigo)){
+    const eanValor=encodeURIComponent(codigo);
+    const porEan=await sbGet('produtos','select=*&ean13=eq.'+eanValor+'&limit=1');
+    p=porEan&&porEan[0]||null;
+  }
+
+  if(!p){
+    impLimparProduto();
+    impMensagem('Produto não cadastrado.','erro',true);
+    campo.value='';
+    impFocarCodigo();
+    return;
+  }
+
   _impProdutoAtual=p;
   document.getElementById('imp-produto-nome').textContent=p.produto||p.descricao||p.ref||'Produto';
   document.getElementById('imp-produto-dados').textContent=[p.ref?'Ref.: '+p.ref:'',p.cor?'Cor: '+p.cor:'',p.tamanho?'Tamanho: '+p.tamanho:''].filter(Boolean).join(' • ');
