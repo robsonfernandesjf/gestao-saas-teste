@@ -20004,7 +20004,7 @@ async function impValidarProduto(){
   // Consulta somente o código informado no Supabase.
   // Não baixa mais o cadastro inteiro de produtos a cada leitura.
   const valor=encodeURIComponent(codigo);
-  const produtos=await sbGet('produtos','select=*&or=(ref.eq.'+valor+',ean13.eq.'+valor+',codigo_barras.eq.'+valor+')&limit=1');
+  const produtos=await sbGet('produtos','select=*&or=(ref.eq.'+valor+',ean13.eq.'+valor+')&limit=1');
   const p=produtos&&produtos[0];
   if(!p){impLimparProduto();impMensagem('Produto não cadastrado.','erro',true);campo.value='';impFocarCodigo();return}
   _impProdutoAtual=p;
