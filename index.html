@@ -11845,15 +11845,9 @@ function registrarVendaRapida(ref) {
 }
 
 function calcularLucroPreview() {
-  if (!produtoSelecionado) return;
-  const qtd = parseInt(document.getElementById('venda-qtd').value)||1;
-  const val = valorMoeda('venda-valor');
-  const lucro = (val - (produtoSelecionado.custo||0)) * qtd;
+  // Informação de lucro ocultada na tela de registro de venda.
   const box = document.getElementById('lucro-preview-box');
-  box.style.display = 'block';
-  box.className = 'lucro-preview' + (lucro < 0 ? ' negativo' : '');
-  const margem = val > 0 ? (lucro/val/qtd*100) : 0;
-  box.innerHTML = `💰 Lucro previsto: ${R(lucro)} &nbsp;|&nbsp; Margem: ${pct(margem)} &nbsp;|&nbsp; Subtotal: ${R(val * qtd)}`;
+  if (box) box.style.display = 'none';
 }
 
 
