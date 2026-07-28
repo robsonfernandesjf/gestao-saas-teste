@@ -4631,6 +4631,36 @@ box-shadow:0 18px 55px rgba(124,58,237,.35),inset 0 0 28px rgba(255,255,255,.42)
 @media(max-width:1000px){#page-marketing .mkt-grid{grid-template-columns:1fr}.mkt-side{display:grid!important;grid-template-columns:repeat(2,1fr)}#page-marketing .mkt-secure{margin-top:0}.mkt-side-card:last-of-type{display:none}}
 @media(max-width:700px){#page-marketing .mkt-shell{border-radius:20px}#page-marketing .mkt-grid{padding:16px;min-height:620px}#page-marketing .mkt-top{align-items:flex-start}#page-marketing .mkt-status{display:none}#page-marketing .mkt-stage{padding:10px 0}#page-marketing .mkt-orb-wrap{width:145px;height:145px;margin-bottom:18px;transform:scale(.8)}#page-marketing .mkt-heading{font-size:27px}#page-marketing .mkt-desc{font-size:13px}#page-marketing .mkt-composer{padding-left:13px;border-radius:17px}.mkt-side{grid-template-columns:1fr!important}#page-marketing .mkt-side-card{display:none}#page-marketing .mkt-secure{display:flex}#page-marketing .mkt-bubble{max-width:88%}}
 @media(prefers-reduced-motion:reduce){#page-marketing *{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}
+
+/* Fase 1.1 — interação inteligente e visual futurista */
+#page-marketing .mkt-shell:before{content:"";position:absolute;inset:-30%;background:conic-gradient(from 180deg at 50% 50%,transparent 0 24%,rgba(124,58,237,.08) 32%,transparent 42% 62%,rgba(194,24,91,.07) 72%,transparent 82%);animation:mktAurora 18s linear infinite;pointer-events:none;}
+#page-marketing .mkt-thinking-bar{display:none;align-items:center;gap:10px;width:min(780px,100%);margin:0 auto 10px;padding:10px 14px;border:1px solid rgba(124,58,237,.14);border-radius:14px;background:rgba(255,255,255,.72);backdrop-filter:blur(12px);font-size:11px;font-weight:800;color:#6d28d9;}
+#page-marketing .mkt-thinking-bar.show{display:flex;animation:mktIn .24s ease both;}
+#page-marketing .mkt-thinking-line{height:4px;flex:1;border-radius:99px;overflow:hidden;background:#ede9fe;}
+#page-marketing .mkt-thinking-line:after{content:"";display:block;width:38%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#7c3aed,#ec4899,#2563eb);animation:mktScan 1.15s ease-in-out infinite;}
+#page-marketing .mkt-quick-replies{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 4px 44px;}
+#page-marketing .mkt-quick-reply{min-height:auto!important;padding:8px 12px!important;border-radius:999px!important;border:1px solid #ddd6fe!important;background:rgba(255,255,255,.88)!important;color:#6d28d9!important;font-size:11px!important;font-weight:850!important;box-shadow:0 6px 18px rgba(124,58,237,.08)!important;}
+#page-marketing .mkt-quick-reply:hover{transform:translateY(-1px);background:#f5f3ff!important;}
+#page-marketing .mkt-progress{display:flex;flex-direction:column;gap:8px;}
+#page-marketing .mkt-progress-item{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:10px;padding:10px;border-radius:14px;border:1px solid transparent;transition:.25s ease;}
+#page-marketing .mkt-progress-item.active{background:linear-gradient(135deg,#faf5ff,#eff6ff);border-color:#ddd6fe;box-shadow:0 8px 20px rgba(124,58,237,.08);}
+#page-marketing .mkt-progress-item.done{background:rgba(240,253,244,.7);}
+#page-marketing .mkt-progress-icon{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:#f1f5f9;color:#94a3b8;font-size:13px;font-weight:900;}
+#page-marketing .mkt-progress-item.active .mkt-progress-icon{background:linear-gradient(135deg,#7c3aed,#c2185b);color:#fff;box-shadow:0 7px 16px rgba(124,58,237,.2);}
+#page-marketing .mkt-progress-item.done .mkt-progress-icon{background:#dcfce7;color:#16a34a;}
+#page-marketing .mkt-progress-copy b{display:block;font-size:12px;color:#334155;}
+#page-marketing .mkt-progress-copy small{display:block;font-size:10px;color:#94a3b8;margin-top:2px;}
+#page-marketing .mkt-progress-state{font-size:10px;font-weight:900;color:#94a3b8;}
+#page-marketing .mkt-progress-item.active .mkt-progress-state{color:#7c3aed;}
+#page-marketing .mkt-progress-item.done .mkt-progress-state{color:#16a34a;}
+#page-marketing .mkt-bubble .mkt-answer-title{display:flex;align-items:center;gap:7px;margin-bottom:8px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#7c3aed;}
+#page-marketing .mkt-bubble .mkt-tip-list{display:grid;gap:7px;margin:9px 0 3px;}
+#page-marketing .mkt-bubble .mkt-tip{padding:9px 10px;border-radius:11px;background:#f8fafc;border:1px solid #eef2f7;font-size:12px;}
+#page-marketing .mkt-bubble .mkt-resume{margin-top:10px;padding-top:10px;border-top:1px dashed #ddd6fe;color:#64748b;font-size:12px;}
+#page-marketing .mkt-stage.processing .mkt-mini-orb,#page-marketing .mkt-stage.processing .mkt-orb{animation:mktListen .8s ease-in-out infinite;filter:saturate(1.25);}
+@keyframes mktAurora{to{transform:rotate(360deg)}}
+@keyframes mktScan{0%{transform:translateX(-120%)}50%{transform:translateX(180%)}100%{transform:translateX(180%)}}
+@media(max-width:700px){#page-marketing .mkt-quick-replies{margin-left:0}.mkt-thinking-bar{font-size:10px!important}}
 </style>
 </head>
 
@@ -7155,6 +7185,7 @@ box-shadow:0 18px 55px rgba(124,58,237,.35),inset 0 0 28px rgba(255,255,255,.42)
             <p class="mkt-desc">Explique do seu jeito. A IA entende o objetivo, faz as perguntas certas e transforma sua ideia em uma campanha simples de aprovar.</p>
           </div>
 
+          <div class="mkt-thinking-bar" id="mkt-thinking-bar"><span id="mkt-thinking-text">Analisando sua resposta...</span><div class="mkt-thinking-line"></div></div>
           <div class="mkt-chat" id="mkt-chat" aria-live="polite"></div>
 
           <div class="mkt-composer">
@@ -7181,11 +7212,14 @@ box-shadow:0 18px 55px rgba(124,58,237,.35),inset 0 0 28px rgba(255,255,255,.42)
           <p>Nenhum termo complicado da Meta. O processo acontece em perguntas curtas e fáceis.</p>
         </div>
         <div class="mkt-side-card">
-          <div class="mkt-side-label">O que a IA prepara</div>
-          <div class="mkt-feature"><div class="mkt-feature-icon">🎯</div><div><b>Público ideal</b><small>Região e perfil sugeridos</small></div></div>
-          <div class="mkt-feature"><div class="mkt-feature-icon">✍️</div><div><b>Texto do anúncio</b><small>Mensagem clara para sua loja</small></div></div>
-          <div class="mkt-feature"><div class="mkt-feature-icon">💰</div><div><b>Investimento</b><small>Orçamento explicado sem complicação</small></div></div>
-          <div class="mkt-feature"><div class="mkt-feature-icon">📸</div><div><b>Criativo</b><small>Orientação para foto ou vídeo</small></div></div>
+          <div class="mkt-side-label">Estratégia em construção</div>
+          <div class="mkt-progress" id="mkt-progress">
+            <div class="mkt-progress-item active" data-step="1"><div class="mkt-progress-icon">1</div><div class="mkt-progress-copy"><b>Objetivo</b><small>O que você quer divulgar</small></div><span class="mkt-progress-state">AGORA</span></div>
+            <div class="mkt-progress-item" data-step="2"><div class="mkt-progress-icon">2</div><div class="mkt-progress-copy"><b>Formato</b><small>Produto, categoria ou loja</small></div><span class="mkt-progress-state">AGUARDA</span></div>
+            <div class="mkt-progress-item" data-step="3"><div class="mkt-progress-icon">3</div><div class="mkt-progress-copy"><b>Criativo</b><small>Foto, vídeo ou roteiro</small></div><span class="mkt-progress-state">AGUARDA</span></div>
+            <div class="mkt-progress-item" data-step="4"><div class="mkt-progress-icon">4</div><div class="mkt-progress-copy"><b>Investimento</b><small>Valor diário recomendado</small></div><span class="mkt-progress-state">AGUARDA</span></div>
+            <div class="mkt-progress-item" data-step="5"><div class="mkt-progress-icon">5</div><div class="mkt-progress-copy"><b>Duração</b><small>Período da campanha</small></div><span class="mkt-progress-state">AGUARDA</span></div>
+          </div>
         </div>
         <div class="mkt-secure"><span>🔒</span><div><b>Você permanece no controle.</b><br>A campanha só será publicada depois da sua aprovação.</div></div>
       </aside>
@@ -23116,141 +23150,25 @@ async function gcResetSenhaVendedor(usuarioId) {
 let MKT_FASE1_INICIADA = false;
 let MKT_FASE1_ETAPA = 0;
 let MKT_FASE1_CTX = {};
+let MKT_FASE1_OCUPADA = false;
 
-function renderMarketingIA(){
-  const input = document.getElementById('mkt-user-input');
-  if (!input) return;
-  setTimeout(() => input.focus(), 180);
-}
-
-function mktAutoResize(el){
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 130) + 'px';
-  document.getElementById('mkt-stage')?.classList.toggle('listening', !!el.value.trim());
-}
-
-function mktInputKey(ev){
-  if (ev.key === 'Enter' && !ev.shiftKey) {
-    ev.preventDefault();
-    mktEnviar();
-  }
-}
-
-function mktSugestao(texto){
-  const input = document.getElementById('mkt-user-input');
-  if (!input) return;
-  input.value = texto;
-  mktAutoResize(input);
-  mktEnviar();
-}
-
-function mktEsc(texto){
-  const div = document.createElement('div');
-  div.textContent = texto == null ? '' : String(texto);
-  return div.innerHTML;
-}
-
-function mktAdicionarMensagem(tipo, texto, html){
-  const chat = document.getElementById('mkt-chat');
-  if (!chat) return;
-  chat.classList.add('show');
-  const linha = document.createElement('div');
-  linha.className = 'mkt-msg ' + tipo;
-  if (tipo === 'ai') {
-    linha.innerHTML = '<div class="mkt-avatar">✦</div><div class="mkt-bubble">' + (html ? texto : mktEsc(texto)) + '</div>';
-  } else {
-    linha.innerHTML = '<div class="mkt-bubble">' + mktEsc(texto) + '</div>';
-  }
-  chat.appendChild(linha);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function mktDigitando(){
-  const chat = document.getElementById('mkt-chat');
-  if (!chat) return null;
-  const linha = document.createElement('div');
-  linha.className = 'mkt-msg ai';
-  linha.innerHTML = '<div class="mkt-avatar">✦</div><div class="mkt-bubble"><span class="mkt-typing"><span></span><span></span><span></span></span></div>';
-  chat.appendChild(linha);
-  chat.scrollTop = chat.scrollHeight;
-  return linha;
-}
-
-function mktResponder(texto, atraso){
-  const digitando = mktDigitando();
-  document.getElementById('mkt-stage')?.classList.add('listening');
-  setTimeout(() => {
-    digitando?.remove();
-    mktAdicionarMensagem('ai', texto, true);
-    document.getElementById('mkt-stage')?.classList.remove('listening');
-    document.getElementById('mkt-user-input')?.focus();
-  }, atraso || 850);
-}
-
-function mktEnviar(){
-  const input = document.getElementById('mkt-user-input');
-  if (!input) return;
-  const texto = input.value.trim();
-  if (!texto) {
-    input.focus();
-    return;
-  }
-
-  if (!MKT_FASE1_INICIADA) {
-    MKT_FASE1_INICIADA = true;
-    MKT_FASE1_ETAPA = 1;
-    MKT_FASE1_CTX.objetivo = texto;
-    document.getElementById('mkt-welcome').style.display = 'none';
-    document.getElementById('mkt-suggestions').style.display = 'none';
-    document.getElementById('mkt-reset').classList.add('show');
-    mktAdicionarMensagem('user', texto);
-    input.value = '';
-    mktAutoResize(input);
-    mktResponder('<b>Entendi.</b> Vou transformar isso em uma campanha simples e objetiva.<br><br>Para começar, você deseja divulgar <b>um produto específico</b>, <b>uma categoria</b> ou <b>a loja como um todo</b>?');
-    return;
-  }
-
-  mktAdicionarMensagem('user', texto);
-  input.value = '';
-  mktAutoResize(input);
-
-  if (MKT_FASE1_ETAPA === 1) {
-    MKT_FASE1_CTX.tipo = texto;
-    MKT_FASE1_ETAPA = 2;
-    mktResponder('Perfeito. Você já tem <b>foto ou vídeo</b> para usar, ou gostaria que eu sugerisse como criar o material?');
-  } else if (MKT_FASE1_ETAPA === 2) {
-    MKT_FASE1_CTX.criativo = texto;
-    MKT_FASE1_ETAPA = 3;
-    mktResponder('Ótimo. Quanto você pretende investir <b>por dia</b>? Pode responder com um valor aproximado, como R$ 15, R$ 20 ou R$ 30.');
-  } else if (MKT_FASE1_ETAPA === 3) {
-    MKT_FASE1_CTX.orcamento = texto;
-    MKT_FASE1_ETAPA = 4;
-    mktResponder('E por quantos dias você gostaria de anunciar? Para uma primeira campanha, normalmente começamos com <b>5 a 7 dias</b>.');
-  } else if (MKT_FASE1_ETAPA === 4) {
-    MKT_FASE1_CTX.duracao = texto;
-    MKT_FASE1_ETAPA = 5;
-    mktResponder('<b>Já tenho o necessário para montar a estratégia inicial.</b><br><br>Na próxima fase, esta etapa irá criar automaticamente o público, o texto, o orçamento e a prévia do anúncio usando os dados reais da loja.<br><br><span style="color:#7c3aed;font-weight:800;">Experiência inicial concluída com sucesso.</span>');
-  } else {
-    mktResponder('A conversa inicial já foi concluída. Use “Iniciar uma nova conversa” para testar outro objetivo.');
-  }
-}
-
-function mktReiniciar(){
-  MKT_FASE1_INICIADA = false;
-  MKT_FASE1_ETAPA = 0;
-  MKT_FASE1_CTX = {};
-  const chat = document.getElementById('mkt-chat');
-  const welcome = document.getElementById('mkt-welcome');
-  const suggestions = document.getElementById('mkt-suggestions');
-  const reset = document.getElementById('mkt-reset');
-  const input = document.getElementById('mkt-user-input');
-  if (chat) { chat.innerHTML = ''; chat.classList.remove('show'); }
-  if (welcome) welcome.style.display = '';
-  if (suggestions) suggestions.style.display = '';
-  if (reset) reset.classList.remove('show');
-  if (input) { input.value = ''; input.style.height = 'auto'; input.focus(); }
-  document.getElementById('mkt-stage')?.classList.remove('listening');
-}
+function renderMarketingIA(){ const input=document.getElementById('mkt-user-input'); if(input)setTimeout(()=>input.focus(),180); mktAtualizarProgresso(); }
+function mktAutoResize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,130)+'px'; document.getElementById('mkt-stage')?.classList.toggle('listening',!!el.value.trim()); }
+function mktInputKey(ev){ if(ev.key==='Enter'&&!ev.shiftKey){ev.preventDefault();mktEnviar();} }
+function mktSugestao(texto){ const input=document.getElementById('mkt-user-input'); if(!input)return; input.value=texto; mktAutoResize(input); mktEnviar(); }
+function mktEsc(texto){ const div=document.createElement('div'); div.textContent=texto==null?'':String(texto); return div.innerHTML; }
+function mktAdicionarMensagem(tipo,texto,html){ const chat=document.getElementById('mkt-chat'); if(!chat)return; chat.classList.add('show'); const linha=document.createElement('div'); linha.className='mkt-msg '+tipo; linha.innerHTML=tipo==='ai'?'<div class="mkt-avatar">✦</div><div class="mkt-bubble">'+(html?texto:mktEsc(texto))+'</div>':'<div class="mkt-bubble">'+mktEsc(texto)+'</div>'; chat.appendChild(linha); chat.scrollTop=chat.scrollHeight; }
+function mktLimparRespostasRapidas(){ document.querySelectorAll('#mkt-chat .mkt-quick-replies').forEach(el=>el.remove()); }
+function mktRespostasRapidas(opcoes){ mktLimparRespostasRapidas(); if(!opcoes?.length)return; const chat=document.getElementById('mkt-chat'); const wrap=document.createElement('div'); wrap.className='mkt-quick-replies'; opcoes.forEach(o=>{const b=document.createElement('button');b.type='button';b.className='mkt-quick-reply';b.textContent=o.label;b.onclick=()=>mktSugestao(o.valor||o.label);wrap.appendChild(b)});chat.appendChild(wrap);chat.scrollTop=chat.scrollHeight; }
+function mktDigitando(){ const chat=document.getElementById('mkt-chat'); if(!chat)return null; const linha=document.createElement('div'); linha.className='mkt-msg ai'; linha.innerHTML='<div class="mkt-avatar">✦</div><div class="mkt-bubble"><span class="mkt-typing"><span></span><span></span><span></span></span></div>'; chat.appendChild(linha); chat.scrollTop=chat.scrollHeight; return linha; }
+function mktPensando(mostrar,texto){ const bar=document.getElementById('mkt-thinking-bar'); const label=document.getElementById('mkt-thinking-text'); if(label&&texto)label.textContent=texto; bar?.classList.toggle('show',mostrar); document.getElementById('mkt-stage')?.classList.toggle('processing',mostrar); }
+function mktResponder(texto,atraso,opcoes){ const digitando=mktDigitando(); MKT_FASE1_OCUPADA=true; mktPensando(true,'Organizando a melhor resposta...'); setTimeout(()=>{digitando?.remove();mktAdicionarMensagem('ai',texto,true);mktPensando(false);MKT_FASE1_OCUPADA=false;mktRespostasRapidas(opcoes);document.getElementById('mkt-user-input')?.focus();},atraso||950); }
+function mktAtualizarProgresso(){ document.querySelectorAll('#mkt-progress .mkt-progress-item').forEach(item=>{const passo=Number(item.dataset.step); item.classList.toggle('done',MKT_FASE1_INICIADA&&passo<=MKT_FASE1_ETAPA); item.classList.toggle('active',passo===Math.min(MKT_FASE1_ETAPA+1,5)); const st=item.querySelector('.mkt-progress-state'); const ic=item.querySelector('.mkt-progress-icon'); if(passo<=MKT_FASE1_ETAPA&&MKT_FASE1_INICIADA){st.textContent='PRONTO';ic.textContent='✓'} else if(passo===Math.min(MKT_FASE1_ETAPA+1,5)){st.textContent='AGORA';ic.textContent=passo} else {st.textContent='AGUARDA';ic.textContent=passo}}); }
+function mktEhDuvida(texto){ const t=texto.toLowerCase(); return /como|qual|o que|me ajuda|me ensina|sugere|ideia|roteiro|exemplo|dúvida|duvida|não sei|nao sei/.test(t)&&!/^r\$?\s*\d+/.test(t); }
+function mktRespostaDuvida(texto){ const t=texto.toLowerCase(); if(/vídeo|video|roteiro|gravar|criativo/.test(t)) return '<div class="mkt-answer-title">✦ Orientação rápida</div><b>Para um vídeo de loja que gere resultado, mantenha entre 15 e 25 segundos.</b><div class="mkt-tip-list"><div class="mkt-tip"><b>1.</b> Comece mostrando a fachada ou a melhor peça nos primeiros 2 segundos.</div><div class="mkt-tip"><b>2.</b> Mostre 3 a 5 cenas curtas: ambiente, detalhes, provador e atendimento.</div><div class="mkt-tip"><b>3.</b> Termine com um convite claro: “Venha conhecer nossa loja em Juiz de Fora”.</div></div><div class="mkt-resume">Posso montar um roteiro completo depois. Agora retomamos exatamente de onde paramos.</div>'; if(/foto|imagem/.test(t)) return '<div class="mkt-answer-title">✦ Orientação rápida</div>Use uma foto clara, sem excesso de texto e com o produto ocupando a maior parte da imagem. Fundo limpo e boa luz costumam funcionar melhor.<div class="mkt-resume">Entendi sua dúvida. Agora continuo a configuração da campanha.</div>'; if(/invest|orçamento|orcamento|valor/.test(t)) return '<div class="mkt-answer-title">✦ Orientação rápida</div>Para um primeiro teste local, valores entre <b>R$ 15 e R$ 30 por dia</b> já permitem validar a campanha. O ideal é começar controlado e ajustar pelos resultados.<div class="mkt-resume">Agora sigo com a pergunta que estava em andamento.</div>'; return '<div class="mkt-answer-title">✦ Entendi sua dúvida</div>Posso responder perguntas durante a configuração sem perder o progresso. Depois da orientação, volto exatamente à etapa em que estávamos.'; }
+function mktPerguntaEtapa(){ if(MKT_FASE1_ETAPA===1)return['Para continuar, você deseja divulgar <b>um produto específico</b>, <b>uma categoria</b> ou <b>a loja como um todo</b>?',[{label:'📦 Produto',valor:'um produto específico'},{label:'🗂️ Categoria',valor:'uma categoria'},{label:'🏬 A loja',valor:'a loja como um todo'}]]; if(MKT_FASE1_ETAPA===2)return['Agora preciso definir o material. Você já tem <b>foto ou vídeo</b>, ou deseja que eu prepare uma orientação para criar o conteúdo?',[{label:'📷 Tenho foto',valor:'tenho foto'},{label:'🎥 Tenho vídeo',valor:'tenho vídeo'},{label:'✨ Quero orientação',valor:'quero orientação para criar o material'}]]; if(MKT_FASE1_ETAPA===3)return['Quanto você pretende investir <b>por dia</b>? Esse valor será usado para estimar o alcance da campanha.',[{label:'R$ 15',valor:'15'},{label:'R$ 20',valor:'20'},{label:'R$ 30',valor:'30'},{label:'Outro valor',valor:'outro valor'}]]; if(MKT_FASE1_ETAPA===4)return['Por quantos dias você gostaria de anunciar? Para um primeiro teste, normalmente usamos <b>5 a 7 dias</b>.',[{label:'5 dias',valor:'5 dias'},{label:'7 dias',valor:'7 dias'},{label:'10 dias',valor:'10 dias'}]]; return ['',[]]; }
+function mktEnviar(){ const input=document.getElementById('mkt-user-input'); if(!input||MKT_FASE1_OCUPADA)return; const texto=input.value.trim(); if(!texto){input.focus();return;} mktLimparRespostasRapidas(); if(!MKT_FASE1_INICIADA){MKT_FASE1_INICIADA=true;MKT_FASE1_ETAPA=1;MKT_FASE1_CTX.objetivo=texto;document.getElementById('mkt-welcome').style.display='none';document.getElementById('mkt-suggestions').style.display='none';document.getElementById('mkt-reset').classList.add('show');mktAdicionarMensagem('user',texto);input.value='';mktAutoResize(input);mktAtualizarProgresso();const [p,o]=mktPerguntaEtapa();mktResponder('<b>Entendi seu objetivo.</b> Vou organizar a campanha sem termos complicados.<br><br>'+p,1050,o);return;} mktAdicionarMensagem('user',texto);input.value='';mktAutoResize(input); if(mktEhDuvida(texto)){const etapa=MKT_FASE1_ETAPA; mktResponder(mktRespostaDuvida(texto),1100); setTimeout(()=>{if(MKT_FASE1_ETAPA===etapa){const [p,o]=mktPerguntaEtapa();mktResponder(p,900,o)}},2350); return;} if(MKT_FASE1_ETAPA===1){MKT_FASE1_CTX.tipo=texto;MKT_FASE1_ETAPA=2;} else if(MKT_FASE1_ETAPA===2){MKT_FASE1_CTX.criativo=texto;MKT_FASE1_ETAPA=3;} else if(MKT_FASE1_ETAPA===3){MKT_FASE1_CTX.orcamento=texto;MKT_FASE1_ETAPA=4;} else if(MKT_FASE1_ETAPA===4){MKT_FASE1_CTX.duracao=texto;MKT_FASE1_ETAPA=5;mktAtualizarProgresso();mktResponder('<div class="mkt-answer-title">✓ Estratégia inicial concluída</div><b>Perfeito. Já organizei a base da campanha.</b><br><br>Na próxima fase, o Marketing IA utilizará os dados reais da loja para montar público, texto, criativo, orçamento e prévia para sua aprovação.<br><br><span style="color:#7c3aed;font-weight:900;">Você continuou no controle durante todo o processo.</span>',1200);return;} else {mktResponder('A conversa inicial já foi concluída. Use “Iniciar uma nova conversa” para testar outro objetivo.');return;} mktAtualizarProgresso(); const [p,o]=mktPerguntaEtapa(); mktResponder(p,950,o); }
+function mktReiniciar(){MKT_FASE1_INICIADA=false;MKT_FASE1_ETAPA=0;MKT_FASE1_CTX={};MKT_FASE1_OCUPADA=false;const chat=document.getElementById('mkt-chat'),welcome=document.getElementById('mkt-welcome'),suggestions=document.getElementById('mkt-suggestions'),reset=document.getElementById('mkt-reset'),input=document.getElementById('mkt-user-input');if(chat){chat.innerHTML='';chat.classList.remove('show')}if(welcome)welcome.style.display='';if(suggestions)suggestions.style.display='';if(reset)reset.classList.remove('show');if(input){input.value='';input.style.height='auto';input.focus()}mktPensando(false);document.getElementById('mkt-stage')?.classList.remove('listening');mktAtualizarProgresso();}
 </script>
 </body>
 </html>
