@@ -23164,11 +23164,75 @@ function mktDigitando(){ const chat=document.getElementById('mkt-chat'); if(!cha
 function mktPensando(mostrar,texto){ const bar=document.getElementById('mkt-thinking-bar'); const label=document.getElementById('mkt-thinking-text'); if(label&&texto)label.textContent=texto; bar?.classList.toggle('show',mostrar); document.getElementById('mkt-stage')?.classList.toggle('processing',mostrar); }
 function mktResponder(texto,atraso,opcoes){ const digitando=mktDigitando(); MKT_FASE1_OCUPADA=true; mktPensando(true,'Organizando a melhor resposta...'); setTimeout(()=>{digitando?.remove();mktAdicionarMensagem('ai',texto,true);mktPensando(false);MKT_FASE1_OCUPADA=false;mktRespostasRapidas(opcoes);document.getElementById('mkt-user-input')?.focus();},atraso||950); }
 function mktAtualizarProgresso(){ document.querySelectorAll('#mkt-progress .mkt-progress-item').forEach(item=>{const passo=Number(item.dataset.step); item.classList.toggle('done',MKT_FASE1_INICIADA&&passo<=MKT_FASE1_ETAPA); item.classList.toggle('active',passo===Math.min(MKT_FASE1_ETAPA+1,5)); const st=item.querySelector('.mkt-progress-state'); const ic=item.querySelector('.mkt-progress-icon'); if(passo<=MKT_FASE1_ETAPA&&MKT_FASE1_INICIADA){st.textContent='PRONTO';ic.textContent='✓'} else if(passo===Math.min(MKT_FASE1_ETAPA+1,5)){st.textContent='AGORA';ic.textContent=passo} else {st.textContent='AGUARDA';ic.textContent=passo}}); }
-function mktEhDuvida(texto){ const t=texto.toLowerCase(); return /como|qual|o que|me ajuda|me ensina|sugere|ideia|roteiro|exemplo|dúvida|duvida|não sei|nao sei/.test(t)&&!/^r\$?\s*\d+/.test(t); }
-function mktRespostaDuvida(texto){ const t=texto.toLowerCase(); if(/vídeo|video|roteiro|gravar|criativo/.test(t)) return '<div class="mkt-answer-title">✦ Orientação rápida</div><b>Para um vídeo de loja que gere resultado, mantenha entre 15 e 25 segundos.</b><div class="mkt-tip-list"><div class="mkt-tip"><b>1.</b> Comece mostrando a fachada ou a melhor peça nos primeiros 2 segundos.</div><div class="mkt-tip"><b>2.</b> Mostre 3 a 5 cenas curtas: ambiente, detalhes, provador e atendimento.</div><div class="mkt-tip"><b>3.</b> Termine com um convite claro: “Venha conhecer nossa loja em Juiz de Fora”.</div></div><div class="mkt-resume">Posso montar um roteiro completo depois. Agora retomamos exatamente de onde paramos.</div>'; if(/foto|imagem/.test(t)) return '<div class="mkt-answer-title">✦ Orientação rápida</div>Use uma foto clara, sem excesso de texto e com o produto ocupando a maior parte da imagem. Fundo limpo e boa luz costumam funcionar melhor.<div class="mkt-resume">Entendi sua dúvida. Agora continuo a configuração da campanha.</div>'; if(/invest|orçamento|orcamento|valor/.test(t)) return '<div class="mkt-answer-title">✦ Orientação rápida</div>Para um primeiro teste local, valores entre <b>R$ 15 e R$ 30 por dia</b> já permitem validar a campanha. O ideal é começar controlado e ajustar pelos resultados.<div class="mkt-resume">Agora sigo com a pergunta que estava em andamento.</div>'; return '<div class="mkt-answer-title">✦ Entendi sua dúvida</div>Posso responder perguntas durante a configuração sem perder o progresso. Depois da orientação, volto exatamente à etapa em que estávamos.'; }
-function mktPerguntaEtapa(){ if(MKT_FASE1_ETAPA===1)return['Para continuar, você deseja divulgar <b>um produto específico</b>, <b>uma categoria</b> ou <b>a loja como um todo</b>?',[{label:'📦 Produto',valor:'um produto específico'},{label:'🗂️ Categoria',valor:'uma categoria'},{label:'🏬 A loja',valor:'a loja como um todo'}]]; if(MKT_FASE1_ETAPA===2)return['Agora preciso definir o material. Você já tem <b>foto ou vídeo</b>, ou deseja que eu prepare uma orientação para criar o conteúdo?',[{label:'📷 Tenho foto',valor:'tenho foto'},{label:'🎥 Tenho vídeo',valor:'tenho vídeo'},{label:'✨ Quero orientação',valor:'quero orientação para criar o material'}]]; if(MKT_FASE1_ETAPA===3)return['Quanto você pretende investir <b>por dia</b>? Esse valor será usado para estimar o alcance da campanha.',[{label:'R$ 15',valor:'15'},{label:'R$ 20',valor:'20'},{label:'R$ 30',valor:'30'},{label:'Outro valor',valor:'outro valor'}]]; if(MKT_FASE1_ETAPA===4)return['Por quantos dias você gostaria de anunciar? Para um primeiro teste, normalmente usamos <b>5 a 7 dias</b>.',[{label:'5 dias',valor:'5 dias'},{label:'7 dias',valor:'7 dias'},{label:'10 dias',valor:'10 dias'}]]; return ['',[]]; }
-function mktEnviar(){ const input=document.getElementById('mkt-user-input'); if(!input||MKT_FASE1_OCUPADA)return; const texto=input.value.trim(); if(!texto){input.focus();return;} mktLimparRespostasRapidas(); if(!MKT_FASE1_INICIADA){MKT_FASE1_INICIADA=true;MKT_FASE1_ETAPA=1;MKT_FASE1_CTX.objetivo=texto;document.getElementById('mkt-welcome').style.display='none';document.getElementById('mkt-suggestions').style.display='none';document.getElementById('mkt-reset').classList.add('show');mktAdicionarMensagem('user',texto);input.value='';mktAutoResize(input);mktAtualizarProgresso();const [p,o]=mktPerguntaEtapa();mktResponder('<b>Entendi seu objetivo.</b> Vou organizar a campanha sem termos complicados.<br><br>'+p,1050,o);return;} mktAdicionarMensagem('user',texto);input.value='';mktAutoResize(input); if(mktEhDuvida(texto)){const etapa=MKT_FASE1_ETAPA; mktResponder(mktRespostaDuvida(texto),1100); setTimeout(()=>{if(MKT_FASE1_ETAPA===etapa){const [p,o]=mktPerguntaEtapa();mktResponder(p,900,o)}},2350); return;} if(MKT_FASE1_ETAPA===1){MKT_FASE1_CTX.tipo=texto;MKT_FASE1_ETAPA=2;} else if(MKT_FASE1_ETAPA===2){MKT_FASE1_CTX.criativo=texto;MKT_FASE1_ETAPA=3;} else if(MKT_FASE1_ETAPA===3){MKT_FASE1_CTX.orcamento=texto;MKT_FASE1_ETAPA=4;} else if(MKT_FASE1_ETAPA===4){MKT_FASE1_CTX.duracao=texto;MKT_FASE1_ETAPA=5;mktAtualizarProgresso();mktResponder('<div class="mkt-answer-title">✓ Estratégia inicial concluída</div><b>Perfeito. Já organizei a base da campanha.</b><br><br>Na próxima fase, o Marketing IA utilizará os dados reais da loja para montar público, texto, criativo, orçamento e prévia para sua aprovação.<br><br><span style="color:#7c3aed;font-weight:900;">Você continuou no controle durante todo o processo.</span>',1200);return;} else {mktResponder('A conversa inicial já foi concluída. Use “Iniciar uma nova conversa” para testar outro objetivo.');return;} mktAtualizarProgresso(); const [p,o]=mktPerguntaEtapa(); mktResponder(p,950,o); }
-function mktReiniciar(){MKT_FASE1_INICIADA=false;MKT_FASE1_ETAPA=0;MKT_FASE1_CTX={};MKT_FASE1_OCUPADA=false;const chat=document.getElementById('mkt-chat'),welcome=document.getElementById('mkt-welcome'),suggestions=document.getElementById('mkt-suggestions'),reset=document.getElementById('mkt-reset'),input=document.getElementById('mkt-user-input');if(chat){chat.innerHTML='';chat.classList.remove('show')}if(welcome)welcome.style.display='';if(suggestions)suggestions.style.display='';if(reset)reset.classList.remove('show');if(input){input.value='';input.style.height='auto';input.focus()}mktPensando(false);document.getElementById('mkt-stage')?.classList.remove('listening');mktAtualizarProgresso();}
+let MKT_FASE1_TIMER_RETORNO=null;
+function mktNormalizar(texto){return String(texto||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+function mktEhDuvida(texto){
+  const t=mktNormalizar(texto);
+  if(!t)return false;
+  if(/^r?\$?\s*\d+(?:[,.]\d+)?(?:\s*(?:reais|por dia|dia|dias))?$/.test(t))return false;
+  if(/^(tenho|ja tenho|vou usar|usar)\s+(uma\s+)?(foto|video|imagem)/.test(t))return false;
+  if(/^(produto|categoria|a loja|loja|um produto|uma categoria)/.test(t))return false;
+  if(/^\d+\s*dias?$/.test(t))return false;
+  return /\?|\bcomo\b|\bqual\b|\bo que\b|\bpor que\b|\bme ajuda\b|\bme ensina\b|\bsugere\b|\bsugestao\b|\bideia\b|\broteiro\b|\bexemplo\b|\bduvida\b|\bnao sei\b|\bquero orientacao\b/.test(t);
+}
+function mktRespostaDuvida(texto){
+  const t=mktNormalizar(texto);
+  if(/video|roteiro|gravar|criativo/.test(t)) return '<div class="mkt-answer-title">✦ Como criar um vídeo que gere resultado</div><b>Use um vídeo curto, entre 15 e 25 segundos, com movimento desde o primeiro segundo.</b><div class="mkt-tip-list"><div class="mkt-tip"><b>1.</b> Abra com a fachada, uma arara bonita ou a peça mais chamativa.</div><div class="mkt-tip"><b>2.</b> Mostre 3 a 5 cenas rápidas: ambiente, detalhes das peças, provador e atendimento.</div><div class="mkt-tip"><b>3.</b> Finalize com um convite direto para conhecer a loja.</div></div><div class="mkt-resume">Agora escolha abaixo o material que será usado nesta campanha.</div>';
+  if(/foto|imagem/.test(t)) return '<div class="mkt-answer-title">✦ Como escolher uma boa foto</div>Use uma imagem clara, com pouca informação escrita e o produto ocupando a maior parte do quadro. Prefira luz natural e fundo organizado.<div class="mkt-resume">Agora escolha abaixo como deseja seguir com o criativo.</div>';
+  if(/invest|orcamento|valor|quanto/.test(t)) return '<div class="mkt-answer-title">✦ Investimento inicial</div>Para um teste local, <b>R$ 15 a R$ 30 por dia</b> costuma ser uma faixa segura para começar e medir o interesse do público.<div class="mkt-resume">Escolha um valor abaixo ou digite outro.</div>';
+  return '<div class="mkt-answer-title">✦ Posso ajudar com isso</div>Vou responder sua dúvida sem perder a configuração da campanha. Depois, você escolhe uma das opções para continuar.';
+}
+function mktPerguntaEtapa(){
+  if(MKT_FASE1_ETAPA===1)return['Para continuar, o que será divulgado nesta campanha?',[{label:'📦 Um produto',valor:'um produto específico'},{label:'🗂️ Uma categoria',valor:'uma categoria'},{label:'🏬 A loja inteira',valor:'a loja como um todo'}]];
+  if(MKT_FASE1_ETAPA===2)return['Qual material você deseja usar?',[{label:'📷 Já tenho foto',valor:'tenho foto'},{label:'🎥 Já tenho vídeo',valor:'tenho vídeo'},{label:'✨ Criar comigo',valor:'quero orientação para criar o material'}]];
+  if(MKT_FASE1_ETAPA===3)return['Qual será o investimento diário?',[{label:'R$ 15',valor:'15'},{label:'R$ 20',valor:'20'},{label:'R$ 30',valor:'30'},{label:'Outro valor',valor:'outro valor'}]];
+  if(MKT_FASE1_ETAPA===4)return['Por quantos dias a campanha deve ficar ativa?',[{label:'5 dias',valor:'5 dias'},{label:'7 dias',valor:'7 dias'},{label:'10 dias',valor:'10 dias'}]];
+  return ['',[]];
+}
+function mktOpcoesRetornoEtapa(){
+  const [,opcoes]=mktPerguntaEtapa();
+  return opcoes;
+}
+function mktEnviar(){
+  const input=document.getElementById('mkt-user-input');
+  if(!input||MKT_FASE1_OCUPADA)return;
+  const texto=input.value.trim();
+  if(!texto){input.focus();return;}
+  if(MKT_FASE1_TIMER_RETORNO){clearTimeout(MKT_FASE1_TIMER_RETORNO);MKT_FASE1_TIMER_RETORNO=null;}
+  mktLimparRespostasRapidas();
+  if(!MKT_FASE1_INICIADA){
+    MKT_FASE1_INICIADA=true;MKT_FASE1_ETAPA=1;MKT_FASE1_CTX.objetivo=texto;
+    document.getElementById('mkt-welcome').style.display='none';document.getElementById('mkt-suggestions').style.display='none';document.getElementById('mkt-reset').classList.add('show');
+    mktAdicionarMensagem('user',texto);input.value='';mktAutoResize(input);mktAtualizarProgresso();
+    const [p,o]=mktPerguntaEtapa();mktResponder('<b>Entendi seu objetivo.</b> Vou montar a campanha com você, passo a passo.<br><br>'+p,900,o);return;
+  }
+  mktAdicionarMensagem('user',texto);input.value='';mktAutoResize(input);
+  if(mktEhDuvida(texto)){
+    const opcoes=mktOpcoesRetornoEtapa();
+    mktResponder(mktRespostaDuvida(texto),900,opcoes);
+    return;
+  }
+  if(MKT_FASE1_ETAPA===1){MKT_FASE1_CTX.tipo=texto;MKT_FASE1_ETAPA=2;}
+  else if(MKT_FASE1_ETAPA===2){
+    const t=mktNormalizar(texto);
+    if(/quero orientacao|criar comigo|nao tenho|sem foto|sem video/.test(t)){
+      MKT_FASE1_CTX.criativo='orientação necessária';
+      MKT_FASE1_ETAPA=3;
+      mktAtualizarProgresso();
+      mktResponder('<div class="mkt-answer-title">✦ Criativo orientado</div>Perfeito. Na próxima etapa eu preparo o roteiro e a orientação do material para você.<br><br><b>Qual será o investimento diário?</b>',900,[{label:'R$ 15',valor:'15'},{label:'R$ 20',valor:'20'},{label:'R$ 30',valor:'30'},{label:'Outro valor',valor:'outro valor'}]);
+      return;
+    }
+    MKT_FASE1_CTX.criativo=texto;MKT_FASE1_ETAPA=3;
+  }
+  else if(MKT_FASE1_ETAPA===3){MKT_FASE1_CTX.orcamento=texto;MKT_FASE1_ETAPA=4;}
+  else if(MKT_FASE1_ETAPA===4){
+    MKT_FASE1_CTX.duracao=texto;MKT_FASE1_ETAPA=5;mktAtualizarProgresso();
+    mktResponder('<div class="mkt-answer-title">✓ Estratégia inicial concluída</div><b>Perfeito. Já organizei a base da campanha.</b><br><br>Na próxima fase, o Marketing IA utilizará os dados reais da loja para montar público, texto, criativo, orçamento e prévia para sua aprovação.<br><br><span style="color:#7c3aed;font-weight:900;">Você continuou no controle durante todo o processo.</span>',1100);return;
+  } else {mktResponder('A conversa inicial já foi concluída. Use “Iniciar uma nova conversa” para testar outro objetivo.');return;}
+  mktAtualizarProgresso();
+  const [p,o]=mktPerguntaEtapa();mktResponder(p,850,o);
+}
+function mktReiniciar(){if(MKT_FASE1_TIMER_RETORNO){clearTimeout(MKT_FASE1_TIMER_RETORNO);MKT_FASE1_TIMER_RETORNO=null;}MKT_FASE1_INICIADA=false;MKT_FASE1_ETAPA=0;MKT_FASE1_CTX={};MKT_FASE1_OCUPADA=false;const chat=document.getElementById('mkt-chat'),welcome=document.getElementById('mkt-welcome'),suggestions=document.getElementById('mkt-suggestions'),reset=document.getElementById('mkt-reset'),input=document.getElementById('mkt-user-input');if(chat){chat.innerHTML='';chat.classList.remove('show')}if(welcome)welcome.style.display='';if(suggestions)suggestions.style.display='';if(reset)reset.classList.remove('show');if(input){input.value='';input.style.height='auto';input.focus()}mktPensando(false);document.getElementById('mkt-stage')?.classList.remove('listening');mktAtualizarProgresso();}
 </script>
 </body>
 </html>
