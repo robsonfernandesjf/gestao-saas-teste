@@ -7222,7 +7222,7 @@ body.mkt-workspace-open{overflow:hidden!important;}
         <div class="mkt-conversation" id="mkt-conversation">
           <section class="mkt-hero" id="mkt-welcome">
             <div class="mkt-orb-wrap" aria-hidden="true"><div class="mkt-ring r1"></div><div class="mkt-ring r2"></div><div class="mkt-ring r3"></div><div class="mkt-orb"></div></div>
-            <div><h2 class="mkt-heading">Olá, Robson! 👋</h2><p class="mkt-desc">Sou sua Inteligência Artificial especializada em marketing. Conte o que está acontecendo na sua loja e eu vou transformar sua ideia em uma campanha simples, estratégica e pronta para sua aprovação.</p><div class="mkt-features"><div class="mkt-feature"><b>✦ Estratégias</b><small>Personalizadas</small></div><div class="mkt-feature"><b>✦ Respostas</b><small>Inteligentes</small></div><div class="mkt-feature"><b>▣ Resultados</b><small>Orientados</small></div></div></div>
+            <div><h2 class="mkt-heading" id="mkt-greeting">Olá! 👋</h2><p class="mkt-desc">Sou sua Inteligência Artificial especializada em marketing. Conte o que está acontecendo na sua loja e eu vou transformar sua ideia em uma campanha simples, estratégica e pronta para sua aprovação.</p><div class="mkt-features"><div class="mkt-feature"><b>✦ Estratégias</b><small>Personalizadas</small></div><div class="mkt-feature"><b>✦ Respostas</b><small>Inteligentes</small></div><div class="mkt-feature"><b>▣ Resultados</b><small>Orientados</small></div></div></div>
           </section>
           <div class="mkt-thinking-bar" id="mkt-thinking-bar"><span id="mkt-thinking-text">Analisando sua resposta...</span><div class="mkt-thinking-line"></div></div>
           <div class="mkt-chat" id="mkt-chat" aria-live="polite"></div>
@@ -23173,104 +23173,47 @@ async function gcResetSenhaVendedor(usuarioId) {
 
 </script>
 
-<script id="legado-marketing-ia-fase1-js">
-let MKT_FASE1_INICIADA = false;
-let MKT_FASE1_ETAPA = 0;
-let MKT_FASE1_CTX = {};
-let MKT_FASE1_OCUPADA = false;
+<script id="legado-marketing-ia-fase2-js">
+const MKT_STORAGE_KEY='legado_marketing_ia_fase2';
+const MKT_HISTORY_KEY='legado_marketing_ia_historico';
+let MKT_OCUPADA=false;
+let MKT_STATE={etapa:0,iniciada:false,concluida:false,campanha:{objetivo:null,tipo:null,criativo:null,orcamento:null,duracao:null,publico:null,plataforma:'Meta Ads'},mensagens:[]};
 
-function mktGarantirFullscreen(){const pagina=document.getElementById('page-marketing');if(!pagina)return;if(pagina.parentElement!==document.body)document.body.appendChild(pagina);pagina.style.cssText='';}
-function renderMarketingIA(){ mktGarantirFullscreen(); const input=document.getElementById('mkt-user-input'); if(input)setTimeout(()=>input.focus(),180); mktAtualizarProgresso(); }
-function mktAutoResize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,130)+'px'; document.getElementById('mkt-stage')?.classList.toggle('listening',!!el.value.trim()); }
-function mktFecharWorkspace(){document.body.classList.remove('mkt-workspace-open');showPage('dashboard');}
-function mktSincronizarResumo(){
- const mapa=[['mkt-summary-objective',MKT_FASE1_CTX.objetivo],['mkt-summary-type',MKT_FASE1_CTX.tipo],['mkt-summary-creative',MKT_FASE1_CTX.criativo],['mkt-summary-budget',MKT_FASE1_CTX.orcamento],['mkt-summary-duration',MKT_FASE1_CTX.duracao]];
- mapa.forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.textContent=v||'A definir';});
- const c=document.getElementById('mkt-conversation');if(c)setTimeout(()=>c.scrollTop=c.scrollHeight,30);
-}
-function mktInputKey(ev){ if(ev.key==='Enter'&&!ev.shiftKey){ev.preventDefault();mktEnviar();} }
-function mktSugestao(texto){ const input=document.getElementById('mkt-user-input'); if(!input)return; input.value=texto; mktAutoResize(input); mktEnviar(); }
-function mktEsc(texto){ const div=document.createElement('div'); div.textContent=texto==null?'':String(texto); return div.innerHTML; }
-function mktAdicionarMensagem(tipo,texto,html){ const chat=document.getElementById('mkt-chat'); if(!chat)return; chat.classList.add('show'); const linha=document.createElement('div'); linha.className='mkt-msg '+tipo; linha.innerHTML=tipo==='ai'?'<div class="mkt-avatar">✦</div><div class="mkt-bubble">'+(html?texto:mktEsc(texto))+'</div>':'<div class="mkt-bubble">'+mktEsc(texto)+'</div>'; chat.appendChild(linha); chat.scrollTop=chat.scrollHeight; }
-function mktLimparRespostasRapidas(){ document.querySelectorAll('#mkt-chat .mkt-quick-replies').forEach(el=>el.remove()); }
-function mktRespostasRapidas(opcoes){ mktLimparRespostasRapidas(); if(!opcoes?.length)return; const chat=document.getElementById('mkt-chat'); const wrap=document.createElement('div'); wrap.className='mkt-quick-replies'; opcoes.forEach(o=>{const b=document.createElement('button');b.type='button';b.className='mkt-quick-reply';b.textContent=o.label;b.onclick=()=>mktSugestao(o.valor||o.label);wrap.appendChild(b)});chat.appendChild(wrap);chat.scrollTop=chat.scrollHeight; }
-function mktDigitando(){ const chat=document.getElementById('mkt-chat'); if(!chat)return null; const linha=document.createElement('div'); linha.className='mkt-msg ai'; linha.innerHTML='<div class="mkt-avatar">✦</div><div class="mkt-bubble"><span class="mkt-typing"><span></span><span></span><span></span></span></div>'; chat.appendChild(linha); chat.scrollTop=chat.scrollHeight; return linha; }
-function mktPensando(mostrar,texto){ const bar=document.getElementById('mkt-thinking-bar'); const label=document.getElementById('mkt-thinking-text'); if(label&&texto)label.textContent=texto; bar?.classList.toggle('show',mostrar); document.getElementById('mkt-stage')?.classList.toggle('processing',mostrar); }
-function mktResponder(texto,atraso,opcoes){ const digitando=mktDigitando(); MKT_FASE1_OCUPADA=true; mktPensando(true,'Organizando a melhor resposta...'); setTimeout(()=>{digitando?.remove();mktAdicionarMensagem('ai',texto,true);mktPensando(false);MKT_FASE1_OCUPADA=false;mktRespostasRapidas(opcoes);document.getElementById('mkt-user-input')?.focus();},atraso||950); }
-function mktAtualizarProgresso(){mktSincronizarResumo(); document.querySelectorAll('#mkt-progress .mkt-progress-item').forEach(item=>{const passo=Number(item.dataset.step); item.classList.toggle('done',MKT_FASE1_INICIADA&&passo<=MKT_FASE1_ETAPA); item.classList.toggle('active',passo===Math.min(MKT_FASE1_ETAPA+1,5)); const st=item.querySelector('.mkt-progress-state'); const ic=item.querySelector('.mkt-progress-icon'); if(passo<=MKT_FASE1_ETAPA&&MKT_FASE1_INICIADA){st.textContent='PRONTO';ic.textContent='✓'} else if(passo===Math.min(MKT_FASE1_ETAPA+1,5)){st.textContent='AGORA';ic.textContent=passo} else {st.textContent='AGUARDA';ic.textContent=passo}}); }
-let MKT_FASE1_TIMER_RETORNO=null;
-function mktNormalizar(texto){return String(texto||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
-function mktEhDuvida(texto){
-  const t=mktNormalizar(texto);
-  if(!t)return false;
-  if(/^r?\$?\s*\d+(?:[,.]\d+)?(?:\s*(?:reais|por dia|dia|dias))?$/.test(t))return false;
-  if(/^(tenho|ja tenho|vou usar|usar)\s+(uma\s+)?(foto|video|imagem)/.test(t))return false;
-  if(/^(produto|categoria|a loja|loja|um produto|uma categoria)/.test(t))return false;
-  if(/^\d+\s*dias?$/.test(t))return false;
-  return /\?|\bcomo\b|\bqual\b|\bo que\b|\bpor que\b|\bme ajuda\b|\bme ensina\b|\bsugere\b|\bsugestao\b|\bideia\b|\broteiro\b|\bexemplo\b|\bduvida\b|\bnao sei\b|\bquero orientacao\b/.test(t);
-}
-function mktRespostaDuvida(texto){
-  const t=mktNormalizar(texto);
-  if(/video|roteiro|gravar|criativo/.test(t)) return '<div class="mkt-answer-title">✦ Como criar um vídeo que gere resultado</div><b>Use um vídeo curto, entre 15 e 25 segundos, com movimento desde o primeiro segundo.</b><div class="mkt-tip-list"><div class="mkt-tip"><b>1.</b> Abra com a fachada, uma arara bonita ou a peça mais chamativa.</div><div class="mkt-tip"><b>2.</b> Mostre 3 a 5 cenas rápidas: ambiente, detalhes das peças, provador e atendimento.</div><div class="mkt-tip"><b>3.</b> Finalize com um convite direto para conhecer a loja.</div></div><div class="mkt-resume">Agora escolha abaixo o material que será usado nesta campanha.</div>';
-  if(/foto|imagem/.test(t)) return '<div class="mkt-answer-title">✦ Como escolher uma boa foto</div>Use uma imagem clara, com pouca informação escrita e o produto ocupando a maior parte do quadro. Prefira luz natural e fundo organizado.<div class="mkt-resume">Agora escolha abaixo como deseja seguir com o criativo.</div>';
-  if(/invest|orcamento|valor|quanto/.test(t)) return '<div class="mkt-answer-title">✦ Investimento inicial</div>Para um teste local, <b>R$ 15 a R$ 30 por dia</b> costuma ser uma faixa segura para começar e medir o interesse do público.<div class="mkt-resume">Escolha um valor abaixo ou digite outro.</div>';
-  return '<div class="mkt-answer-title">✦ Posso ajudar com isso</div>Vou responder sua dúvida sem perder a configuração da campanha. Depois, você escolhe uma das opções para continuar.';
-}
-function mktPerguntaEtapa(){
-  if(MKT_FASE1_ETAPA===1)return['Para continuar, o que será divulgado nesta campanha?',[{label:'📦 Um produto',valor:'um produto específico'},{label:'🗂️ Uma categoria',valor:'uma categoria'},{label:'🏬 A loja inteira',valor:'a loja como um todo'}]];
-  if(MKT_FASE1_ETAPA===2)return['Qual material você deseja usar?',[{label:'📷 Já tenho foto',valor:'tenho foto'},{label:'🎥 Já tenho vídeo',valor:'tenho vídeo'},{label:'✨ Criar comigo',valor:'quero orientação para criar o material'}]];
-  if(MKT_FASE1_ETAPA===3)return['Qual será o investimento diário?',[{label:'R$ 15',valor:'15'},{label:'R$ 20',valor:'20'},{label:'R$ 30',valor:'30'},{label:'Outro valor',valor:'outro valor'}]];
-  if(MKT_FASE1_ETAPA===4)return['Por quantos dias a campanha deve ficar ativa?',[{label:'5 dias',valor:'5 dias'},{label:'7 dias',valor:'7 dias'},{label:'10 dias',valor:'10 dias'}]];
-  return ['',[]];
-}
-function mktOpcoesRetornoEtapa(){
-  const [,opcoes]=mktPerguntaEtapa();
-  return opcoes;
-}
-function mktEnviar(){
-  const input=document.getElementById('mkt-user-input');
-  if(!input||MKT_FASE1_OCUPADA)return;
-  const texto=input.value.trim();
-  if(!texto){input.focus();return;}
-  if(MKT_FASE1_TIMER_RETORNO){clearTimeout(MKT_FASE1_TIMER_RETORNO);MKT_FASE1_TIMER_RETORNO=null;}
-  mktLimparRespostasRapidas();
-  if(!MKT_FASE1_INICIADA){
-    MKT_FASE1_INICIADA=true;MKT_FASE1_ETAPA=1;MKT_FASE1_CTX.objetivo=texto;
-    document.getElementById('mkt-welcome').style.display='none';document.getElementById('mkt-suggestions').style.display='none';document.getElementById('mkt-reset').classList.add('show');
-    mktAdicionarMensagem('user',texto);input.value='';mktAutoResize(input);mktAtualizarProgresso();
-    const [p,o]=mktPerguntaEtapa();mktResponder('<b>Entendi seu objetivo.</b> Vou montar a campanha com você, passo a passo.<br><br>'+p,900,o);return;
-  }
-  mktAdicionarMensagem('user',texto);input.value='';mktAutoResize(input);
-
-  // Intenções válidas da etapa atual precisam ser tratadas antes do detector genérico de dúvidas.
-  // Isso impede que respostas como "quero orientação para criar o material" caiam em looping.
-  const t=mktNormalizar(texto);
-  if(MKT_FASE1_ETAPA===2 && /^(quero orientacao|orientacao|criar comigo|quero criar|nao tenho|sem foto|sem video)/.test(t)){
-    MKT_FASE1_CTX.criativo='orientação necessária';
-    MKT_FASE1_ETAPA=3;
-    mktAtualizarProgresso();
-    mktResponder('<div class="mkt-answer-title">✦ Criativo orientado</div>Perfeito. Vou preparar o roteiro e a orientação do material para esta campanha.<br><br><b>Agora, qual será o investimento diário?</b>',900,[{label:'R$ 15',valor:'15'},{label:'R$ 20',valor:'20'},{label:'R$ 30',valor:'30'},{label:'Outro valor',valor:'outro valor'}]);
-    return;
-  }
-
-  if(mktEhDuvida(texto)){
-    const opcoes=mktOpcoesRetornoEtapa();
-    mktResponder(mktRespostaDuvida(texto),900,opcoes);
-    return;
-  }
-  if(MKT_FASE1_ETAPA===1){MKT_FASE1_CTX.tipo=texto;MKT_FASE1_ETAPA=2;}
-  else if(MKT_FASE1_ETAPA===2){
-    MKT_FASE1_CTX.criativo=texto;MKT_FASE1_ETAPA=3;
-  }
-  else if(MKT_FASE1_ETAPA===3){MKT_FASE1_CTX.orcamento=texto;MKT_FASE1_ETAPA=4;}
-  else if(MKT_FASE1_ETAPA===4){
-    MKT_FASE1_CTX.duracao=texto;MKT_FASE1_ETAPA=5;mktAtualizarProgresso();
-    mktResponder('<div class="mkt-answer-title">✓ Estratégia inicial concluída</div><b>Perfeito. Já organizei a base da campanha.</b><br><br>Na próxima fase, o Marketing IA utilizará os dados reais da loja para montar público, texto, criativo, orçamento e prévia para sua aprovação.<br><br><span style="color:#7c3aed;font-weight:900;">Você continuou no controle durante todo o processo.</span>',1100);return;
-  } else {mktResponder('A conversa inicial já foi concluída. Use “Iniciar uma nova conversa” para testar outro objetivo.');return;}
-  mktAtualizarProgresso();
-  const [p,o]=mktPerguntaEtapa();mktResponder(p,850,o);
-}
-function mktReiniciar(){if(MKT_FASE1_TIMER_RETORNO){clearTimeout(MKT_FASE1_TIMER_RETORNO);MKT_FASE1_TIMER_RETORNO=null;}MKT_FASE1_INICIADA=false;MKT_FASE1_ETAPA=0;MKT_FASE1_CTX={};MKT_FASE1_OCUPADA=false;const chat=document.getElementById('mkt-chat'),welcome=document.getElementById('mkt-welcome'),suggestions=document.getElementById('mkt-suggestions'),reset=document.getElementById('mkt-reset'),input=document.getElementById('mkt-user-input');if(chat){chat.innerHTML='';chat.classList.remove('show')}if(welcome)welcome.style.display='';if(suggestions)suggestions.style.display='';if(reset)reset.classList.remove('show');if(input){input.value='';input.style.height='auto';input.focus()}mktPensando(false);document.getElementById('mkt-stage')?.classList.remove('listening');mktAtualizarProgresso();}
+function mktGarantirFullscreen(){const p=document.getElementById('page-marketing');if(!p)return;if(p.parentElement!==document.body)document.body.appendChild(p);p.style.cssText='';}
+function mktNomeUsuario(){try{const u=typeof usuarioAtual==='function'?usuarioAtual():null;return (u?.nome||u?.name||u?.login||'').trim().split(/\s+/)[0]||'Olá';}catch(e){return 'Olá';}}
+function mktAtualizarSaudacao(){const el=document.getElementById('mkt-greeting');if(el){const n=mktNomeUsuario();el.textContent=n==='Olá'?'Olá! 👋':`Olá, ${n}! 👋`;}}
+function renderMarketingIA(){mktGarantirFullscreen();mktAtualizarSaudacao();mktCarregarSessao();mktRenderizarSessao();setTimeout(()=>document.getElementById('mkt-user-input')?.focus(),120);}
+function mktFecharWorkspace(){mktSalvarSessao();document.body.classList.remove('mkt-workspace-open');showPage('dashboard');}
+function mktAutoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,130)+'px';}
+function mktInputKey(ev){if(ev.key==='Enter'&&!ev.shiftKey){ev.preventDefault();mktEnviar();}}
+function mktSugestao(t){const i=document.getElementById('mkt-user-input');if(!i)return;i.value=t;mktAutoResize(i);mktEnviar();}
+function mktEsc(t){const d=document.createElement('div');d.textContent=t==null?'':String(t);return d.innerHTML;}
+function mktNormalizar(t){return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+function mktSalvarSessao(){try{localStorage.setItem(MKT_STORAGE_KEY,JSON.stringify(MKT_STATE));}catch(e){}}
+function mktCarregarSessao(){try{const raw=localStorage.getItem(MKT_STORAGE_KEY);if(raw){const x=JSON.parse(raw);if(x&&x.campanha&&Array.isArray(x.mensagens))MKT_STATE=x;}}catch(e){}}
+function mktSalvarHistorico(){try{let h=JSON.parse(localStorage.getItem(MKT_HISTORY_KEY)||'[]');h.unshift({id:Date.now(),data:new Date().toISOString(),campanha:MKT_STATE.campanha,mensagens:MKT_STATE.mensagens.slice(-20)});localStorage.setItem(MKT_HISTORY_KEY,JSON.stringify(h.slice(0,20)));}catch(e){}}
+function mktAdicionarMensagem(tipo,texto,html=false,registrar=true){const chat=document.getElementById('mkt-chat');if(!chat)return;chat.classList.add('show');const l=document.createElement('div');l.className='mkt-msg '+tipo;l.innerHTML=tipo==='ai'?'<div class="mkt-avatar">✦</div><div class="mkt-bubble">'+(html?texto:mktEsc(texto))+'</div>':'<div class="mkt-bubble">'+mktEsc(texto)+'</div>';chat.appendChild(l);if(registrar){MKT_STATE.mensagens.push({tipo,texto,html,ts:Date.now()});mktSalvarSessao();}setTimeout(()=>{const c=document.getElementById('mkt-conversation');if(c)c.scrollTop=c.scrollHeight;},20);}
+function mktLimparRespostasRapidas(){document.querySelectorAll('#mkt-chat .mkt-quick-replies').forEach(e=>e.remove());}
+function mktRespostasRapidas(opcoes){mktLimparRespostasRapidas();if(!opcoes?.length)return;const chat=document.getElementById('mkt-chat');const w=document.createElement('div');w.className='mkt-quick-replies';opcoes.forEach(o=>{const b=document.createElement('button');b.type='button';b.className='mkt-quick-reply';b.textContent=o.label;b.onclick=()=>mktSugestao(o.valor||o.label);w.appendChild(b)});chat.appendChild(w);}
+function mktDigitando(){const chat=document.getElementById('mkt-chat');if(!chat)return null;const l=document.createElement('div');l.className='mkt-msg ai';l.innerHTML='<div class="mkt-avatar">✦</div><div class="mkt-bubble"><span class="mkt-typing"><span></span><span></span><span></span></span></div>';chat.appendChild(l);return l;}
+function mktPensando(v,t='Analisando sua resposta...'){const b=document.getElementById('mkt-thinking-bar'),l=document.getElementById('mkt-thinking-text');if(l)l.textContent=t;b?.classList.toggle('show',v);}
+function mktResponder(texto,opcoes=[],html=true){const d=mktDigitando();MKT_OCUPADA=true;mktPensando(true,'A IA está organizando a campanha...');setTimeout(()=>{d?.remove();mktAdicionarMensagem('ai',texto,html);mktPensando(false);MKT_OCUPADA=false;mktRespostasRapidas(opcoes);document.getElementById('mkt-user-input')?.focus();},650);}
+function mktFormatoValor(v){if(!v)return 'A definir';const n=String(v).replace(/[^0-9,\.]/g,'').replace(',','.');const x=Number(n);return Number.isFinite(x)&&x>0?x.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+'/dia':String(v);}
+function mktSincronizarResumo(){const c=MKT_STATE.campanha;const mapa=[['mkt-summary-objective',c.objetivo],['mkt-summary-type',c.tipo],['mkt-summary-creative',c.criativo],['mkt-summary-budget',c.orcamento?mktFormatoValor(c.orcamento):null],['mkt-summary-duration',c.duracao]];mapa.forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.textContent=v||'A definir';});}
+function mktAtualizarProgresso(){mktSincronizarResumo();document.querySelectorAll('#mkt-progress .mkt-progress-item').forEach(i=>{const p=Number(i.dataset.step),feito=MKT_STATE.iniciada&&p<=MKT_STATE.etapa,ativo=!MKT_STATE.concluida&&p===Math.min(MKT_STATE.etapa+1,5),st=i.querySelector('.mkt-progress-state'),ic=i.querySelector('.mkt-progress-icon');i.classList.toggle('done',feito);i.classList.toggle('active',ativo);if(feito){st.textContent='PRONTO';ic.textContent='✓'}else if(ativo){st.textContent='AGORA';ic.textContent=p}else{st.textContent='AGUARDA';ic.textContent=p}});mktSalvarSessao();}
+function mktOpcoes(){switch(MKT_STATE.etapa){case 1:return[{label:'📦 Um produto',valor:'um produto específico'},{label:'🗂️ Uma categoria',valor:'uma categoria'},{label:'🏬 A loja inteira',valor:'a loja inteira'}];case 2:return[{label:'📷 Tenho foto',valor:'tenho foto'},{label:'🎥 Tenho vídeo',valor:'tenho vídeo'},{label:'✨ Criar comigo',valor:'preciso criar o material'}];case 3:return[{label:'R$ 15',valor:'15'},{label:'R$ 20',valor:'20'},{label:'R$ 30',valor:'30'},{label:'Outro valor',valor:'outro valor'}];case 4:return[{label:'5 dias',valor:'5 dias'},{label:'7 dias',valor:'7 dias'},{label:'10 dias',valor:'10 dias'}];default:return[];}}
+function mktPerguntaAtual(){switch(MKT_STATE.etapa){case 1:return'Ótimo. O que será divulgado nesta campanha?';case 2:return'Qual material você pretende usar no anúncio?';case 3:return'Qual será o investimento diário?';case 4:return'Por quantos dias a campanha deve ficar ativa?';default:return'';}}
+function mktInterpretarLocal(texto){const t=mktNormalizar(texto),c=MKT_STATE.campanha;if(!MKT_STATE.iniciada){c.objetivo=texto;MKT_STATE.iniciada=true;MKT_STATE.etapa=1;return{mensagem:'Entendi o seu objetivo. Vou organizar a campanha com você de forma simples.<br><br><b>'+mktPerguntaAtual()+'</b>',opcoes:mktOpcoes()};}
+if(MKT_STATE.etapa===1){c.tipo=/categoria|jeans|vestido|camisa|calcado/.test(t)?texto:/loja|tudo|inteira/.test(t)?'Loja inteira':texto;MKT_STATE.etapa=2;}
+else if(MKT_STATE.etapa===2){c.criativo=/video/.test(t)?'Vídeo':/foto|imagem/.test(t)?'Foto':'Criativo orientado pela IA';MKT_STATE.etapa=3;}
+else if(MKT_STATE.etapa===3){const m=t.match(/\d+(?:[,.]\d+)?/);c.orcamento=m?m[0]:texto;MKT_STATE.etapa=4;}
+else if(MKT_STATE.etapa===4){c.duracao=texto;MKT_STATE.etapa=5;MKT_STATE.concluida=true;return{mensagem:mktGerarResumoFinal(),opcoes:[]};}
+return{mensagem:'<b>'+mktPerguntaAtual()+'</b>',opcoes:mktOpcoes()};}
+function mktGerarResumoFinal(){const c=MKT_STATE.campanha;const objetivo=mktEsc(c.objetivo||'campanha local');return '<div class="mkt-answer-title">✓ Campanha estruturada</div><b>Sua estratégia inicial está pronta.</b><br><br><div class="mkt-tip-list"><div class="mkt-tip"><b>Objetivo:</b> '+objetivo+'</div><div class="mkt-tip"><b>Divulgação:</b> '+mktEsc(c.tipo||'A definir')+'</div><div class="mkt-tip"><b>Criativo:</b> '+mktEsc(c.criativo||'A definir')+'</div><div class="mkt-tip"><b>Investimento:</b> '+mktEsc(mktFormatoValor(c.orcamento))+'</div><div class="mkt-tip"><b>Duração:</b> '+mktEsc(c.duracao||'A definir')+'</div></div><div class="mkt-resume">A base já está salva. A integração com a IA real pode usar este mesmo fluxo para gerar texto, público e roteiro sem alterar a interface.</div>';}
+async function mktPerguntarIA(texto){try{if(typeof SB_URL==='string'&&typeof SB_HEADS==='object'){const r=await fetch(`${SB_URL}/functions/v1/marketing-ia`,{method:'POST',headers:{...SB_HEADS,'Content-Type':'application/json'},body:JSON.stringify({mensagem:texto,estado:MKT_STATE.campanha,historico:MKT_STATE.mensagens.slice(-12)})});if(r.ok){const j=await r.json();if(j&&j.mensagem){if(j.estado)MKT_STATE.campanha={...MKT_STATE.campanha,...j.estado};if(Number.isInteger(j.etapa))MKT_STATE.etapa=j.etapa;if(j.concluida)MKT_STATE.concluida=true;return{mensagem:j.mensagem,opcoes:j.opcoes||[]};}}} }catch(e){console.warn('Marketing IA: usando inteligência local.',e);}return mktInterpretarLocal(texto);}
+async function mktEnviar(){const input=document.getElementById('mkt-user-input');if(!input||MKT_OCUPADA)return;const texto=input.value.trim();if(!texto)return input.focus();mktLimparRespostasRapidas();document.getElementById('mkt-welcome').style.display='none';document.getElementById('mkt-suggestions').style.display='none';document.getElementById('mkt-reset').classList.add('show');mktAdicionarMensagem('user',texto);input.value='';mktAutoResize(input);MKT_OCUPADA=true;mktPensando(true);const d=mktDigitando();let resp;try{resp=await mktPerguntarIA(texto);}catch(e){resp={mensagem:'Não consegui processar agora. Tente novamente.',opcoes:[]};}d?.remove();mktPensando(false);MKT_OCUPADA=false;mktAdicionarMensagem('ai',resp.mensagem,true);mktAtualizarProgresso();mktRespostasRapidas(resp.opcoes||mktOpcoes());if(MKT_STATE.concluida)mktSalvarHistorico();input.focus();}
+function mktRenderizarSessao(){const chat=document.getElementById('mkt-chat'),welcome=document.getElementById('mkt-welcome'),sug=document.getElementById('mkt-suggestions'),reset=document.getElementById('mkt-reset');if(!chat)return;chat.innerHTML='';if(MKT_STATE.mensagens.length){welcome.style.display='none';sug.style.display='none';reset.classList.add('show');MKT_STATE.mensagens.forEach(m=>mktAdicionarMensagem(m.tipo,m.texto,m.html,false));mktRespostasRapidas(MKT_STATE.concluida?[]:mktOpcoes());}else{welcome.style.display='';sug.style.display='';reset.classList.remove('show');chat.classList.remove('show');}mktAtualizarProgresso();}
+function mktReiniciar(){MKT_STATE={etapa:0,iniciada:false,concluida:false,campanha:{objetivo:null,tipo:null,criativo:null,orcamento:null,duracao:null,publico:null,plataforma:'Meta Ads'},mensagens:[]};try{localStorage.removeItem(MKT_STORAGE_KEY);}catch(e){}mktPensando(false);mktRenderizarSessao();mktAtualizarSaudacao();document.getElementById('mkt-user-input')?.focus();}
 </script>
 </body>
 </html>
