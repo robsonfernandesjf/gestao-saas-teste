@@ -23207,6 +23207,18 @@ function mktEnviar(){
     const [p,o]=mktPerguntaEtapa();mktResponder('<b>Entendi seu objetivo.</b> Vou montar a campanha com você, passo a passo.<br><br>'+p,900,o);return;
   }
   mktAdicionarMensagem('user',texto);input.value='';mktAutoResize(input);
+
+  // Intenções válidas da etapa atual precisam ser tratadas antes do detector genérico de dúvidas.
+  // Isso impede que respostas como "quero orientação para criar o material" caiam em looping.
+  const t=mktNormalizar(texto);
+  if(MKT_FASE1_ETAPA===2 && /^(quero orientacao|orientacao|criar comigo|quero criar|nao tenho|sem foto|sem video)/.test(t)){
+    MKT_FASE1_CTX.criativo='orientação necessária';
+    MKT_FASE1_ETAPA=3;
+    mktAtualizarProgresso();
+    mktResponder('<div class="mkt-answer-title">✦ Criativo orientado</div>Perfeito. Vou preparar o roteiro e a orientação do material para esta campanha.<br><br><b>Agora, qual será o investimento diário?</b>',900,[{label:'R$ 15',valor:'15'},{label:'R$ 20',valor:'20'},{label:'R$ 30',valor:'30'},{label:'Outro valor',valor:'outro valor'}]);
+    return;
+  }
+
   if(mktEhDuvida(texto)){
     const opcoes=mktOpcoesRetornoEtapa();
     mktResponder(mktRespostaDuvida(texto),900,opcoes);
@@ -23214,14 +23226,6 @@ function mktEnviar(){
   }
   if(MKT_FASE1_ETAPA===1){MKT_FASE1_CTX.tipo=texto;MKT_FASE1_ETAPA=2;}
   else if(MKT_FASE1_ETAPA===2){
-    const t=mktNormalizar(texto);
-    if(/quero orientacao|criar comigo|nao tenho|sem foto|sem video/.test(t)){
-      MKT_FASE1_CTX.criativo='orientação necessária';
-      MKT_FASE1_ETAPA=3;
-      mktAtualizarProgresso();
-      mktResponder('<div class="mkt-answer-title">✦ Criativo orientado</div>Perfeito. Na próxima etapa eu preparo o roteiro e a orientação do material para você.<br><br><b>Qual será o investimento diário?</b>',900,[{label:'R$ 15',valor:'15'},{label:'R$ 20',valor:'20'},{label:'R$ 30',valor:'30'},{label:'Outro valor',valor:'outro valor'}]);
-      return;
-    }
     MKT_FASE1_CTX.criativo=texto;MKT_FASE1_ETAPA=3;
   }
   else if(MKT_FASE1_ETAPA===3){MKT_FASE1_CTX.orcamento=texto;MKT_FASE1_ETAPA=4;}
