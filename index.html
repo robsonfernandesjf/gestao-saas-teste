@@ -19459,6 +19459,291 @@ function renderProdutosParados() {
   </table></div>`;
 }
 
+
+// ===== CORREÇÃO: RELATÓRIOS GERENCIAIS AUSENTES =====
+
+function gerDataVenda(v) {
+  const valor = v?.data || v?.created_at || v?.data_venda || '';
+  if (!valor) return null;
+  if (valor instanceof Date) return valor;
+
+  const texto = String(valor).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(texto)) {
+    const d = new Date(texto);
+    return isNaN(d) ? null : d;
+  }
+
+  const m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) {
+    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    return isNaN(d) ? null : d;
+  }
+
+  const d = new Date(texto);
+  return isNaN(d) ? null : d;
+}
+
+function gerValorVenda(v) {
+  const qtd = Number(v?.qtd || 1);
+  const totalExplicito = Number(v?.valor_total ?? v?.total);
+  if (Number.isFinite(totalExplicito) && totalExplicito !== 0) return totalExplicito;
+
+  const unitario = Number(v?.valor ?? v?.valor_unit ?? v?.preco_venda ?? 0);
+  return unitario * qtd;
+}
+
+function gerLucroVenda(v) {
+  const lucro = Number(v?.lucro);
+  if (Number.isFinite(lucro)) return lucro;
+
+  const qtd = Number(v?.qtd || 1);
+  const venda = Number(v?.valor ?? v?.valor_unit ?? v?.preco_venda ?? 0);
+  const custo = Number(v?.custo ?? v?.preco_custo ?? 0);
+  return (venda - custo) * qtd;
+}
+
+function gerNomeClienteVenda(v) {
+  return String(
+    v?.cliente_nome ||
+    v?.cliente ||
+    v?.nome_cliente ||
+    ''
+  ).trim();
+}
+
+// 3. Lucratividade por categoria
+function renderLucratividadeCategoria() {
+  const vendas = gerFiltrarVendas(getVendas());
+  const categorias = {};
+
+  vendas.forEach(v => {
+    const categoria = String(v.categoria || 'Sem categoria').trim() || 'Sem categoria';
+    if (!categorias[categoria]) {
+      categorias[categoria] = { categoria, qtd: 0, faturamento: 0, lucro: 0 };
+    }
+
+    categorias[categoria].qtd += Number(v.qtd || 1);
+    categorias[categoria].faturamento += gerValorVenda(v);
+    categorias[categoria].lucro += gerLucroVenda(v);
+  });
+
+  const lista = Object.values(categorias)
+    .sort((a, b) => b.lucro - a.lucro);
+
+  const cont = document.getElementById('ger-conteudo');
+  if (!lista.length) {
+    cont.innerHTML = '<div class="empty">Sem vendas no período.</div>';
+    return;
+  }
+
+  const totalFat = lista.reduce((s, x) => s + x.faturamento, 0);
+  const totalLucro = lista.reduce((s, x) => s + x.lucro, 0);
+  const margemGeral = totalFat > 0 ? totalLucro / totalFat * 100 : 0;
+
+  cont.innerHTML =
+    gerCards([
+      { label: 'Faturamento', valor: R(totalFat), cor: 'var(--accent)' },
+      { label: 'Lucro estimado', valor: R(totalLucro), cor: totalLucro >= 0 ? 'var(--success)' : 'var(--danger)' },
+      { label: 'Margem média', valor: pct(margemGeral), cor: 'var(--accent2)' }
+    ]) +
+    `<div class="table-wrap"><table>
+      <thead><tr>
+        <th>Categoria</th><th>Qtd. vendida</th><th>Faturamento</th>
+        <th class="col-custo">Lucro</th><th class="col-custo">Margem</th>
+      </tr></thead>
+      <tbody>${lista.map(item => {
+        const margem = item.faturamento > 0 ? item.lucro / item.faturamento * 100 : 0;
+        return `<tr>
+          <td><strong>${esc(item.categoria)}</strong></td>
+          <td>${item.qtd}</td>
+          <td>${R(item.faturamento)}</td>
+          <td class="col-custo" style="color:${item.lucro >= 0 ? 'var(--success)' : 'var(--danger)'}">${R(item.lucro)}</td>
+          <td class="col-custo">${pct(margem)}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+}
+
+// 6. Melhores clientes
+function renderRankingClientes() {
+  const vendas = gerFiltrarVendas(getVendas());
+  const ranking = {};
+
+  vendas.forEach(v => {
+    const nome = gerNomeClienteVenda(v);
+    if (!nome) return;
+
+    const chave = nome.toLocaleLowerCase('pt-BR');
+    if (!ranking[chave]) {
+      ranking[chave] = { nome, compras: 0, faturamento: 0, lucro: 0, ultima: null };
+    }
+
+    ranking[chave].compras += 1;
+    ranking[chave].faturamento += gerValorVenda(v);
+    ranking[chave].lucro += gerLucroVenda(v);
+
+    const data = gerDataVenda(v);
+    if (data && (!ranking[chave].ultima || data > ranking[chave].ultima)) {
+      ranking[chave].ultima = data;
+    }
+  });
+
+  const lista = Object.values(ranking)
+    .sort((a, b) => b.faturamento - a.faturamento)
+    .slice(0, 50);
+
+  const cont = document.getElementById('ger-conteudo');
+  if (!lista.length) {
+    cont.innerHTML = '<div class="empty">Nenhuma venda vinculada a clientes no período.</div>';
+    return;
+  }
+
+  const maxFat = Math.max(...lista.map(x => x.faturamento), 1);
+
+  cont.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>#</th><th>Cliente</th><th>Compras</th><th>Faturamento</th>
+      <th>Ticket médio</th><th class="col-custo">Lucro</th><th>Última compra</th>
+    </tr></thead>
+    <tbody>${lista.map((item, i) => `
+      <tr>
+        <td><strong>${i + 1}</strong></td>
+        <td>
+          <strong>${esc(item.nome)}</strong>
+          <div style="height:5px;background:var(--border);border-radius:99px;margin-top:6px;overflow:hidden;">
+            <div style="height:100%;width:${Math.max(4, item.faturamento / maxFat * 100)}%;background:var(--accent);"></div>
+          </div>
+        </td>
+        <td>${item.compras}</td>
+        <td><strong>${R(item.faturamento)}</strong></td>
+        <td>${R(item.compras ? item.faturamento / item.compras : 0)}</td>
+        <td class="col-custo" style="color:var(--success)">${R(item.lucro)}</td>
+        <td>${item.ultima ? item.ultima.toLocaleDateString('pt-BR') : '—'}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+// 7. Clientes inativos
+function renderClientesInativos() {
+  const dias = parseInt(document.getElementById('ger-inativo-dias')?.value || '30', 10);
+  const corte = new Date();
+  corte.setHours(0, 0, 0, 0);
+  corte.setDate(corte.getDate() - dias);
+
+  const vendas = getVendas();
+  const ultimaCompra = {};
+
+  vendas.forEach(v => {
+    const nome = gerNomeClienteVenda(v);
+    const data = gerDataVenda(v);
+    if (!nome || !data) return;
+
+    const chave = nome.toLocaleLowerCase('pt-BR');
+    if (!ultimaCompra[chave] || data > ultimaCompra[chave]) ultimaCompra[chave] = data;
+  });
+
+  const clientes = getClientes()
+    .map(c => {
+      const nome = String(c.nome || '').trim();
+      const chave = nome.toLocaleLowerCase('pt-BR');
+      const ultima = ultimaCompra[chave] || null;
+      const diasSemComprar = ultima
+        ? Math.floor((new Date().setHours(0,0,0,0) - new Date(ultima).setHours(0,0,0,0)) / 86400000)
+        : null;
+      return { ...c, nome, ultima, diasSemComprar };
+    })
+    .filter(c => c.nome && (!c.ultima || c.ultima < corte))
+    .sort((a, b) => {
+      if (!a.ultima && b.ultima) return -1;
+      if (a.ultima && !b.ultima) return 1;
+      return (a.ultima?.getTime() || 0) - (b.ultima?.getTime() || 0);
+    });
+
+  const cont = document.getElementById('ger-conteudo');
+  if (!clientes.length) {
+    cont.innerHTML = `<div class="empty">Nenhum cliente inativo há ${dias} dias. 🎉</div>`;
+    return;
+  }
+
+  cont.innerHTML =
+    gerCards([
+      { label: `Inativos há ${dias}+ dias`, valor: clientes.length, cor: 'var(--warn)' },
+      { label: 'Nunca compraram', valor: clientes.filter(c => !c.ultima).length, cor: 'var(--muted)' }
+    ]) +
+    `<div class="table-wrap"><table>
+      <thead><tr><th>Cliente</th><th>Telefone</th><th>Última compra</th><th>Tempo sem comprar</th></tr></thead>
+      <tbody>${clientes.map(c => `<tr>
+        <td><strong>${esc(c.nome)}</strong></td>
+        <td>${esc(c.tel || c.telefone || '—')}</td>
+        <td>${c.ultima ? c.ultima.toLocaleDateString('pt-BR') : 'Nunca comprou'}</td>
+        <td><span class="badge ${c.ultima ? 'badge-low' : 'badge-out'}">${c.diasSemComprar === null ? 'Sem compra registrada' : c.diasSemComprar + ' dias'}</span></td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+}
+
+// 8. Aniversariantes do mês
+function renderAniversariantesGer() {
+  const clientes = getClientes();
+  const hoje = new Date();
+  const mesAtual = hoje.getMonth() + 1;
+
+  function parseNascimento(valor) {
+    if (!valor) return null;
+    const texto = String(valor).trim();
+
+    let m = texto.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+    if (m) return { dia: Number(m[1]), mes: Number(m[2]), ano: m[3] ? Number(m[3]) : null };
+
+    m = texto.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) return { dia: Number(m[3]), mes: Number(m[2]), ano: Number(m[1]) };
+
+    return null;
+  }
+
+  const lista = clientes
+    .map(c => {
+      const nasc = parseNascimento(c.nasc || c.nascimento || c.data_nascimento);
+      if (!nasc) return null;
+
+      const idade = nasc.ano
+        ? hoje.getFullYear() - (nasc.ano < 100 ? 2000 + nasc.ano : nasc.ano)
+        : null;
+
+      return { ...c, nascInfo: nasc, idade };
+    })
+    .filter(Boolean)
+    .filter(c => c.nascInfo.mes === mesAtual)
+    .sort((a, b) => a.nascInfo.dia - b.nascInfo.dia);
+
+  const cont = document.getElementById('ger-conteudo');
+  const nomeMes = hoje.toLocaleDateString('pt-BR', { month: 'long' });
+
+  if (!lista.length) {
+    cont.innerHTML = `<div class="empty">Nenhum aniversariante em ${nomeMes}.</div>`;
+    return;
+  }
+
+  cont.innerHTML =
+    gerCards([{ label: `Aniversariantes de ${nomeMes}`, valor: lista.length, cor: 'var(--accent)' }]) +
+    `<div class="table-wrap"><table>
+      <thead><tr><th>Dia</th><th>Cliente</th><th>Telefone</th><th>Data de nascimento</th><th>Idade</th></tr></thead>
+      <tbody>${lista.map(c => {
+        const dia = String(c.nascInfo.dia).padStart(2, '0');
+        const mes = String(c.nascInfo.mes).padStart(2, '0');
+        const data = c.nascInfo.ano ? `${dia}/${mes}/${c.nascInfo.ano}` : `${dia}/${mes}`;
+        return `<tr>
+          <td><span class="badge badge-ok">${dia}/${mes}</span></td>
+          <td><strong>${esc(c.nome || '—')}</strong></td>
+          <td>${esc(c.tel || c.telefone || '—')}</td>
+          <td>${data}</td>
+          <td>${c.idade !== null && c.idade >= 0 ? c.idade + ' anos' : '—'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+}
+
+
 // ===== NOVOS RELATÓRIOS GERENCIAIS =====
 
 // 9. Comparativo mensal
