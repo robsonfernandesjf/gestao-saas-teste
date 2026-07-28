@@ -23211,6 +23211,8 @@ async function mktEnviar() {
   const texto=input.value.trim();
   if(!texto){input.focus();return;}
   mktLimparRespostasRapidas();
+  const dashboard=document.getElementById('mkti-dashboard');
+  if(dashboard)dashboard.style.display='none';
   document.getElementById('mkt-welcome')?.style && (document.getElementById('mkt-welcome').style.display='none');
   document.getElementById('mkt-suggestions')?.style && (document.getElementById('mkt-suggestions').style.display='none');
   document.getElementById('mkt-reset')?.classList.add('show');
@@ -23237,7 +23239,7 @@ async function mktEnviar() {
   input.focus();
 }
 function mktRenderizarSessao(){const chat=document.getElementById('mkt-chat'),welcome=document.getElementById('mkt-welcome'),sug=document.getElementById('mkt-suggestions'),reset=document.getElementById('mkt-reset');if(!chat)return;chat.innerHTML='';if(MKT_STATE.mensagens.length){if(welcome)welcome.style.display='none';if(sug)sug.style.display='none';reset.classList.add('show');MKT_STATE.mensagens.forEach(m=>mktAdicionarMensagem(m.tipo,m.texto,m.html,false));mktRespostasRapidas(MKT_STATE.concluida?[]:mktOpcoes());}else{if(welcome)welcome.style.display='';if(sug)sug.style.display='';reset.classList.remove('show');chat.classList.remove('show');}mktAtualizarProgresso();}
-function mktReiniciar(){MKT_STATE={etapa:0,iniciada:false,concluida:false,campanha:{objetivo:null,tipo:null,criativo:null,orcamento:null,duracao:null,publico:null,plataforma:'Meta Ads'},mensagens:[]};try{localStorage.removeItem(MKT_STORAGE_KEY);}catch(e){}mktPensando(false);mktRenderizarSessao();mktAtualizarSaudacao();document.getElementById('mkt-user-input')?.focus();}
+function mktReiniciar(){const dashboard=document.getElementById('mkti-dashboard');if(dashboard)dashboard.style.display='';MKT_STATE={etapa:0,iniciada:false,concluida:false,campanha:{objetivo:null,tipo:null,criativo:null,orcamento:null,duracao:null,publico:null,plataforma:'Meta Ads'},mensagens:[]};try{localStorage.removeItem(MKT_STORAGE_KEY);}catch(e){}mktPensando(false);mktRenderizarSessao();mktAtualizarSaudacao();document.getElementById('mkt-user-input')?.focus();}
 </script>
 <style id="legado-marketing-ia-fase4-css">
 /* ===== Marketing IA · Fase 4 · Inteligência com dados reais do ERP ===== */
@@ -23471,8 +23473,36 @@ function criarCampanhaDaOportunidade(id){const o=state.analise.oportunidades.fin
 function intent(msg){const t=norm(msg);if(/analise minha loja|analisar loja/.test(t))return"analisar_loja";if(/produtos?.*parad|sem giro/.test(t))return"listar_produtos_parados";if(/mais vendeu|campe|lider/.test(t))return"listar_campeoes";if(/estoque critico|ultimas unidades/.test(t))return"listar_estoque_critico";if(/crie|criar|faca/.test(t)&&/campanha/.test(t))return"criar_campanha";if(/legenda/.test(t))return"gerar_legenda";if(/anuncio/.test(t))return"gerar_anuncio";if(/roteiro|video/.test(t))return"gerar_roteiro";if(/estrateg|ticket medio|anunciar hoje/.test(t))return"gerar_estrategia";return"pergunta_geral"}
 function localReply(it){const a=state.analise;if(it==="analisar_loja")return{message:`Encontrei ${a.oportunidades.length} oportunidades. Faturamento em 30 dias: ${money(a.indicadores.faturamento30d)}.`,local:true};const map={listar_produtos_parados:a.listas.produtosParados,listar_campeoes:a.listas.produtosCampeoes,listar_estoque_critico:a.listas.estoqueCritico};if(map[it])return{message:map[it].length?map[it].slice(0,10).map(x=>`${x.produto} — ${x.estoque} un. em estoque, ${x.vendas30} vendidas em 30 dias`).join("\n"):"Nenhum produto encontrado para esse critério.",local:true};return null}
 function contexto(){const a=state.analise;return{storeName:text(a?._store?.nome||CONFIG_LOJA?.nome||""),segment:"moda",analysis:{...a,_rows:undefined,_store:undefined},selectedProducts:MKT_STATE?.campanha?.produtos||[],campaign:MKT_STATE?.campanha||{}}}
+
+function renderRespostaGemini(j){
+  const partes=[];
+  if(j?.title)partes.push(`<div class="mkt-answer-title">${esc(j.title)}</div>`);
+  if(j?.message)partes.push(`<div style="margin-bottom:12px">${esc(j.message).replace(/\n/g,"<br>")}</div>`);
+  if(Array.isArray(j?.insights)&&j.insights.length){
+    partes.push(`<div style="margin:14px 0 8px;font-weight:800;color:#c4b5fd">Insights encontrados</div>`);
+    partes.push(j.insights.map(i=>`<div class="mkt-tip" style="margin-bottom:8px"><b>${esc(i.title||"Insight")}</b><br>${esc(i.description||"")}${i.evidence?`<div style="margin-top:5px;color:#8f9ab4;font-size:11px">${esc(i.evidence)}</div>`:""}</div>`).join(""));
+  }
+  const c=j?.campaign||{};
+  if(c&&Object.keys(c).length){
+    partes.push(`<div style="margin:16px 0 8px;font-weight:800;color:#c4b5fd">Campanha sugerida</div>`);
+    const campos=[
+      ["Objetivo",c.objective],["Canal",c.channel],["Formato",c.format],
+      ["Público",c.audience],["Oferta",c.offer],["Título",c.headline],
+      ["Texto principal",c.primaryText],["Legenda",c.caption],["CTA",c.cta]
+    ].filter(([,v])=>v);
+    partes.push(`<div class="mkt-tip-list">${campos.map(([k,v])=>`<div class="mkt-tip"><b>${esc(k)}:</b><br>${esc(v).replace(/\n/g,"<br>")}</div>`).join("")}</div>`);
+    if(Array.isArray(c.videoScript)&&c.videoScript.length){
+      partes.push(`<div class="mkt-tip" style="margin-top:8px"><b>Roteiro de vídeo:</b><br>${c.videoScript.map((x,n)=>`${n+1}. ${esc(x)}`).join("<br>")}</div>`);
+    }
+  }
+  if(Array.isArray(j?.warnings)&&j.warnings.length){
+    partes.push(`<div class="mkti-offline" style="margin-top:12px">${j.warnings.map(esc).join(" · ")}</div>`);
+  }
+  return partes.join("")||"Resposta recebida com sucesso.";
+}
+
 async function perguntarIA(arg){const action=typeof arg==="string"?"chat":arg.action||"chat",message=typeof arg==="string"?arg:arg.message||"",it=intent(message),local=localReply(it);if(local)return{mensagem:esc(local.message).replace(/\n/g,"<br>"),opcoes:[]};if(it==="criar_campanha"&&state.analise.oportunidades[0]){criarCampanhaDaOportunidade(state.analise.oportunidades[0].id);return{mensagem:"Preparei o fluxo da campanha usando a oportunidade de maior prioridade.",opcoes:[]}}
-  const controller=new AbortController();state.cancel=controller;const timer=setTimeout(()=>controller.abort(),30000);try{const session=getSessao();const r=await fetch(`${SB_URL}/functions/v1/marketing-ia`,{method:"POST",signal:controller.signal,headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+session.token},body:JSON.stringify({action:({gerar_legenda:"legenda",gerar_anuncio:"anuncio",gerar_roteiro:"roteiro",gerar_estrategia:"estrategia"}[it]||action),tenantId:LOJA_ID,message,conversation:(MKT_STATE.mensagens||[]).slice(-16).map(x=>({role:x.tipo==="ai"?"assistant":"user",text:text(x.texto).slice(0,1800)})),storeContext:contexto()})});const j=await r.json();if(!r.ok||!j.success)throw new Error(j.message||"IA indisponível");if(j.campaign&&Object.keys(j.campaign).length)Object.assign(MKT_STATE.campanha,j.campaign);return{mensagem:esc(j.message).replace(/\n/g,"<br>"),opcoes:(j.suggestedActions||[]).map(x=>({label:x.label,valor:x.action}))}}catch(e){return{mensagem:`${esc(e.name==="AbortError"?"A IA demorou mais que o esperado.":"A geração avançada por IA está temporariamente indisponível.")}<br><span class="mkti-offline">A análise da loja e as campanhas baseadas nos dados locais continuam funcionando.</span>`,opcoes:[]}}finally{clearTimeout(timer);state.cancel=null}}
+  const controller=new AbortController();state.cancel=controller;const timer=setTimeout(()=>controller.abort(),30000);try{const session=getSessao();const r=await fetch(`${SB_URL}/functions/v1/marketing-ia`,{method:"POST",signal:controller.signal,headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+session.token},body:JSON.stringify({action:({gerar_legenda:"legenda",gerar_anuncio:"anuncio",gerar_roteiro:"roteiro",gerar_estrategia:"estrategia"}[it]||action),tenantId:LOJA_ID,message,conversation:(MKT_STATE.mensagens||[]).slice(-16).map(x=>({role:x.tipo==="ai"?"assistant":"user",text:text(x.texto).slice(0,1800)})),storeContext:contexto()})});const j=await r.json();if(!r.ok||!j.success)throw new Error(j.message||"IA indisponível");if(j.campaign&&Object.keys(j.campaign).length)Object.assign(MKT_STATE.campanha,j.campaign);return{mensagem:renderRespostaGemini(j),opcoes:(j.suggestedActions||[]).map(x=>({label:x.label,valor:x.action}))}}catch(e){return{mensagem:`${esc(e.name==="AbortError"?"A IA demorou mais que o esperado.":"A geração avançada por IA está temporariamente indisponível.")}<br><span class="mkti-offline">A análise da loja e as campanhas baseadas nos dados locais continuam funcionando.</span>`,opcoes:[]}}finally{clearTimeout(timer);state.cancel=null}}
 function inicializar(){analisarLoja();setTimeout(()=>document.getElementById("mkt-user-input")?.focus(),100)}
 const api={inicializar,analisarLoja,carregarDadosLoja,calcularIndicadores,detectarOportunidades,gerarResumoExecutivo:()=>state.analise,obterProdutosParados:()=>state.analise?.listas.produtosParados||[],obterProdutosCampeoes:()=>state.analise?.listas.produtosCampeoes||[],obterEstoqueCritico:()=>state.analise?.listas.estoqueCritico||[],obterEstoqueAlto:()=>state.analise?.listas.estoqueAlto||[],obterCategoriasEmAlta:()=>state.analise?.listas.categoriasEmAlta||[],obterPromocoesAtivas:()=>state.analise?.listas.promocoes||[],montarContextoGemini:contexto,atualizarInterface:render,criarCampanhaDaOportunidade,invalidarCache:()=>{localStorage.removeItem(key());state.analise=null},abrirAnalise,fecharAnalise,filtrarTabela,mudarAba:id=>{state.tab=id;renderTabs();filtrarTabela()},ordenar:k=>{state.dir=state.sort===k?-state.dir:1;state.sort=k;filtrarTabela()},selecionar:(id,v)=>v?state.selected.add(id):state.selected.delete(id),selecionarTodos:v=>{tabRows().forEach(x=>v?state.selected.add(x.id):state.selected.delete(x.id));filtrarTabela()},criarCampanhaSelecionados:()=>criarCampanhaProdutos([...state.selected]),criarCampanhaProdutos,cancelar:()=>state.cancel?.abort(),perguntarIA};
 function fecharAnalise(){document.getElementById("mkti-modal").hidden=true;document.body.style.overflow=""}
