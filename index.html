@@ -13351,14 +13351,14 @@ function abrirModalNovoConsignado() {
 // ── AUTOCOMPLETE CLIENTE ──
 function consigBuscarCliente(busca) {
   const sug = document.getElementById('consig-cliente-sug');
-  if (!busca || busca.length < 2) { sug.style.display='none'; return; }
+  if (!busca || busca.length < 2) { if(sug)sug.style.display='none'; return; }
   const buscaD = busca.replace(/\D/g,'');
   const clientes = getClientes().filter(c => {
     if ((c.nome||'').toLowerCase().includes(busca.toLowerCase())) return true;
     if (buscaD.length >= 3 && getCPFLimpo(c).includes(buscaD)) return true;
     return false;
   }).slice(0,8);
-  if (!clientes.length) { sug.style.display='none'; return; }
+  if (!clientes.length) { if(sug)sug.style.display='none'; return; }
   sug.innerHTML = clientes.map(c => {
     const cpf = getCPFCliente(c);
     return `<div onclick="consigSelecionarCliente('${esc(c.nome)}','${c.id||''}')"
@@ -13379,14 +13379,14 @@ function consigSelecionarCliente(nome, id) {
 // ── BUSCA DE PRODUTO ──
 function consigBuscarProduto(busca) {
   const sug = document.getElementById('consig-prod-sug');
-  if (!busca || busca.length < 2) { sug.style.display='none'; return; }
+  if (!busca || busca.length < 2) { if(sug)sug.style.display='none'; return; }
   const buscaL = busca.toLowerCase();
   const produtos = getProdutos().filter(p =>
     (p.ref||'').toLowerCase().includes(buscaL) ||
     (p.produto||'').toLowerCase().includes(buscaL) ||
     (p.ean||'').includes(busca)
   ).slice(0,8);
-  if (!produtos.length) { sug.style.display='none'; return; }
+  if (!produtos.length) { if(sug)sug.style.display='none'; return; }
   sug.innerHTML = produtos.map(p => `
     <div onclick="consigAdicionarProduto('${p.ref}')"
       style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;"
@@ -23205,8 +23205,38 @@ else if(MKT_STATE.etapa===4){c.duracao=texto;MKT_STATE.etapa=5;MKT_STATE.conclui
 return{mensagem:'<b>'+mktPerguntaAtual()+'</b>',opcoes:mktOpcoes()};}
 function mktGerarResumoFinal(){const c=MKT_STATE.campanha;const objetivo=mktEsc(c.objetivo||'campanha local');return '<div class="mkt-answer-title">✓ Campanha estruturada</div><b>Sua estratégia inicial está pronta.</b><br><br><div class="mkt-tip-list"><div class="mkt-tip"><b>Objetivo:</b> '+objetivo+'</div><div class="mkt-tip"><b>Divulgação:</b> '+mktEsc(c.tipo||'A definir')+'</div><div class="mkt-tip"><b>Criativo:</b> '+mktEsc(c.criativo||'A definir')+'</div><div class="mkt-tip"><b>Investimento:</b> '+mktEsc(mktFormatoValor(c.orcamento))+'</div><div class="mkt-tip"><b>Duração:</b> '+mktEsc(c.duracao||'A definir')+'</div></div><div class="mkt-resume">A base já está salva. A integração com a IA real pode usar este mesmo fluxo para gerar texto, público e roteiro sem alterar a interface.</div>';}
 async function mktPerguntarIA(texto){try{if(typeof SB_URL==='string'&&typeof SB_HEADS==='object'){const r=await fetch(`${SB_URL}/functions/v1/marketing-ia`,{method:'POST',headers:{...SB_HEADS,'Content-Type':'application/json'},body:JSON.stringify({mensagem:texto,estado:MKT_STATE.campanha,historico:MKT_STATE.mensagens.slice(-12)})});if(r.ok){const j=await r.json();if(j&&j.mensagem){if(j.estado)MKT_STATE.campanha={...MKT_STATE.campanha,...j.estado};if(Number.isInteger(j.etapa))MKT_STATE.etapa=j.etapa;if(j.concluida)MKT_STATE.concluida=true;return{mensagem:j.mensagem,opcoes:j.opcoes||[]};}}} }catch(e){console.warn('Marketing IA: usando inteligência local.',e);}return mktInterpretarLocal(texto);}
-async function mktEnviar(){const input=document.getElementById('mkt-user-input');if(!input||MKT_OCUPADA)return;const texto=input.value.trim();if(!texto)return input.focus();mktLimparRespostasRapidas();document.getElementById('mkt-welcome').style.display='none';document.getElementById('mkt-suggestions').style.display='none';document.getElementById('mkt-reset').classList.add('show');mktAdicionarMensagem('user',texto);input.value='';mktAutoResize(input);MKT_OCUPADA=true;mktPensando(true);const d=mktDigitando();let resp;try{resp=await mktPerguntarIA(texto);}catch(e){resp={mensagem:'Não consegui processar agora. Tente novamente.',opcoes:[]};}d?.remove();mktPensando(false);MKT_OCUPADA=false;mktAdicionarMensagem('ai',resp.mensagem,true);mktAtualizarProgresso();mktRespostasRapidas(resp.opcoes||mktOpcoes());if(MKT_STATE.concluida)mktSalvarHistorico();input.focus();}
-function mktRenderizarSessao(){const chat=document.getElementById('mkt-chat'),welcome=document.getElementById('mkt-welcome'),sug=document.getElementById('mkt-suggestions'),reset=document.getElementById('mkt-reset');if(!chat)return;chat.innerHTML='';if(MKT_STATE.mensagens.length){welcome.style.display='none';sug.style.display='none';reset.classList.add('show');MKT_STATE.mensagens.forEach(m=>mktAdicionarMensagem(m.tipo,m.texto,m.html,false));mktRespostasRapidas(MKT_STATE.concluida?[]:mktOpcoes());}else{welcome.style.display='';sug.style.display='';reset.classList.remove('show');chat.classList.remove('show');}mktAtualizarProgresso();}
+async function mktEnviar() {
+  const input=document.getElementById('mkt-user-input');
+  if(!input||MKT_OCUPADA)return;
+  const texto=input.value.trim();
+  if(!texto){input.focus();return;}
+  mktLimparRespostasRapidas();
+  document.getElementById('mkt-welcome')?.style && (document.getElementById('mkt-welcome').style.display='none');
+  document.getElementById('mkt-suggestions')?.style && (document.getElementById('mkt-suggestions').style.display='none');
+  document.getElementById('mkt-reset')?.classList.add('show');
+  mktAdicionarMensagem('user',texto);
+  input.value='';
+  mktAutoResize(input);
+  MKT_OCUPADA=true;
+  mktPensando(true);
+  const d=mktDigitando();
+  let resp;
+  try{
+    resp=await window.mktPerguntarIA(texto);
+  }catch(e){
+    console.error(e);
+    resp={mensagem:'Não consegui processar agora. Tente novamente.',opcoes:[]};
+  }
+  d?.remove();
+  mktPensando(false);
+  MKT_OCUPADA=false;
+  mktAdicionarMensagem('ai',resp.mensagem,true);
+  mktAtualizarProgresso();
+  mktRespostasRapidas(resp.opcoes||mktOpcoes());
+  if(MKT_STATE.concluida)mktSalvarHistorico();
+  input.focus();
+}
+function mktRenderizarSessao(){const chat=document.getElementById('mkt-chat'),welcome=document.getElementById('mkt-welcome'),sug=document.getElementById('mkt-suggestions'),reset=document.getElementById('mkt-reset');if(!chat)return;chat.innerHTML='';if(MKT_STATE.mensagens.length){if(welcome)welcome.style.display='none';if(sug)sug.style.display='none';reset.classList.add('show');MKT_STATE.mensagens.forEach(m=>mktAdicionarMensagem(m.tipo,m.texto,m.html,false));mktRespostasRapidas(MKT_STATE.concluida?[]:mktOpcoes());}else{if(welcome)welcome.style.display='';if(sug)sug.style.display='';reset.classList.remove('show');chat.classList.remove('show');}mktAtualizarProgresso();}
 function mktReiniciar(){MKT_STATE={etapa:0,iniciada:false,concluida:false,campanha:{objetivo:null,tipo:null,criativo:null,orcamento:null,duracao:null,publico:null,plataforma:'Meta Ads'},mensagens:[]};try{localStorage.removeItem(MKT_STORAGE_KEY);}catch(e){}mktPensando(false);mktRenderizarSessao();mktAtualizarSaudacao();document.getElementById('mkt-user-input')?.focus();}
 </script>
 <style id="legado-marketing-ia-fase4-css">
@@ -23300,7 +23330,7 @@ function mkt4RenderPainel(carregando=false,erro=false){
 
 window.mkt4MostrarAnalise=async function(forcar=false){
   const a=await mktAnalisarLoja(forcar);if(!a)return;
-  const welcome=document.getElementById('mkt-welcome'),sug=document.getElementById('mkt-suggestions'),reset=document.getElementById('mkt-reset');if(welcome)welcome.style.display='none';if(sug)sug.style.display='none';reset?.classList.add('show');
+  const welcome=document.getElementById('mkt-welcome'),sug=document.getElementById('mkt-suggestions'),reset=document.getElementById('mkt-reset');if(welcome)if(welcome)welcome.style.display='none';if(sug)if(sug)sug.style.display='none';reset?.classList.add('show');
   const html=`<div class="mkt-answer-title">✦ Análise inteligente da sua loja</div><div class="mkt-analysis-message"><div class="mkt-analysis-summary"><div class="mkt-analysis-box"><small>Produtos ativos</small><b>${a.produtosAtivos}</b></div><div class="mkt-analysis-box"><small>Peças em estoque</small><b>${a.totalPecas}</b></div><div class="mkt-analysis-box"><small>Ticket médio (30 dias)</small><b>${mkt4Moeda(a.ticketMedio)}</b></div><div class="mkt-analysis-box"><small>Categoria líder</small><b style="font-size:13px">${mkt4Esc(a.categoriaLider)}</b></div></div><div><b>Oportunidades encontradas</b></div><div class="mkt-analysis-list">${a.oportunidades.map(o=>`<div class="mkt-analysis-item"><b>${mkt4Esc(o.titulo)}</b><br>${mkt4Esc(o.texto)}</div>`).join('')}</div></div>`;
   if(typeof mktAdicionarMensagem==='function')mktAdicionarMensagem('ai',html,true);
   if(typeof mktRespostasRapidas==='function')mktRespostasRapidas(a.oportunidades.slice(0,4).map(o=>({label:'✦ '+o.titulo,valor:o.acao})));
