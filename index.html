@@ -23364,5 +23364,120 @@ async function mktEnviar(){const input=document.getElementById('mkt-user-input')
 function mktRenderizarSessao(){const chat=document.getElementById('mkt-chat'),welcome=document.getElementById('mkt-welcome'),sug=document.getElementById('mkt-suggestions'),reset=document.getElementById('mkt-reset');if(!chat)return;chat.innerHTML='';if(MKT_STATE.mensagens.length){welcome.style.display='none';sug.style.display='none';reset.classList.add('show');MKT_STATE.mensagens.forEach(m=>mktAdicionarMensagem(m.tipo,m.texto,m.html,false));mktRespostasRapidas(MKT_STATE.concluida?[]:mktOpcoes());}else{welcome.style.display='';sug.style.display='';reset.classList.remove('show');chat.classList.remove('show');}mktAtualizarProgresso();}
 function mktReiniciar(){MKT_STATE={etapa:0,iniciada:false,concluida:false,campanha:{objetivo:null,tipo:null,criativo:null,orcamento:null,duracao:null,publico:null,plataforma:'Meta Ads'},mensagens:[]};try{localStorage.removeItem(MKT_STORAGE_KEY);}catch(e){}mktPensando(false);mktRenderizarSessao();mktAtualizarSaudacao();document.getElementById('mkt-user-input')?.focus();}
 </script>
+<style id="legado-marketing-ia-fase4-css">
+/* ===== Marketing IA · Fase 4 · Inteligência com dados reais do ERP ===== */
+.mkt-store-card{border:1px solid rgba(255,255,255,.09);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.025));border-radius:16px;padding:14px;margin-bottom:12px}
+.mkt-store-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:11px}.mkt-store-head b{font-size:12px;color:#fff}.mkt-store-status{font-size:9px;font-weight:800;letter-spacing:.08em;color:#7ef0a8;background:rgba(45,190,104,.13);border:1px solid rgba(45,190,104,.2);padding:4px 7px;border-radius:999px}
+.mkt-store-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mkt-store-metric{padding:10px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)}.mkt-store-metric span{display:block;color:#8f9ab4;font-size:9px;text-transform:uppercase;letter-spacing:.05em}.mkt-store-metric strong{display:block;color:#f7f9ff;font-size:15px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mkt-opportunities{display:grid;gap:8px;margin-top:10px}.mkt-opportunity{border:1px solid rgba(255,255,255,.075);background:rgba(255,255,255,.028);border-radius:12px;padding:11px}.mkt-opportunity b{display:block;color:#fff;font-size:11px;margin-bottom:4px}.mkt-opportunity p{font-size:10px;line-height:1.45;color:#9da8c2;margin:0}.mkt-opportunity button,.mkt-analyze-btn{width:100%;margin-top:8px;border:1px solid rgba(130,104,255,.32);background:rgba(116,83,255,.14);color:#d9d2ff;border-radius:9px;padding:8px;font-size:10px;font-weight:700;cursor:pointer}.mkt-opportunity button:hover,.mkt-analyze-btn:hover{background:rgba(116,83,255,.24)}
+.mkt-analysis-message{display:grid;gap:10px}.mkt-analysis-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.mkt-analysis-box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:11px}.mkt-analysis-box small{display:block;color:#9aa6c0;font-size:10px}.mkt-analysis-box b{display:block;color:#fff;font-size:16px;margin-top:3px}.mkt-analysis-list{display:grid;gap:7px}.mkt-analysis-item{border-left:3px solid #7b5cff;background:rgba(123,92,255,.08);padding:9px 10px;border-radius:0 10px 10px 0;font-size:12px;color:#d8def0}.mkt-analysis-loading{color:#9aa6c0;font-size:11px;text-align:center;padding:10px}
+@media(max-width:900px){.mkt-store-grid,.mkt-analysis-summary{grid-template-columns:1fr}}
+</style>
+<script id="legado-marketing-ia-fase4-js">
+(function(){
+'use strict';
+let MKT4_ANALISE=null;
+let MKT4_CARREGANDO=false;
+const MKT4_CACHE_KEY='legado_marketing_ia_analise_loja';
+
+function mkt4Numero(v){const n=Number(v);return Number.isFinite(n)?n:0;}
+function mkt4Data(v){
+  const raw=v?.data||v?.data_venda||v?.created_at||'';
+  if(!raw)return null;
+  if(/^\d{4}-\d{2}-\d{2}/.test(raw)){const d=new Date(raw);return isNaN(d)?null:d;}
+  const m=String(raw).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m){const d=new Date(+m[3],+m[2]-1,+m[1]);return isNaN(d)?null:d;}
+  const d=new Date(raw);return isNaN(d)?null:d;
+}
+function mkt4Moeda(v){return mkt4Numero(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+function mkt4Esc(v){return typeof mktEsc==='function'?mktEsc(v):String(v??'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));}
+
+async function mkt4ObterDados(){
+  const [produtos,vendas,clientes]=await Promise.all([
+    typeof getProdutosAsync==='function'?getProdutosAsync().catch(()=>typeof getProdutos==='function'?getProdutos():[]):Promise.resolve(typeof getProdutos==='function'?getProdutos():[]),
+    typeof getVendasAsync==='function'?getVendasAsync().then(()=>typeof getVendas==='function'?getVendas():[]).catch(()=>typeof getVendas==='function'?getVendas():[]):Promise.resolve(typeof getVendas==='function'?getVendas():[]),
+    typeof getClientesAsync==='function'?getClientesAsync().catch(()=>typeof getClientes==='function'?getClientes():[]):Promise.resolve(typeof getClientes==='function'?getClientes():[])
+  ]);
+  return {produtos:Array.isArray(produtos)?produtos:[],vendas:Array.isArray(vendas)?vendas:[],clientes:Array.isArray(clientes)?clientes:[]};
+}
+
+async function mktAnalisarLoja(forcar=false){
+  if(MKT4_CARREGANDO)return MKT4_ANALISE;
+  if(MKT4_ANALISE&&!forcar)return MKT4_ANALISE;
+  MKT4_CARREGANDO=true;mkt4RenderPainel(true);
+  try{
+    const {produtos,vendas,clientes}=await mkt4ObterDados();
+    const agora=new Date(), corte30=new Date(agora);corte30.setDate(corte30.getDate()-30);
+    const corte60=new Date(agora);corte60.setDate(corte60.getDate()-60);
+    const vendas30=vendas.filter(v=>{const d=mkt4Data(v);return d&&d>=corte30;});
+    const refsVendidas60=new Set(vendas.filter(v=>{const d=mkt4Data(v);return d&&d>=corte60;}).map(v=>String(v.ref||v.produto_ref||'').trim()).filter(Boolean));
+    const ativos=produtos.filter(p=>mkt4Numero(p.estoque)>0);
+    const totalPecas=ativos.reduce((s,p)=>s+mkt4Numero(p.estoque),0);
+    const criticos=ativos.filter(p=>mkt4Numero(p.estoque)<=2);
+    const parados=ativos.filter(p=>!refsVendidas60.has(String(p.ref||'').trim()));
+    const faturamento30=vendas30.reduce((s,v)=>s+mkt4Numero(v.valor_total||((v.valor_unit||v.valor||0)*(v.qtd||1))),0);
+    const tickets=new Map();vendas30.forEach(v=>{const k=v.venda_id||v.numero_venda||v.cupom||v.id;const val=mkt4Numero(v.valor_total||((v.valor_unit||v.valor||0)*(v.qtd||1)));tickets.set(k,(tickets.get(k)||0)+val);});
+    const ticketMedio=tickets.size?faturamento30/tickets.size:0;
+    const catVenda={};vendas30.forEach(v=>{const cat=v.categoria||produtos.find(p=>p.ref===v.ref)?.categoria||'Sem categoria';catVenda[cat]=(catVenda[cat]||0)+(v.qtd||1);});
+    const categoriaLider=Object.entries(catVenda).sort((a,b)=>b[1]-a[1])[0]?.[0]||'Sem vendas recentes';
+    const prodVenda={};vendas30.forEach(v=>{const k=v.ref||v.produto_ref||v.produto||'Produto';if(!prodVenda[k])prodVenda[k]={nome:v.produto||k,qtd:0};prodVenda[k].qtd+=mkt4Numero(v.qtd||1);});
+    const campeao=Object.values(prodVenda).sort((a,b)=>b.qtd-a.qtd)[0]||null;
+    const maiorEstoque=[...ativos].sort((a,b)=>mkt4Numero(b.estoque)-mkt4Numero(a.estoque))[0]||null;
+    const oportunidades=[];
+    if(parados.length) oportunidades.push({tipo:'parados',titulo:'Girar estoque parado',texto:`${parados.length} produto(s), somando ${parados.reduce((s,p)=>s+mkt4Numero(p.estoque),0)} peça(s), não tiveram venda nos últimos 60 dias.`,acao:'Quero criar uma campanha para girar meu estoque parado'});
+    if(maiorEstoque&&mkt4Numero(maiorEstoque.estoque)>=5) oportunidades.push({tipo:'alto',titulo:'Aproveitar estoque alto',texto:`${maiorEstoque.produto||maiorEstoque.ref} possui ${mkt4Numero(maiorEstoque.estoque)} unidades disponíveis.`,acao:`Crie uma campanha para ${maiorEstoque.produto||maiorEstoque.ref}`});
+    if(campeao) oportunidades.push({tipo:'campeao',titulo:'Impulsionar campeão de vendas',texto:`${campeao.nome} liderou os últimos 30 dias com ${campeao.qtd} unidade(s) vendida(s).`,acao:`Quero anunciar novamente ${campeao.nome}`});
+    if(criticos.length) oportunidades.push({tipo:'critico',titulo:'Usar urgência com cuidado',texto:`${criticos.length} produto(s) têm apenas 1 ou 2 unidades disponíveis.`,acao:'Crie uma campanha de últimas unidades'});
+    if(!oportunidades.length) oportunidades.push({tipo:'geral',titulo:'Campanha institucional',texto:'Não encontrei alertas fortes agora. Uma campanha para apresentar a loja é uma boa oportunidade.',acao:'Quero divulgar minha loja'});
+    MKT4_ANALISE={geradaEm:new Date().toISOString(),totalProdutos:produtos.length,produtosAtivos:ativos.length,totalPecas,clientes:clientes.length,vendas30:vendas30.length,faturamento30,ticketMedio,categoriaLider,estoqueCritico:criticos.length,estoqueParado:parados.length,campeao,maiorEstoque,oportunidades:oportunidades.slice(0,4)};
+    try{localStorage.setItem(MKT4_CACHE_KEY,JSON.stringify(MKT4_ANALISE));}catch(e){}
+    if(typeof MKT_STATE==='object')MKT_STATE.analiseLoja=MKT4_ANALISE;
+    mkt4RenderPainel(false);
+    return MKT4_ANALISE;
+  }catch(e){console.warn('Marketing IA Fase 4: falha ao analisar loja',e);mkt4RenderPainel(false,true);return null;}
+  finally{MKT4_CARREGANDO=false;}
+}
+window.mktAnalisarLoja=mktAnalisarLoja;
+
+function mkt4CriarPainel(){
+  const right=document.querySelector('#page-marketing .mkt-right');if(!right)return null;
+  let card=document.getElementById('mkt-store-intelligence');
+  if(!card){card=document.createElement('div');card.id='mkt-store-intelligence';card.className='mkt-store-card';const first=right.firstElementChild;right.insertBefore(card,first||null);}
+  return card;
+}
+function mkt4RenderPainel(carregando=false,erro=false){
+  const card=mkt4CriarPainel();if(!card)return;
+  if(carregando){card.innerHTML='<div class="mkt-store-head"><b>Inteligência da Loja</b><span class="mkt-store-status">ANALISANDO</span></div><div class="mkt-analysis-loading">Lendo produtos, estoque e vendas...</div>';return;}
+  const a=MKT4_ANALISE;
+  if(erro||!a){card.innerHTML='<div class="mkt-store-head"><b>Inteligência da Loja</b><span class="mkt-store-status">DISPONÍVEL</span></div><p style="font-size:10px;color:#9da8c2">Clique para analisar os dados atuais da loja.</p><button class="mkt-analyze-btn" onclick="mkt4MostrarAnalise(true)">Analisar minha loja</button>';return;}
+  card.innerHTML=`<div class="mkt-store-head"><b>Inteligência da Loja</b><span class="mkt-store-status">DADOS REAIS</span></div><div class="mkt-store-grid"><div class="mkt-store-metric"><span>Produtos ativos</span><strong>${a.produtosAtivos}</strong></div><div class="mkt-store-metric"><span>Peças em estoque</span><strong>${a.totalPecas}</strong></div><div class="mkt-store-metric"><span>Estoque parado</span><strong>${a.estoqueParado}</strong></div><div class="mkt-store-metric"><span>Ticket médio 30d</span><strong>${mkt4Moeda(a.ticketMedio)}</strong></div></div><div class="mkt-opportunities">${a.oportunidades.slice(0,2).map(o=>`<div class="mkt-opportunity"><b>${mkt4Esc(o.titulo)}</b><p>${mkt4Esc(o.texto)}</p><button onclick="mktSugestao('${mkt4Esc(o.acao).replace(/'/g,'&#39;')}')">Criar campanha</button></div>`).join('')}</div><button class="mkt-analyze-btn" onclick="mkt4MostrarAnalise(true)">Ver análise completa</button>`;
+}
+
+window.mkt4MostrarAnalise=async function(forcar=false){
+  const a=await mktAnalisarLoja(forcar);if(!a)return;
+  const welcome=document.getElementById('mkt-welcome'),sug=document.getElementById('mkt-suggestions'),reset=document.getElementById('mkt-reset');if(welcome)welcome.style.display='none';if(sug)sug.style.display='none';reset?.classList.add('show');
+  const html=`<div class="mkt-answer-title">✦ Análise inteligente da sua loja</div><div class="mkt-analysis-message"><div class="mkt-analysis-summary"><div class="mkt-analysis-box"><small>Produtos ativos</small><b>${a.produtosAtivos}</b></div><div class="mkt-analysis-box"><small>Peças em estoque</small><b>${a.totalPecas}</b></div><div class="mkt-analysis-box"><small>Ticket médio (30 dias)</small><b>${mkt4Moeda(a.ticketMedio)}</b></div><div class="mkt-analysis-box"><small>Categoria líder</small><b style="font-size:13px">${mkt4Esc(a.categoriaLider)}</b></div></div><div><b>Oportunidades encontradas</b></div><div class="mkt-analysis-list">${a.oportunidades.map(o=>`<div class="mkt-analysis-item"><b>${mkt4Esc(o.titulo)}</b><br>${mkt4Esc(o.texto)}</div>`).join('')}</div></div>`;
+  if(typeof mktAdicionarMensagem==='function')mktAdicionarMensagem('ai',html,true);
+  if(typeof mktRespostasRapidas==='function')mktRespostasRapidas(a.oportunidades.slice(0,4).map(o=>({label:'✦ '+o.titulo,valor:o.acao})));
+};
+
+const renderAnterior=window.renderMarketingIA;
+window.renderMarketingIA=function(){
+  if(typeof renderAnterior==='function')renderAnterior();
+  setTimeout(()=>{mkt4CriarPainel();mktAnalisarLoja(false);},80);
+};
+
+const perguntarAnterior=window.mktPerguntarIA;
+window.mktPerguntarIA=async function(texto){
+  const t=typeof mktNormalizar==='function'?mktNormalizar(texto):String(texto||'').toLowerCase();
+  if(/analisa|analisar|dados da loja|estoque parado|mais vendido|campeao|oportunidade/.test(t)){
+    const a=await mktAnalisarLoja(false);
+    if(a){return{mensagem:`<div class="mkt-answer-title">✦ Encontrei ${a.oportunidades.length} oportunidade(s)</div>${a.oportunidades.map(o=>`<div class="mkt-tip"><b>${mkt4Esc(o.titulo)}:</b> ${mkt4Esc(o.texto)}</div>`).join('')}<div class="mkt-resume">Essas recomendações foram calculadas com os produtos, estoque e vendas reais do LegadoERP.</div>`,opcoes:a.oportunidades.map(o=>({label:o.titulo,valor:o.acao}))};}
+  }
+  return typeof perguntarAnterior==='function'?perguntarAnterior(texto):{mensagem:'Conte o que deseja divulgar.',opcoes:[]};
+};
+})();
+</script>
+
 </body>
 </html>
