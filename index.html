@@ -4602,6 +4602,103 @@ body.mkt-workspace-open{overflow:hidden!important;}
 @media(max-width:1180px){#page-marketing .mkt-workspace{grid-template-columns:230px minmax(0,1fr) 310px}.mkt-features{gap:15px}.mkt-hero{grid-template-columns:140px 1fr}}
 @media(max-width:900px){#page-marketing .mkt-workspace{grid-template-columns:76px minmax(0,1fr)}#page-marketing .mkt-nav{padding:16px 10px}.mkt-logo>div:last-child,.mkt-menu button span,.mkt-plan,.mkt-consultor>div:last-child{display:none}.mkt-menu button{justify-content:center;font-size:18px;padding:12px}.mkt-right{display:none!important}.mkt-conversation{padding:20px}.mkt-composer-wrap{padding:12px 20px 16px}.mkt-hero{grid-template-columns:1fr;text-align:center}.mkt-orb-wrap{margin:auto}}
 @media(max-width:600px){#page-marketing .mkt-workspace{grid-template-columns:1fr}.mkt-nav{display:none!important}.mkt-header{height:62px;padding:0 14px}.mkt-conversation{padding:16px 14px}.mkt-composer-wrap{padding:10px 14px 14px}.mkt-hero{padding-top:0}.mkt-heading{font-size:25px}.mkt-orb-wrap{width:110px;height:110px}.mkt-orb{width:78px;height:78px}.mkt-ring.r1{width:88px;height:88px}.mkt-ring.r2{width:106px;height:106px}.mkt-ring.r3{width:122px;height:122px}.mkt-message{max-width:95%}}
+
+
+/* ===== Correção Fase 1 · área central full-bleed entre as barras ===== */
+#page-marketing,
+#page-marketing .mkt-shell,
+#page-marketing .mkt-workspace{
+  box-sizing:border-box!important;
+  width:100vw!important;
+  max-width:none!important;
+  min-width:0!important;
+  height:100dvh!important;
+  max-height:100dvh!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  inset:0!important;
+  left:0!important;
+  right:0!important;
+  transform:none!important;
+}
+#page-marketing .mkt-workspace{
+  display:grid!important;
+  grid-template-columns:280px minmax(0,1fr) 360px!important;
+  grid-template-rows:minmax(0,1fr)!important;
+  gap:0!important;
+  overflow:hidden!important;
+}
+#page-marketing .mkt-nav,
+#page-marketing .mkt-center,
+#page-marketing .mkt-right{
+  position:relative!important;
+  inset:auto!important;
+  min-width:0!important;
+  max-width:none!important;
+  width:auto!important;
+  height:100%!important;
+  max-height:100%!important;
+  margin:0!important;
+  border-radius:0!important;
+  transform:none!important;
+}
+#page-marketing .mkt-nav{grid-column:1!important;grid-row:1!important;}
+#page-marketing .mkt-center{
+  grid-column:2!important;
+  grid-row:1!important;
+  justify-self:stretch!important;
+  align-self:stretch!important;
+  padding:0!important;
+  background:
+    radial-gradient(circle at 50% -10%,rgba(124,58,237,.16),transparent 36%),
+    linear-gradient(180deg,#070b14 0%,#050914 100%)!important;
+  color:var(--mkt-text)!important;
+  overflow:hidden!important;
+}
+#page-marketing .mkt-right{grid-column:3!important;grid-row:1!important;}
+#page-marketing .mkt-header,
+#page-marketing .mkt-conversation,
+#page-marketing .mkt-composer-wrap{
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  left:auto!important;
+  right:auto!important;
+  transform:none!important;
+  border-radius:0!important;
+}
+#page-marketing .mkt-header{padding-inline:28px!important;}
+#page-marketing .mkt-conversation{
+  padding:26px 34px 22px!important;
+  background:transparent!important;
+}
+#page-marketing .mkt-composer-wrap{
+  padding:14px 34px 22px!important;
+  background:linear-gradient(180deg,rgba(5,9,20,0),#050914 24%)!important;
+}
+#page-marketing .mkt-hero,
+#page-marketing .mkt-chat,
+#page-marketing .mkt-suggestions,
+#page-marketing .mkt-thinking-bar,
+#page-marketing .mkt-reset{
+  max-width:none!important;
+}
+@media(max-width:1180px){
+  #page-marketing .mkt-workspace{grid-template-columns:230px minmax(0,1fr) 310px!important;}
+}
+@media(max-width:900px){
+  #page-marketing .mkt-workspace{grid-template-columns:76px minmax(0,1fr)!important;}
+  #page-marketing .mkt-right{display:none!important;}
+  #page-marketing .mkt-center{grid-column:2!important;}
+}
+@media(max-width:600px){
+  #page-marketing .mkt-workspace{grid-template-columns:minmax(0,1fr)!important;}
+  #page-marketing .mkt-nav{display:none!important;}
+  #page-marketing .mkt-center{grid-column:1!important;}
+}
+
 </style>
 </head>
 
