@@ -4564,12 +4564,14 @@ body.modo-vitrine-publica{
 <style id="legado-marketing-ia-fase1">
 /* ===== Marketing IA · Workspace Fullscreen · Fase 1 ===== */
 body.mkt-workspace-open{overflow:hidden!important;}
-#page-marketing{--mkt-bg:#050914;--mkt-panel:#0a1020;--mkt-panel2:#0e1628;--mkt-line:#1a2640;--mkt-text:#f8fafc;--mkt-muted:#8d99ae;--mkt-purple:#7c3aed;--mkt-violet:#9b5cff;--mkt-blue:#2563eb;position:fixed!important;inset:0!important;z-index:99999!important;width:100vw!important;height:100dvh!important;margin:0!important;padding:0!important;background:var(--mkt-bg)!important;overflow:hidden!important;}
+#page-marketing{--mkt-bg:#050914;--mkt-panel:#0a1020;--mkt-panel2:#0e1628;--mkt-line:#1a2640;--mkt-text:#f8fafc;--mkt-muted:#8d99ae;--mkt-purple:#7c3aed;--mkt-violet:#9b5cff;--mkt-blue:#2563eb;position:fixed!important;inset:0!important;z-index:2147483000!important;width:100vw!important;max-width:none!important;height:100vh!important;height:100dvh!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;transform:none!important;background:var(--mkt-bg)!important;overflow:hidden!important;}
 #page-marketing:not(.active){display:none!important;}
 #page-marketing.active{display:block!important;}
 #page-marketing *{box-sizing:border-box;}
 #page-marketing .mkt-shell{height:100%;width:100%;background:radial-gradient(circle at 52% 0%,rgba(86,44,180,.18),transparent 28%),linear-gradient(135deg,#050914,#070c17 52%,#050914);color:var(--mkt-text);overflow:hidden;}
 #page-marketing .mkt-workspace{display:grid;grid-template-columns:280px minmax(0,1fr) 360px;height:100%;min-height:0;}
+#page-marketing .mkt-workspace,#page-marketing .mkt-center,#page-marketing .mkt-conversation,#page-marketing .mkt-composer-wrap{width:100%;max-width:none!important;margin:0!important;}
+#page-marketing .mkt-center{align-self:stretch;justify-self:stretch;overflow:hidden;}
 #page-marketing .mkt-nav{min-height:0;border-right:1px solid var(--mkt-line);background:rgba(5,9,20,.94);padding:22px 18px;display:flex;flex-direction:column;gap:18px;overflow:auto;}
 #page-marketing .mkt-logo{display:flex;align-items:center;gap:12px;padding:4px 8px 18px;}
 #page-marketing .mkt-logo-orb{width:46px;height:46px;border-radius:16px;background:radial-gradient(circle at 35% 30%,#b084ff 0 5%,#6d28d9 35%,#111827 70%);box-shadow:0 0 28px rgba(124,58,237,.5);position:relative;}
@@ -9419,7 +9421,7 @@ function showPage(id) {
   if (id === 'usuarios') { renderUsuarios(); }
   if (id === 'vendas') { popularListaClientesVenda(); popularSelectVendedores(); atualizarWidgetCaixa(); if (!document.getElementById('venda-data').value) { const t = new Date(); document.getElementById('venda-data').value = t.toISOString().slice(0,10); } }
   document.body.classList.toggle('mkt-workspace-open', id === 'marketing');
-  if (id === 'marketing') { renderMarketingIA(); setTimeout(()=>document.getElementById('mkt-user-input')?.focus(),80); }
+  if (id === 'marketing') { mktGarantirFullscreen(); renderMarketingIA(); setTimeout(()=>document.getElementById('mkt-user-input')?.focus(),80); }
   if (id === 'painel-metas') { renderGestaoComercial(); }
   closeMenuMobile();
 }
@@ -23080,7 +23082,8 @@ let MKT_FASE1_ETAPA = 0;
 let MKT_FASE1_CTX = {};
 let MKT_FASE1_OCUPADA = false;
 
-function renderMarketingIA(){ const input=document.getElementById('mkt-user-input'); if(input)setTimeout(()=>input.focus(),180); mktAtualizarProgresso(); }
+function mktGarantirFullscreen(){const pagina=document.getElementById('page-marketing');if(!pagina)return;if(pagina.parentElement!==document.body)document.body.appendChild(pagina);pagina.style.cssText='';}
+function renderMarketingIA(){ mktGarantirFullscreen(); const input=document.getElementById('mkt-user-input'); if(input)setTimeout(()=>input.focus(),180); mktAtualizarProgresso(); }
 function mktAutoResize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,130)+'px'; document.getElementById('mkt-stage')?.classList.toggle('listening',!!el.value.trim()); }
 function mktFecharWorkspace(){document.body.classList.remove('mkt-workspace-open');showPage('dashboard');}
 function mktSincronizarResumo(){
