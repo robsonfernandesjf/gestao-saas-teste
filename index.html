@@ -12158,15 +12158,12 @@ function registrarVendaRapida(ref) {
 }
 
 function calcularLucroPreview() {
-  if (!produtoSelecionado) return;
-  const qtd = parseInt(document.getElementById('venda-qtd').value)||1;
-  const val = valorMoeda('venda-valor');
-  const lucro = (val - (produtoSelecionado.custo||0)) * qtd;
+  // Preview de custo/margem removido da tela de vendas.
   const box = document.getElementById('lucro-preview-box');
-  box.style.display = 'block';
-  box.className = 'lucro-preview' + (lucro < 0 ? ' negativo' : '');
-  const margem = val > 0 ? (lucro/val/qtd*100) : 0;
-  box.innerHTML = `💰 Lucro previsto: ${R(lucro)} &nbsp;|&nbsp; Margem: ${pct(margem)} &nbsp;|&nbsp; Subtotal: ${R(val * qtd)}`;
+  if (box) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+  }
 }
 
 
@@ -17362,7 +17359,7 @@ function abrirModalFecharCaixa() {
 
   document.getElementById('fechar-caixa-movimentos').innerHTML = (sessao.movimentos || []).length
     ? `<table><thead><tr><th>Tipo</th><th>Valor</th><th>Motivo</th><th>Hora</th></tr></thead><tbody>${
-        sessao.movimentos.map(m => `<tr><td>${m.tipo === 'sangria' ? '💸 Sangria' : '➕ Suprimento'}</td><td>${R(m.valor)}</td><td style="font-size:12px;">${m.motivo}</td><td style="font-size:12px;">${(m.horaBR.split(',')[1] || '').trim()}</td></tr>`).join('')
+        sessao.movimentos.map(m => `<tr><td>${m.tipo === 'sangria' ? '💸 Sangria' : '➕ Suprimento'}</td><td>${R(m.valor)}</td><td style="font-size:12px;">${m.motivo}</td><td style="font-size:12px;">${((m.horaBR || '').split(',')[1] || (m.horaBR || '')).trim()}</td></tr>`).join('')
       }</tbody></table>`
     : '<p style="font-size:13px;color:var(--muted);">Nenhuma sangria ou suprimento registrado neste caixa.</p>';
 
