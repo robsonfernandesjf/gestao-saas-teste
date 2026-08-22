@@ -7415,6 +7415,10 @@ body.mkt-workspace-open{overflow:hidden!important;}
     <div class="modal-body">
       <input type="hidden" id="edit-ref">
       <div class="form-row"><label>Nome</label><input type="text" id="edit-nome"></div>
+      <div class="form-row">
+        <label>Categoria</label>
+        <select id="edit-cat"></select>
+      </div>
       <div class="form-row"><label>Código de Barras (EAN-13)</label><input type="text" id="edit-ean13" placeholder="Ex: 7891234567895" inputmode="numeric" maxlength="13" oninput="this.value=this.value.replace(/\D/g,'')"></div>
       <div class="form-grid">
         <div class="form-row"><label>Custo (R$)</label><input type="text" inputmode="numeric" id="edit-custo" oninput="mascaraMoeda(this);calcEditMargem()"></div>
@@ -10238,6 +10242,19 @@ function abrirEdicao(ref) {
   _editEstoqueOriginal = p.estoque;
   document.getElementById('edit-ref').value = p.ref;
   document.getElementById('edit-nome').value = p.produto;
+
+  const editCat = document.getElementById('edit-cat');
+  if (editCat) {
+    const categorias = typeof CATS_ATUAIS === 'function' ? CATS_ATUAIS() : [];
+    const lista = [...new Set([...(Array.isArray(categorias) ? categorias : []), p.categoria || 'Sem categoria'])];
+    editCat.innerHTML = lista
+      .filter(Boolean)
+      .sort((a,b) => String(a).localeCompare(String(b), 'pt-BR'))
+      .map(c => `<option value="${esc(c)}">${esc(c)}</option>`)
+      .join('');
+    editCat.value = p.categoria || 'Sem categoria';
+  }
+
   document.getElementById('edit-ean13').value = p.ean13 || '';
   setValorMoeda('edit-custo', p.custo);
   setValorMoeda('edit-preco', p.preco_venda);
@@ -10299,6 +10316,8 @@ async function salvarEdicao() {
   const idx = produtos.findIndex(p=>p.ref===ref);
   if (idx < 0) return;
   produtos[idx].produto = document.getElementById('edit-nome').value;
+  const editCategoria = (document.getElementById('edit-cat')?.value || '').trim();
+  produtos[idx].categoria = editCategoria || 'Sem categoria';
   const editEan13 = document.getElementById('edit-ean13').value.trim();
   if (editEan13) produtos[idx].ean13 = editEan13; else delete produtos[idx].ean13;
   produtos[idx].custo = valorMoeda('edit-custo');
@@ -10317,6 +10336,7 @@ async function salvarEdicao() {
     mostrarLoading(true);
     const patchData = {
       produto: produtos[idx].produto,
+      categoria: produtos[idx].categoria,
       ean13: produtos[idx].ean13 ?? null,
       custo: produtos[idx].custo,
       preco_venda: produtos[idx].preco_venda,
@@ -10340,13 +10360,14 @@ async function salvarEdicao() {
 
   saveProdutos(produtos);
   fecharModal('modal-edicao');
+  populateCatFilter();
   renderEstoque();
 
   auditLog({
     operacao:    'edicao_produto',
     modulo:      'estoque',
     registro_id: ref,
-    dados_depois: { ref, produto: produtos[idx]?.produto, preco_venda: produtos[idx]?.preco_venda },
+    dados_depois: { ref, produto: produtos[idx]?.produto, categoria: produtos[idx]?.categoria, preco_venda: produtos[idx]?.preco_venda },
   });
 }
 function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
