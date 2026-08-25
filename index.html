@@ -9088,17 +9088,16 @@ function aplicarPermissoes(usuario) {
     if (!match) return;
     const pag = match[1];
     if (pag === 'usuarios') return; // tratado acima
-    if (isMaster || isAdmin) {
-      btn.style.display = 'block';
-    } else {
-      btn.style.display = modulos.includes(pag) ? 'block' : 'none';
-    }
+    // Inclusive o admin passa a respeitar as liberações configuradas
+    // para os módulos operacionais.
+    btn.style.display = modulos.includes(pag) ? 'block' : 'none';
   });
 
-  // Ir para primeira página disponível
+  // Ir para a primeira página operacional liberada.
+  // Se nenhuma estiver liberada, o admin ainda pode acessar Usuários/Empresa.
   let primeira = 'dashboard';
-  if (!isMaster && !isAdmin && !modulos.includes('dashboard')) {
-    primeira = modulos[0] || 'estoque';
+  if (!modulos.includes('dashboard')) {
+    primeira = modulos[0] || (isAdmin ? 'usuarios' : 'estoque');
   }
   showPage(primeira);
 }
@@ -9170,10 +9169,11 @@ async function renderUsuarios() {
       const roleLabel = u.perfil === 'admin' ? 'Admin' : 'Vendedor';
       const roleClass = u.perfil === 'admin' ? 'role-admin' : 'role-user';
       const avatarClass = u.perfil === 'admin' ? 'admin' : 'user';
-      const modsList = u.perfil === 'admin' ? MODULOS.map(m => m.id) :
+      const modsList =
         (Array.isArray(u.modulos) ? u.modulos : (typeof u.modulos === 'string' ? JSON.parse(u.modulos || '[]') : []));
-      const modsLabel = u.perfil === 'admin' ? 'Acesso total' :
-        modsList.map(m => { const mod = MODULOS.find(x => x.id === m); return mod ? mod.icon : m; }).join(' ') || 'Sem módulos';
+      const modsLabel =
+        modsList.map(m => { const mod = MODULOS.find(x => x.id === m); return mod ? mod.icon : m; }).join(' ') ||
+        (u.perfil === 'admin' ? 'Somente administração' : 'Sem módulos');
       const canEdit = isMaster || isAdmin;
       const ehVoce = atual && u.id === atual.id;
 
@@ -9185,9 +9185,9 @@ async function renderUsuarios() {
           <p>Login: <code>${esc(u.login)}</code> · ${modsLabel}</p>
         </div>
         <span class="user-role-badge ${roleClass}">${roleLabel}</span>
-        ${canEdit && !ehVoce ? `
+        ${canEdit ? `
         <button class="btn btn-outline btn-sm" onclick="abrirModalUsuario('${u.id}')" style="margin-left:8px;">✏️ Editar</button>
-        <button class="btn btn-danger btn-sm" onclick="confirmarDelUsuario('${u.id}')" style="margin-left:4px;">🗑</button>
+        ${!ehVoce ? `<button class="btn btn-danger btn-sm" onclick="confirmarDelUsuario('${u.id}')" style="margin-left:4px;">🗑</button>` : ''}
         ` : ''}
       </div>`;
     });
@@ -9384,9 +9384,10 @@ async function abrirModalUsuario(id) {
   grid.innerHTML = MODULOS.map(m => `<label class="perm-item"><input type="checkbox" name="perm" value="${m.id}" ${sel.includes(m.id) ? 'checked' : ''}>${m.label}</label>`).join('');
 
   document.getElementById('usr-perfil').onchange = function() {
-    document.getElementById('usr-perms-wrap').style.display = this.value === 'admin' ? 'none' : 'block';
+    // Admin também pode ter liberações próprias por módulo.
+    document.getElementById('usr-perms-wrap').style.display = 'block';
   };
-  document.getElementById('usr-perms-wrap').style.display = document.getElementById('usr-perfil').value === 'admin' ? 'none' : 'block';
+  document.getElementById('usr-perms-wrap').style.display = 'block';
   document.getElementById('modal-usuario').classList.add('open');
 }
 
@@ -9402,12 +9403,23 @@ async function salvarUsuario() {
   if (login === 'master') { alert('Login reservado.'); return; }
 
   const checkeds = [...document.querySelectorAll('#usr-perms-grid input[type=checkbox]:checked')].map(c => c.value);
-  const modulos = perfil === 'admin' ? MODULOS.map(m => m.id) : checkeds;
+  const modulos = checkeds;
 
   const senhaHash = senha ? dcodeIO.bcrypt.hashSync(senha, 10) : null;
   try {
     if (id) { await sbPatch('usuarios', id, { nome, login, ...(senhaHash ? { senha: senhaHash } : {}), perfil, modulos }); }
     else     { await sbPost('usuarios', { nome, login, senha: senhaHash, perfil, modulos }); }
+
+    // Se o admin alterou o próprio cadastro, atualizar a sessão imediatamente.
+    const atual = usuarioAtual();
+    if (id && atual && String(atual.id) === String(id)) {
+      const ses = getSessao();
+      const usuarioAtualizado = { ...atual, nome, login, perfil, modulos };
+      if (ses) saveSessao({ ...ses, dados: usuarioAtualizado });
+      aplicarPermissoes(usuarioAtualizado);
+      atualizarHeaderUsuario(usuarioAtualizado);
+    }
+
     fecharModal('modal-usuario');
     mostrarNotificacao('✅ Usuário salvo!');
     renderUsuarios();
