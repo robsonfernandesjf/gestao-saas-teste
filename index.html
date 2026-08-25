@@ -9002,6 +9002,23 @@ async function fazerLogin() {
     // A partir daqui, todas as chamadas ao Supabase usam o token da sessão
     // em vez da anon key pura.
     SB_HEADS.Authorization = 'Bearer ' + token;
+
+    // Recarrega as liberações atuais diretamente da tabela de usuários.
+    // Assim uma alteração de módulos não fica presa a dados antigos do login/token.
+    try {
+      const usrAtual = await sbGet('usuarios', `id=eq.${usuario.id}`);
+      if (usrAtual && usrAtual[0]) {
+        usuario.modulos = Array.isArray(usrAtual[0].modulos)
+          ? usrAtual[0].modulos
+          : JSON.parse(usrAtual[0].modulos || '[]');
+        usuario.perfil = usrAtual[0].perfil || usuario.perfil;
+        usuario.nome = usrAtual[0].nome || usuario.nome;
+        usuario.login = usrAtual[0].login || usuario.login;
+      }
+    } catch (e) {
+      console.warn('Falha ao atualizar liberações após login:', e);
+    }
+
     saveSessao({ id: usuario.id, token, dados: usuario });
     document.getElementById('login-screen').classList.add('hidden');
 
@@ -9492,16 +9509,22 @@ function atualizarHora() {
 
 // ===== NAVEGAÇÃO =====
 function showPage(id) {
-  // Verificar permissão
+  // Verificar permissão.
+  // Admin mantém acesso às áreas administrativas, mas os módulos operacionais
+  // obedecem às liberações marcadas no próprio cadastro.
   const usr = usuarioAtual();
   if (usr) {
-    const isMaster = usr.perfil === 'admin';
-    const isAdmin  = usr.perfil === 'admin';
-    const modulos  = usr.modulos || [];
-    if (!isMaster && !isAdmin && id !== 'usuarios') {
-      if (!modulos.includes(id)) return; // sem permissão
+    const isAdmin = usr.perfil === 'admin';
+    const modulos = Array.isArray(usr.modulos)
+      ? usr.modulos
+      : (typeof usr.modulos === 'string' ? JSON.parse(usr.modulos || '[]') : []);
+    const paginasAdmin = ['usuarios', 'empresa'];
+
+    if (paginasAdmin.includes(id)) {
+      if (!isAdmin) return;
+    } else if (!modulos.includes(id)) {
+      return;
     }
-    if (id === 'usuarios' && !isMaster && !isAdmin) return;
   }
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
