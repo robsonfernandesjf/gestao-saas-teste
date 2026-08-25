@@ -9098,16 +9098,20 @@ function aplicarPermissoes(usuario) {
   if (navUsr) navUsr.style.display = (isMaster || isAdmin) ? 'block' : 'none';
   if (navEmp) navEmp.style.display = (isMaster || isAdmin) ? 'block' : 'none';
 
-  // Esconder/mostrar botões de nav por módulo
+  // Esconder/mostrar botões de nav por módulo.
+  // O CSS do menu usa display:flex!important; por isso a permissão também
+  // precisa ser aplicada com !important para realmente ocultar o item.
   const navBtns = document.querySelectorAll('nav button[onclick^="showPage"]');
   navBtns.forEach(btn => {
-    const match = btn.getAttribute('onclick').match(/showPage\('(\w+)'\)/);
+    const match = btn.getAttribute('onclick').match(/showPage\('([\w-]+)'\)/);
     if (!match) return;
     const pag = match[1];
-    if (pag === 'usuarios') return; // tratado acima
-    // Inclusive o admin passa a respeitar as liberações configuradas
-    // para os módulos operacionais.
-    btn.style.display = modulos.includes(pag) ? 'block' : 'none';
+
+    // Áreas administrativas são tratadas separadamente.
+    if (pag === 'usuarios' || pag === 'empresa') return;
+
+    const permitido = modulos.includes(pag);
+    btn.style.setProperty('display', permitido ? 'flex' : 'none', 'important');
   });
 
   // Ir para a primeira página operacional liberada.
