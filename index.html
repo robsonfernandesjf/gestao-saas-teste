@@ -8335,6 +8335,7 @@ const MODULOS = [
   { id: 'financeiro',  label: '💰 Financeiro',         icon: '💰' },
   { id: 'crediario',   label: '💳 Crediário',          icon: '💳' },
   { id: 'consignado', label: '📦 Consignado',         icon: '📦' },
+  { id: 'painel-metas',label: '🎯 Gestão de Metas',      icon: '🎯' },
   { id: 'trocas',      label: '🔄 Trocas/Devoluções',   icon: '🔄' },
 ];
 
@@ -12021,7 +12022,14 @@ function aplicarFlagCrediario() {
   const btnMkt = document.getElementById('nav-btn-marketing');
   if (btnMkt) btnMkt.style.setProperty('display', LOJA_USA_MARKETING ? 'flex' : 'none', 'important');
   const btnGC = document.getElementById('nav-btn-painel-metas');
-  if (btnGC) btnGC.style.setProperty('display', LOJA_USA_GESTAO_COMERCIAL ? 'flex' : 'none', 'important');
+  if (btnGC) {
+    const usrGC = usuarioAtual();
+    const modsGC = Array.isArray(usrGC?.modulos)
+      ? usrGC.modulos
+      : (typeof usrGC?.modulos === 'string' ? JSON.parse(usrGC.modulos || '[]') : []);
+    const podeGC = !!LOJA_USA_GESTAO_COMERCIAL && modsGC.includes('painel-metas');
+    btnGC.style.setProperty('display', podeGC ? 'flex' : 'none', 'important');
+  }
   const wrapCred = document.getElementById('pdv-receber-cred-wrap');
   if (wrapCred) wrapCred.style.display = LOJA_USA_CREDIARIO ? 'block' : 'none';
 
