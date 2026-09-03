@@ -4948,7 +4948,7 @@ body.mkt-workspace-open{overflow:hidden!important;}
       </select>
       <div id="dash-periodo-wrap" style="display:flex;">
         <select id="exec-periodo" onchange="renderDashExecutivo()" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);">
-          <option value="30" selected>Este mês</option>
+          <option value="mes" selected>Este mês</option>
           <option value="7">Últimos 7 dias</option>
           <option value="90">Últimos 90 dias</option>
           <option value="0">Todos os dados</option>
@@ -8334,6 +8334,7 @@ const MODULOS = [
   { id: 'vendedores',  label: '🧑‍💼 Vendedores',        icon: '🧑‍💼' },
   { id: 'financeiro',  label: '💰 Financeiro',         icon: '💰' },
   { id: 'crediario',   label: '💳 Crediário',          icon: '💳' },
+  { id: 'consignado', label: '📦 Consignado',         icon: '📦' },
   { id: 'trocas',      label: '🔄 Trocas/Devoluções',   icon: '🔄' },
 ];
 
@@ -9588,7 +9589,6 @@ function showPage(id) {
   if (id === 'financeiro') { renderFinanceiroUnificado(); }
   if (id === 'crediario') { renderCrediario(); }
   if (id === 'consignado') { renderConsignados(); }
-  if (id === 'consignado') { renderConsignados(); }
   aplicarFlagCrediario();
   if (id === 'trocas') { renderTrocas(); }
   if (id === 'usuarios') { renderUsuarios(); }
@@ -9658,14 +9658,30 @@ function execGetVendasPeriodo() {
     });
   }
 
-  const dias = parseInt(document.getElementById('exec-periodo')?.value || '30');
-  if (dias === 0) return vendas;
+  const periodo = document.getElementById('exec-periodo')?.value || 'mes';
+  if (periodo === '0') return vendas;
+
+  // "Este mês" precisa respeitar o mês-calendário atual, e não os últimos 30 dias.
+  // Isso evita carregar vendas do mês anterior quando o mês atual ainda não teve vendas.
+  if (periodo === 'mes') {
+    const agora = new Date();
+    const iniMes = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-01`;
+    const fimMes = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(new Date(agora.getFullYear(), agora.getMonth()+1, 0).getDate()).padStart(2,'0')}`;
+    return vendas.filter(v => {
+      const iso = dataVendaISO(v);
+      return !!iso && iso >= iniMes && iso <= fimMes;
+    });
+  }
+
+  const dias = parseInt(periodo, 10);
+  if (!Number.isFinite(dias)) return vendas;
   const corte = new Date();
+  corte.setHours(0,0,0,0);
   corte.setDate(corte.getDate() - dias);
   return vendas.filter(v => {
     const iso = dataVendaISO(v);
     if (!iso) return false;
-    return new Date(iso) >= corte;
+    return new Date(iso + 'T00:00:00') >= corte;
   });
 }
 
@@ -9682,7 +9698,36 @@ function renderDashExecutivo() {
   const faturamento = vendas.reduce((s,v) => s + (v.valor||v.valor_unit||0)*(v.qtd||1), 0);
   const custoTotal = vendas.reduce((s,v) => s + (v.custo_unit||0)*(v.qtd||1), 0);
   const lucroBruto = faturamento - custoTotal;
-  const despesasPagas = contas.filter(c => c.pago).reduce((s,c) => s+(c.valor||0), 0);
+  // Despesas do DRE devem obedecer ao mesmo período selecionado no painel.
+  const modoExec = document.getElementById('dash-modo')?.value || 'periodo';
+  const periodoExec = document.getElementById('exec-periodo')?.value || 'mes';
+  const agoraExec = new Date();
+  let iniExec = '', fimExec = '';
+  if (modoExec === 'data') {
+    iniExec = document.getElementById('dash-exec-data-ini')?.value || '';
+    fimExec = document.getElementById('dash-exec-data-fim')?.value || '';
+  } else if (periodoExec === 'mes') {
+    iniExec = `${agoraExec.getFullYear()}-${String(agoraExec.getMonth()+1).padStart(2,'0')}-01`;
+    fimExec = `${agoraExec.getFullYear()}-${String(agoraExec.getMonth()+1).padStart(2,'0')}-${String(new Date(agoraExec.getFullYear(), agoraExec.getMonth()+1, 0).getDate()).padStart(2,'0')}`;
+  } else if (periodoExec !== '0') {
+    const diasExec = parseInt(periodoExec, 10);
+    if (Number.isFinite(diasExec)) {
+      const corteExec = new Date();
+      corteExec.setDate(corteExec.getDate() - diasExec);
+      iniExec = corteExec.toISOString().slice(0,10);
+    }
+  }
+  const contaNoPeriodoExec = c => {
+    if (!c.pago) return false;
+    let dc = c.data_pagamento || c.vencimento || '';
+    if (dc.includes('/')) dc = dc.split('/').reverse().join('-');
+    dc = dc.slice(0,10);
+    if (!dc) return false;
+    if (iniExec && dc < iniExec) return false;
+    if (fimExec && dc > fimExec) return false;
+    return true;
+  };
+  const despesasPagas = contas.filter(contaNoPeriodoExec).reduce((s,c) => s+(c.valor||0), 0);
   const lucroLiquido = lucroBruto - despesasPagas;
   const margem = faturamento > 0 ? (lucroLiquido/faturamento*100) : 0;
 
@@ -11965,7 +12010,14 @@ function aplicarFlagCrediario() {
   const btnCred = document.getElementById('nav-btn-crediario');
   if (btnCred) btnCred.style.setProperty('display', LOJA_USA_CREDIARIO ? 'flex' : 'none', 'important');
   const btnConsig = document.getElementById('nav-btn-consignado');
-  if (btnConsig) btnConsig.style.setProperty('display', LOJA_USA_CONSIGNADO ? 'flex' : 'none', 'important');
+  if (btnConsig) {
+    const usrConsig = usuarioAtual();
+    const modsConsig = Array.isArray(usrConsig?.modulos)
+      ? usrConsig.modulos
+      : (typeof usrConsig?.modulos === 'string' ? JSON.parse(usrConsig.modulos || '[]') : []);
+    const podeConsig = !!LOJA_USA_CONSIGNADO && modsConsig.includes('consignado');
+    btnConsig.style.setProperty('display', podeConsig ? 'flex' : 'none', 'important');
+  }
   const btnMkt = document.getElementById('nav-btn-marketing');
   if (btnMkt) btnMkt.style.setProperty('display', LOJA_USA_MARKETING ? 'flex' : 'none', 'important');
   const btnGC = document.getElementById('nav-btn-painel-metas');
