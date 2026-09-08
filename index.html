@@ -8377,6 +8377,23 @@ function ehVendedorPainel(usuario) {
   return String(usuario?.perfil || '').trim().toLowerCase() === 'vendedor_painel';
 }
 
+function usuarioSomentePainelMetas(usuario) {
+  let modulos = [];
+  try {
+    modulos = Array.isArray(usuario?.modulos)
+      ? usuario.modulos
+      : (typeof usuario?.modulos === 'string' ? JSON.parse(usuario.modulos || '[]') : []);
+  } catch (e) {
+    console.warn('Módulos inválidos no usuário:', e);
+    modulos = [];
+  }
+  return modulos.length === 1 && modulos.includes('painel-metas');
+}
+
+function deveAbrirPainelIndividual(usuario) {
+  return ehVendedorPainel(usuario) || usuarioSomentePainelMetas(usuario);
+}
+
 function pvMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', {
     style: 'currency',
@@ -9060,12 +9077,7 @@ async function fazerLogin() {
     // Além do perfil legado 'vendedor_painel', qualquer usuário que tenha
     // SOMENTE a permissão Gestão de Metas deve entrar no mesmo painel
     // individual, sem carregar Dashboard/ERP.
-    const modsLogin = Array.isArray(usuario.modulos)
-      ? usuario.modulos
-      : (typeof usuario.modulos === 'string' ? JSON.parse(usuario.modulos || '[]') : []);
-    const acessoSomenteMetas = modsLogin.length === 1 && modsLogin.includes('painel-metas');
-
-    if (ehVendedorPainel(usuario) || acessoSomenteMetas) {
+    if (deveAbrirPainelIndividual(usuario)) {
       await pvIniciarPainelInterno(usuario);
       return;
     }
@@ -21266,7 +21278,10 @@ if (_sessaoAtual) {
 
       document.getElementById('login-screen').classList.add('hidden');
 
-      if (ehVendedorPainel(_usrAtual)) {
+      // IMPORTANTE: esta é a rota usada quando o navegador já possui sessão.
+      // Antes ela reconhecia apenas o perfil legado vendedor_painel e, por isso,
+      // usuários com somente Gestão de Metas caíam no Dashboard ao atualizar/abrir.
+      if (deveAbrirPainelIndividual(_usrAtual)) {
         await pvIniciarPainelInterno(_usrAtual);
         return;
       }
