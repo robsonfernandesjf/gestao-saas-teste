@@ -8394,6 +8394,32 @@ function deveAbrirPainelIndividual(usuario) {
   return ehVendedorPainel(usuario) || usuarioSomentePainelMetas(usuario);
 }
 
+async function deveAbrirPainelIndividualSeguro(usuario) {
+  if (deveAbrirPainelIndividual(usuario)) return true;
+
+  let modulos = [];
+  try {
+    modulos = Array.isArray(usuario?.modulos)
+      ? usuario.modulos
+      : (typeof usuario?.modulos === 'string' ? JSON.parse(usuario.modulos || '[]') : []);
+  } catch (_) {
+    modulos = [];
+  }
+
+  // Correção de compatibilidade:
+  // alguns vendedores antigos ficaram com modulos=[] mesmo estando vinculados
+  // ao cadastro de vendedor. Nessa situação NÃO deixamos cair no Dashboard.
+  // O fallback é restrito a perfil user + nenhum módulo + vendedor realmente vinculado.
+  if (String(usuario?.perfil || '').toLowerCase() === 'user' && modulos.length === 0) {
+    try {
+      const vendedor = await pvLocalizarVendedor(usuario);
+      if (vendedor?.id) return true;
+    } catch (_) {}
+  }
+
+  return false;
+}
+
 function pvMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', {
     style: 'currency',
@@ -9077,7 +9103,7 @@ async function fazerLogin() {
     // Além do perfil legado 'vendedor_painel', qualquer usuário que tenha
     // SOMENTE a permissão Gestão de Metas deve entrar no mesmo painel
     // individual, sem carregar Dashboard/ERP.
-    if (deveAbrirPainelIndividual(usuario)) {
+    if (await deveAbrirPainelIndividualSeguro(usuario)) {
       await pvIniciarPainelInterno(usuario);
       return;
     }
@@ -12068,7 +12094,14 @@ async function pdvCredReceberParcela(debitoId, idx, saldoTotal) {
 function aplicarFlagCrediario() {
   // Menu lateral — usa setProperty+important para vencer o CSS display:flex!important do #main-nav button
   const btnCred = document.getElementById('nav-btn-crediario');
-  if (btnCred) btnCred.style.setProperty('display', LOJA_USA_CREDIARIO ? 'flex' : 'none', 'important');
+  if (btnCred) {
+    const usrCred = usuarioAtual();
+    const modsCred = Array.isArray(usrCred?.modulos)
+      ? usrCred.modulos
+      : (typeof usrCred?.modulos === 'string' ? JSON.parse(usrCred.modulos || '[]') : []);
+    const podeCred = !!LOJA_USA_CREDIARIO && modsCred.includes('crediario');
+    btnCred.style.setProperty('display', podeCred ? 'flex' : 'none', 'important');
+  }
   const btnConsig = document.getElementById('nav-btn-consignado');
   if (btnConsig) {
     const usrConsig = usuarioAtual();
@@ -21281,7 +21314,7 @@ if (_sessaoAtual) {
       // IMPORTANTE: esta é a rota usada quando o navegador já possui sessão.
       // Antes ela reconhecia apenas o perfil legado vendedor_painel e, por isso,
       // usuários com somente Gestão de Metas caíam no Dashboard ao atualizar/abrir.
-      if (deveAbrirPainelIndividual(_usrAtual)) {
+      if (await deveAbrirPainelIndividualSeguro(_usrAtual)) {
         await pvIniciarPainelInterno(_usrAtual);
         return;
       }
