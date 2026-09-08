@@ -9056,8 +9056,16 @@ async function fazerLogin() {
     saveSessao({ id: usuario.id, token, dados: usuario });
     document.getElementById('login-screen').classList.add('hidden');
 
-    // Vendedor painel → fluxo isolado dentro do ERP
-    if (ehVendedorPainel(usuario)) {
+    // Painel individual do vendedor.
+    // Além do perfil legado 'vendedor_painel', qualquer usuário que tenha
+    // SOMENTE a permissão Gestão de Metas deve entrar no mesmo painel
+    // individual, sem carregar Dashboard/ERP.
+    const modsLogin = Array.isArray(usuario.modulos)
+      ? usuario.modulos
+      : (typeof usuario.modulos === 'string' ? JSON.parse(usuario.modulos || '[]') : []);
+    const acessoSomenteMetas = modsLogin.length === 1 && modsLogin.includes('painel-metas');
+
+    if (ehVendedorPainel(usuario) || acessoSomenteMetas) {
       await pvIniciarPainelInterno(usuario);
       return;
     }
