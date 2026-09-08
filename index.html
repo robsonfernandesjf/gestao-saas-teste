@@ -9112,8 +9112,13 @@ function aplicarPermissoes(usuario) {
   const soImplantacao = !isMaster && !isAdmin
     && modulos.length === 1
     && modulos.includes('implantacao');
+  // Usuário liberado exclusivamente para Gestão de Metas não pode visualizar
+  // o Dashboard nem outros módulos do ERP.
+  const soPainelMetas = !isMaster && !isAdmin
+    && modulos.length === 1
+    && modulos.includes('painel-metas');
   const nav = document.getElementById('main-nav');
-  if (soVendas || soImplantacao) {
+  if (soVendas || soImplantacao || soPainelMetas) {
     document.body.classList.add('modo-pdv-exclusivo');
     // Garantia via JS — forçar ocultação independente do CSS cascade
     if (nav) nav.style.setProperty('display', 'none', 'important');
@@ -9124,6 +9129,15 @@ function aplicarPermissoes(usuario) {
   } else {
     document.body.classList.remove('modo-pdv-exclusivo');
     if (nav) nav.style.removeProperty('display');
+  }
+
+  // Garantia adicional para acesso exclusivo às metas:
+  // remove qualquer Dashboard que tenha vindo ativo no HTML antes da leitura
+  // das permissões e força a Gestão de Metas como única página visível.
+  if (soPainelMetas) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const painelMetas = document.getElementById('page-painel-metas');
+    if (painelMetas) painelMetas.classList.add('active');
   }
 
   // Aba usuários: só master e admin veem
