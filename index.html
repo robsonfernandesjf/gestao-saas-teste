@@ -9114,11 +9114,13 @@ function aplicarPermissoes(usuario) {
     && modulos.includes('implantacao');
   // Usuário liberado exclusivamente para Gestão de Metas não pode visualizar
   // o Dashboard nem outros módulos do ERP.
-  const soPainelMetas = !isMaster && !isAdmin
-    && modulos.length === 1
+  // A lista de módulos é a autoridade para acesso operacional.
+  // Mesmo que o perfil tenha sido salvo como admin, se a única liberação
+  // marcada for Gestão de Metas, o usuário deve enxergar SOMENTE esse módulo.
+  const soPainelMetas = modulos.length === 1
     && modulos.includes('painel-metas');
   const nav = document.getElementById('main-nav');
-  if (soVendas || soImplantacao || soPainelMetas) {
+  if (soVendas || soImplantacao) {
     document.body.classList.add('modo-pdv-exclusivo');
     // Garantia via JS — forçar ocultação independente do CSS cascade
     if (nav) nav.style.setProperty('display', 'none', 'important');
@@ -9131,20 +9133,33 @@ function aplicarPermissoes(usuario) {
     if (nav) nav.style.removeProperty('display');
   }
 
-  // Garantia adicional para acesso exclusivo às metas:
-  // remove qualquer Dashboard que tenha vindo ativo no HTML antes da leitura
-  // das permissões e força a Gestão de Metas como única página visível.
+  // Acesso exclusivo à Gestão de Metas:
+  // mantém o menu lateral, mas oculta Dashboard, Config. Empresa e qualquer
+  // outro módulo. Deixa somente Gestão de Metas e Sair.
   if (soPainelMetas) {
+    document.body.classList.remove('modo-pdv-exclusivo');
+    if (nav) {
+      nav.style.removeProperty('display');
+      nav.querySelectorAll('button').forEach(btn => {
+        const ehMetas = btn.id === 'nav-btn-painel-metas';
+        const ehSair = btn.classList.contains('btn-logout-mobile');
+        btn.style.setProperty('display', (ehMetas || ehSair) ? 'flex' : 'none', 'important');
+      });
+    }
+    const btnMetas = document.getElementById('nav-btn-painel-metas');
+    if (btnMetas) btnMetas.style.setProperty('display', 'flex', 'important');
+
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const painelMetas = document.getElementById('page-painel-metas');
     if (painelMetas) painelMetas.classList.add('active');
   }
 
-  // Aba usuários: só master e admin veem
+  // Aba usuários/configuração: só admin, exceto quando o próprio cadastro
+  // deixou o usuário exclusivamente na Gestão de Metas.
   const navUsr = document.getElementById('nav-usuarios');
   const navEmp = document.getElementById('nav-empresa');
-  if (navUsr) navUsr.style.display = (isMaster || isAdmin) ? 'block' : 'none';
-  if (navEmp) navEmp.style.display = (isMaster || isAdmin) ? 'block' : 'none';
+  if (navUsr) navUsr.style.setProperty('display', (!soPainelMetas && (isMaster || isAdmin)) ? 'flex' : 'none', 'important');
+  if (navEmp) navEmp.style.setProperty('display', (!soPainelMetas && (isMaster || isAdmin)) ? 'flex' : 'none', 'important');
 
   // Esconder/mostrar botões de nav por módulo.
   // O CSS do menu usa display:flex!important; por isso a permissão também
@@ -9161,6 +9176,16 @@ function aplicarPermissoes(usuario) {
     const permitido = modulos.includes(pag);
     btn.style.setProperty('display', permitido ? 'flex' : 'none', 'important');
   });
+
+  // Reforço final: nenhuma rotina posterior pode reabrir Dashboard/Empresa
+  // para quem possui exclusivamente Gestão de Metas.
+  if (soPainelMetas && nav) {
+    nav.querySelectorAll('button').forEach(btn => {
+      const ehMetas = btn.id === 'nav-btn-painel-metas';
+      const ehSair = btn.classList.contains('btn-logout-mobile');
+      btn.style.setProperty('display', (ehMetas || ehSair) ? 'flex' : 'none', 'important');
+    });
+  }
 
   // Ir para a primeira página operacional liberada.
   // Se nenhuma estiver liberada, o admin ainda pode acessar Usuários/Empresa.
