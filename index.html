@@ -19382,6 +19382,239 @@ async function auditLog({ operacao, modulo, registro_id, dados_antes, dados_depo
   }
 }
 
+
+// ===== IMPORTAÇÃO / EXPORTAÇÃO DE PRODUTOS VIA EXCEL =====
+// Recurso administrativo isolado: não altera o fluxo normal de cadastro/estoque/PDV.
+let _prodXlsAlteracoes = [];
+
+const PROD_XLS_CAMPOS = {
+  ref:         { cab: 'REFERENCIA',       label: 'Referência' },
+  produto:     { cab: 'DESCRICAO',        label: 'Descrição' },
+  categoria:   { cab: 'CATEGORIA',        label: 'Categoria' },
+  preco_venda: { cab: 'PRECO_VENDA',      label: 'Preço de venda', numero: true },
+  custo:       { cab: 'PRECO_CUSTO',      label: 'Preço de custo', numero: true },
+  estoque:     { cab: 'ESTOQUE',          label: 'Estoque', inteiro: true },
+  ean13:       { cab: 'CODIGO_BARRAS',    label: 'Código de barras' },
+  ncm:         { cab: 'NCM',              label: 'NCM' },
+  cest:        { cab: 'CEST',             label: 'CEST' },
+  unidade:     { cab: 'UNIDADE',          label: 'Unidade' }
+};
+
+function carregarSheetJSProdutos() {
+  if (window.XLSX) return Promise.resolve();
+  if (window._sheetJsProdutosPromise) return window._sheetJsProdutosPromise;
+  window._sheetJsProdutosPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Não foi possível carregar o recurso de Excel. Verifique sua conexão.'));
+    document.head.appendChild(s);
+  });
+  return window._sheetJsProdutosPromise;
+}
+
+function valorPlanilhaProduto(v, cfg) {
+  if (v === null || v === undefined) return '';
+  if (cfg?.numero || cfg?.inteiro) {
+    if (typeof v === 'number') return cfg.inteiro ? Math.trunc(v) : v;
+    const s = String(v).trim().replace(/\s/g, '');
+    if (!s) return '';
+    let n;
+    if (s.includes(',') && s.includes('.')) n = Number(s.replace(/\./g, '').replace(',', '.'));
+    else n = Number(s.replace(',', '.'));
+    if (!Number.isFinite(n)) return null;
+    return cfg.inteiro ? Math.trunc(n) : n;
+  }
+  return String(v).trim();
+}
+
+function normalizarComparacaoProduto(v, cfg) {
+  if (cfg?.numero || cfg?.inteiro) {
+    const n = Number(v ?? 0);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return String(v ?? '').trim();
+}
+
+async function exportarProdutosExcel() {
+  const btn = event?.currentTarget;
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = 'Gerando...'; }
+    await carregarSheetJSProdutos();
+    const produtos = await sbGet('produtos', 'order=ref.asc');
+    if (!produtos.length) return alert('Nenhum produto cadastrado para exportar.');
+
+    const campos = [...document.querySelectorAll('.prod-xls-campo:checked')].map(el => el.value);
+    const linhas = produtos.map(p => {
+      const row = { ID_PRODUTO: p.id };
+      campos.forEach(campo => row[PROD_XLS_CAMPOS[campo].cab] = p[campo] ?? '');
+      return row;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(linhas);
+    ws['!cols'] = Object.keys(linhas[0]).map(k => ({
+      wch: k === 'ID_PRODUTO' ? 38 : (k === 'DESCRICAO' ? 42 : 18)
+    }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Produtos');
+    const hoje = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `LegadoERP_Produtos_${hoje}.xlsx`);
+  } catch (e) {
+    console.error(e);
+    alert('Não foi possível exportar a planilha: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇️ Exportar para Excel'; }
+  }
+}
+
+async function prepararImportacaoProdutosExcel(ev) {
+  const arquivo = ev.target.files?.[0];
+  if (!arquivo) return;
+  document.getElementById('prod-xls-arquivo-nome').textContent = arquivo.name;
+  const msg = document.getElementById('prod-xls-msg');
+  if (msg) msg.textContent = '';
+
+  try {
+    await carregarSheetJSProdutos();
+    const dados = await arquivo.arrayBuffer();
+    const wb = XLSX.read(dados, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const linhas = XLSX.utils.sheet_to_json(ws, { defval: null, raw: true });
+    if (!linhas.length) throw new Error('A planilha está vazia.');
+    if (!Object.prototype.hasOwnProperty.call(linhas[0], 'ID_PRODUTO')) {
+      throw new Error('Planilha inválida: a coluna ID_PRODUTO é obrigatória.');
+    }
+
+    const produtos = await sbGet('produtos', 'order=ref.asc');
+    const porId = new Map(produtos.map(p => [String(p.id), p]));
+    const cabParaCampo = {};
+    Object.entries(PROD_XLS_CAMPOS).forEach(([campo, cfg]) => cabParaCampo[cfg.cab] = campo);
+
+    _prodXlsAlteracoes = [];
+    let naoEncontrados = 0;
+
+    for (const linha of linhas) {
+      const id = String(linha.ID_PRODUTO ?? '').trim();
+      if (!id) continue;
+      const atual = porId.get(id);
+      if (!atual) { naoEncontrados++; continue; }
+
+      const patch = {};
+      const mudancas = [];
+      for (const [cab, campo] of Object.entries(cabParaCampo)) {
+        if (!Object.prototype.hasOwnProperty.call(linha, cab)) continue;
+        const cfg = PROD_XLS_CAMPOS[campo];
+        const novo = valorPlanilhaProduto(linha[cab], cfg);
+        if (novo === null) throw new Error(`Valor inválido em ${cfg.label} para o produto ${atual.ref || atual.id}.`);
+        const antes = normalizarComparacaoProduto(atual[campo], cfg);
+        const depois = normalizarComparacaoProduto(novo, cfg);
+        if (antes !== depois) {
+          patch[campo] = novo === '' && !cfg.numero && !cfg.inteiro ? null : novo;
+          mudancas.push({ campo, label: cfg.label, antes: atual[campo] ?? '', depois: novo });
+        }
+      }
+      if (mudancas.length) _prodXlsAlteracoes.push({ id: atual.id, ref: atual.ref, produto: atual.produto, antes: atual, patch, mudancas });
+    }
+
+    renderPreviewImportacaoProdutos(naoEncontrados);
+  } catch (e) {
+    console.error(e);
+    _prodXlsAlteracoes = [];
+    document.getElementById('prod-xls-preview').style.display = 'none';
+    alert('Não foi possível ler a planilha: ' + e.message);
+  }
+}
+
+function renderPreviewImportacaoProdutos(naoEncontrados = 0) {
+  const wrap = document.getElementById('prod-xls-preview');
+  const body = document.getElementById('prod-xls-preview-body');
+  const resumo = document.getElementById('prod-xls-resumo');
+  body.innerHTML = '';
+
+  const totalCampos = _prodXlsAlteracoes.reduce((n, x) => n + x.mudancas.length, 0);
+  resumo.textContent = `${_prodXlsAlteracoes.length} produto(s) com alteração • ${totalCampos} campo(s) alterado(s)` +
+    (naoEncontrados ? ` • ${naoEncontrados} ID(s) não encontrado(s)` : '');
+
+  const amostra = _prodXlsAlteracoes.flatMap(x =>
+    x.mudancas.map(m => ({ ...m, ref: x.ref, produto: x.produto }))
+  ).slice(0, 150);
+
+  amostra.forEach(m => {
+    const tr = document.createElement('tr');
+    [ `${m.ref || ''} — ${m.produto || ''}`, m.label, String(m.antes ?? ''), String(m.depois ?? '') ].forEach(v => {
+      const td = document.createElement('td');
+      td.textContent = v;
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+
+  if (totalCampos > 150) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 4;
+    td.textContent = `... e mais ${totalCampos - 150} alteração(ões).`;
+    td.style.textAlign = 'center';
+    td.style.color = 'var(--muted)';
+    tr.appendChild(td);
+    body.appendChild(tr);
+  }
+
+  wrap.style.display = 'block';
+  document.getElementById('prod-xls-confirmar').disabled = !_prodXlsAlteracoes.length;
+}
+
+async function confirmarImportacaoProdutosExcel() {
+  if (!_prodXlsAlteracoes.length) return;
+  if (!confirm(`Confirmar a atualização de ${_prodXlsAlteracoes.length} produto(s)?`)) return;
+
+  const btn = document.getElementById('prod-xls-confirmar');
+  const msg = document.getElementById('prod-xls-msg');
+  btn.disabled = true;
+  msg.textContent = 'Atualizando...';
+
+  try {
+    let concluidos = 0;
+    for (const item of _prodXlsAlteracoes) {
+      await sbPatch('produtos', item.id, item.patch);
+      await auditLog({
+        operacao: 'ATUALIZACAO_PLANILHA',
+        modulo: 'estoque',
+        registro_id: item.id,
+        dados_antes: Object.fromEntries(item.mudancas.map(m => [m.campo, m.antes])),
+        dados_depois: Object.fromEntries(item.mudancas.map(m => [m.campo, m.depois]))
+      });
+      concluidos++;
+      msg.textContent = `Atualizando ${concluidos}/${_prodXlsAlteracoes.length}...`;
+    }
+
+    invalidarCache('produtos');
+    await getProdutosAsync();
+    if (typeof renderEstoque === 'function') renderEstoque();
+
+    msg.textContent = `✅ ${concluidos} produto(s) atualizado(s) com sucesso.`;
+    msg.style.color = '#047857';
+    _prodXlsAlteracoes = [];
+    document.getElementById('prod-xls-confirmar').disabled = true;
+  } catch (e) {
+    console.error(e);
+    msg.textContent = '❌ Erro na atualização: ' + e.message;
+    msg.style.color = '#B91C1C';
+    btn.disabled = false;
+  }
+}
+
+function cancelarImportacaoProdutosExcel() {
+  _prodXlsAlteracoes = [];
+  const arq = document.getElementById('prod-xls-arquivo');
+  if (arq) arq.value = '';
+  document.getElementById('prod-xls-arquivo-nome').textContent = 'Nenhum arquivo selecionado';
+  document.getElementById('prod-xls-preview').style.display = 'none';
+  document.getElementById('prod-xls-preview-body').innerHTML = '';
+  document.getElementById('prod-xls-msg').textContent = '';
+}
+
+
 let _cpEditing = null;
 
 // ===== SPLASH: Contas a pagar vencidas OU vencendo hoje (avisa logo após o login) =====
@@ -22041,6 +22274,65 @@ atualizarHora();
         <div style="margin-top:20px;display:flex;gap:10px;">
           <button class="btn btn-primary" onclick="salvarConfigEtiqueta()">💾 Salvar layout</button>
           <span id="etq-msg" style="font-size:12px;align-self:center;"></span>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- SEÇÃO: Importação e Exportação de Produtos -->
+    <div class="config-secao" id="secao-produtos-planilha" style="margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <button onclick="toggleConfigSecao('produtos-planilha')" style="width:100%;text-align:left;padding:16px 18px;background:var(--surface);border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;color:var(--text);">
+        <span>📊 Importação e Exportação de Produtos</span>
+        <span id="seta-config-produtos-planilha" class="config-secao-seta" style="font-size:12px;color:var(--muted);">▸</span>
+      </button>
+      <div id="config-body-produtos-planilha" class="config-secao-body" style="display:none;padding:18px;border-top:1px solid var(--border);">
+        <p style="font-size:12px;color:var(--muted);margin:0 0 16px;">
+          Exporte o cadastro para ajustar informações no Excel e importe a mesma planilha para atualizar os produtos.
+          O <strong>ID do produto é sempre obrigatório</strong> e é usado somente para localizar o registro correto.
+        </p>
+
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
+          <div style="font-size:13px;font-weight:800;margin-bottom:10px;">1. Exportar produtos</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Identificador incluído automaticamente. Marque as demais informações que deseja levar para a planilha:</div>
+          <div style="display:flex;flex-wrap:wrap;gap:9px 16px;font-size:12px;">
+            <label><input type="checkbox" checked disabled> ID do produto</label>
+            <label><input type="checkbox" class="prod-xls-campo" value="ref" checked> Referência</label>
+            <label><input type="checkbox" class="prod-xls-campo" value="produto" checked> Descrição</label>
+            <label><input type="checkbox" class="prod-xls-campo" value="categoria"> Categoria</label>
+            <label><input type="checkbox" class="prod-xls-campo" value="preco_venda"> Preço de venda</label>
+            <label><input type="checkbox" class="prod-xls-campo" value="custo"> Preço de custo</label>
+            <label><input type="checkbox" class="prod-xls-campo" value="estoque"> Estoque</label>
+            <label><input type="checkbox" class="prod-xls-campo" value="ean13"> Código de barras</label>
+            <label><input type="checkbox" class="prod-xls-campo" value="ncm"> NCM</label>
+            <label><input type="checkbox" class="prod-xls-campo" value="cest"> CEST</label>
+            <label><input type="checkbox" class="prod-xls-campo" value="unidade"> Unidade</label>
+          </div>
+          <button type="button" class="btn btn-primary" style="margin-top:14px;" onclick="exportarProdutosExcel()">⬇️ Exportar para Excel</button>
+        </div>
+
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;">
+          <div style="font-size:13px;font-weight:800;margin-bottom:6px;">2. Importar atualização</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">
+            Selecione a planilha exportada pelo LegadoERP. O ID não será alterado. Somente campos reconhecidos presentes na planilha poderão ser atualizados.
+          </div>
+          <input type="file" id="prod-xls-arquivo" accept=".xlsx,.xls" style="display:none;" onchange="prepararImportacaoProdutosExcel(event)">
+          <button type="button" class="btn" onclick="document.getElementById('prod-xls-arquivo').click()">📁 Selecionar planilha</button>
+          <span id="prod-xls-arquivo-nome" style="font-size:12px;color:var(--muted);margin-left:8px;">Nenhum arquivo selecionado</span>
+
+          <div id="prod-xls-preview" style="display:none;margin-top:14px;">
+            <div id="prod-xls-resumo" style="font-size:12px;font-weight:700;margin-bottom:10px;"></div>
+            <div style="max-height:280px;overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--surface);">
+              <table style="width:100%;font-size:11px;">
+                <thead><tr><th>Produto</th><th>Campo</th><th>Atual</th><th>Novo</th></tr></thead>
+                <tbody id="prod-xls-preview-body"></tbody>
+              </table>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;margin-top:12px;">
+              <button type="button" class="btn btn-primary" id="prod-xls-confirmar" onclick="confirmarImportacaoProdutosExcel()">✅ Confirmar atualização</button>
+              <button type="button" class="btn" onclick="cancelarImportacaoProdutosExcel()">Cancelar</button>
+              <span id="prod-xls-msg" style="font-size:12px;"></span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
