@@ -10738,7 +10738,9 @@ async function confirmarImportacaoExcel() {
           preco_venda: p.preco_venda, qtd_comprada: p.qtd_comprada, estoque: p.estoque
         });
       } else {
-        await sbPost('produtos', p);
+        // Produto novo importado entra sempre FORA da vitrine.
+        // A publicação no catálogo deve ser uma ação consciente do lojista.
+        await sbPost('produtos', { ...p, visivel_catalogo: false });
         refsExistentes.add(p.ref);
       }
       sucesso++;
@@ -10907,7 +10909,8 @@ async function confirmarImportacaoXmlNFe() {
             qtd_comprada: item.quantidade,
             fornecedor_id: fornecedorReg.id,
             ncm: item.ncm || null,
-            unidade: item.unidade || 'UN'
+            unidade: item.unidade || 'UN',
+            visivel_catalogo: false
           };
           const criado = await sbPost('produtos', novoProduto);
           const registro = Array.isArray(criado) ? criado[0] : (criado || { ...novoProduto, id: 'prod_' + Date.now() });
@@ -11489,7 +11492,8 @@ async function confirmarLancamentoManual() {
         const novoProduto = {
           ref: item.ref, produto: item.nome, categoria: 'Outros',
           custo: item.custo, preco_venda: item.custo, estoque: item.qtd, qtd_comprada: item.qtd,
-          fornecedor_id: fornecedorId
+          fornecedor_id: fornecedorId,
+          visivel_catalogo: false
         };
         const criado = await sbPost('produtos', novoProduto);
         const registro = Array.isArray(criado) ? criado[0] : (criado || { ...novoProduto, id: 'prod_' + Date.now() });
