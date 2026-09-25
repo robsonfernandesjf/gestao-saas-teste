@@ -7099,11 +7099,8 @@ body.mkt-workspace-open{overflow:hidden!important;}
       <button class="modal-close" onclick="fecharModal('modal-etiqueta')">×</button>
     </div>
     <div class="modal-body">
-      <p id="etq-lote-resumo" style="margin-bottom:14px;font-size:13px;"></p>
-      <div class="form-row">
-        <label>Quantidade de etiquetas por produto</label>
-        <input type="number" id="etq-qtd" min="1" value="1">
-      </div>
+      <p id="etq-lote-resumo" style="margin-bottom:12px;font-size:13px;"></p>
+      <div id="etq-qtd-individual-lista" style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow:auto;"></div>
       <p id="etq-sem-barras-aviso" style="display:none;font-size:12px;color:var(--warn);margin-top:8px;">⚠ Algum produto selecionado não tem código de barras cadastrado — a etiqueta dele sai sem o código.</p>
     </div>
     <div class="modal-footer">
@@ -18669,17 +18666,47 @@ function abrirImpressaoEtiquetaDireta(refs) {
 function abrirModalQtdEtiqueta(refs) {
   const produtos = getProdutos().filter(p => refs.includes(p.ref));
   document.getElementById('etq-lote-resumo').innerHTML = produtos.length === 1
-    ? `<strong>${esc(produtos[0].produto)}</strong> (${esc(produtos[0].ref)})`
-    : `<strong>${produtos.length} produtos selecionados:</strong> ${produtos.map(p => esc(p.produto)).join(', ')}`;
-  document.getElementById('etq-qtd').value = 1;
+    ? `<strong>Defina a quantidade:</strong>`
+    : `<strong>${produtos.length} códigos selecionados.</strong> Informe a quantidade de etiquetas de cada um:`;
+
+  const lista = document.getElementById('etq-qtd-individual-lista');
+  lista.innerHTML = produtos.map(p => `
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 88px;gap:10px;align-items:center;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);">
+      <div style="min-width:0;">
+        <div style="font-size:12px;font-weight:800;"><code>${esc(p.ref)}</code></div>
+        <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(p.produto)}">${esc(p.produto)}</div>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label style="font-size:10px;margin-bottom:3px;">Qtd.</label>
+        <input type="number" class="etq-qtd-individual" data-ref="${esc(p.ref)}" min="0" value="1" inputmode="numeric" style="text-align:center;">
+      </div>
+    </div>`).join('');
+
   document.getElementById('etq-sem-barras-aviso').style.display = produtos.some(p => !p.ean13) ? 'block' : 'none';
   document.getElementById('modal-etiqueta').classList.add('open');
 }
 
 function gerarPreviewEtiquetas() {
-  const refs = _etqRefsDiretos || Array.from(document.querySelectorAll('.etq-select-produto:checked')).map(c => c.value);
-  const qtd = Math.max(1, parseInt(document.getElementById('etq-qtd').value) || 1);
-  _etqRefsParaImprimir = refs.flatMap(ref => Array.from({ length: qtd }, () => ref));
+  const refsSelecionadas = _etqRefsDiretos || Array.from(document.querySelectorAll('.etq-select-produto:checked')).map(c => c.value);
+  const quantidades = Array.from(document.querySelectorAll('#etq-qtd-individual-lista .etq-qtd-individual'));
+
+  _etqRefsParaImprimir = [];
+  if (quantidades.length) {
+    quantidades.forEach(input => {
+      const ref = input.dataset.ref;
+      if (!refsSelecionadas.includes(ref)) return;
+      const qtd = Math.max(0, parseInt(input.value) || 0);
+      for (let i = 0; i < qtd; i++) _etqRefsParaImprimir.push(ref);
+    });
+  } else {
+    // Compatibilidade de segurança com qualquer chamada antiga do fluxo.
+    _etqRefsParaImprimir = refsSelecionadas.slice();
+  }
+
+  if (_etqRefsParaImprimir.length === 0) {
+    alert('Informe a quantidade de pelo menos uma etiqueta.');
+    return;
+  }
 
   const cfg = getConfigEtiqueta();
   const produtos = getProdutos();
@@ -18691,7 +18718,9 @@ function gerarPreviewEtiquetas() {
   }).join('');
 
   fecharModal('modal-etiqueta');
-  document.getElementById('modal-etiqueta-preview').classList.add('open');
+  const modalPreview = document.getElementById('modal-etiqueta-preview');
+  delete modalPreview.dataset.modoImportacao32x22;
+  modalPreview.classList.add('open');
 
   carregarJsBarcodeSeNecessario(() => {
     document.querySelectorAll('#etq-preview-conteudo .etq-barcode-svg').forEach(svg => {
