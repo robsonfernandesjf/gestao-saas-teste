@@ -18795,10 +18795,10 @@ async function gerarPdfEtiquetasLB1000() {
 
       // Após o giro do driver, Y do PDF vira X físico.
       // 3mm de margem + 32mm por etiqueta.
-      const yBase=3+(col*32);
+      const yBase=3+(col*32)+(col===2 ? 1 : 0);
 
       const descricao=limpar(p.produto||'');
-      const referencia=limpar(`Ref: ${p.ref||''}`);
+      const referencia=limpar(p.ref||'');
 
       pdf.setFont('helvetica','normal');
       pdf.setFontSize(5.5);
