@@ -15607,14 +15607,33 @@ function configurarAssinaturaQZ() {
   qz.security.setCertificatePromise((resolve) => resolve(QZ_CERTIFICADO));
   qz.security.setSignatureAlgorithm('SHA512');
   qz.security.setSignaturePromise((toSign) => (resolve, reject) => {
+    // A Edge qz-sign pode ficar pendente quando a função está indisponível.
+    // Nunca deixa o QZ travado indefinidamente: aborta em 4s e informa o erro real.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+
     fetch(EDGE_QZ_SIGN_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ request: toSign })
+      headers: {
+        'Content-Type': 'application/json',
+        ...(SB_ANON_KEY ? { 'apikey': SB_ANON_KEY, 'Authorization': `Bearer ${SB_ANON_KEY}` } : {})
+      },
+      body: JSON.stringify({ request: toSign }),
+      signal: controller.signal
     })
-      .then(r => r.text())
-      .then(resolve)
-      .catch(reject);
+      .then(async r => {
+        clearTimeout(timer);
+        const assinatura = (await r.text()).trim();
+        if (!r.ok) throw new Error(`qz-sign HTTP ${r.status}: ${assinatura || r.statusText}`);
+        if (!assinatura) throw new Error('qz-sign retornou assinatura vazia');
+        resolve(assinatura);
+      })
+      .catch(err => {
+        clearTimeout(timer);
+        reject(new Error(err?.name === 'AbortError'
+          ? 'qz-sign não respondeu em 4 segundos'
+          : `Falha qz-sign: ${err?.message || err}`));
+      });
   });
   _qzAssinaturaConfigurada = true;
 }
@@ -15628,6 +15647,7 @@ async function conectarQZ() {
     return true;
   } catch (e) {
     console.warn('QZ Tray não conectado:', e.message);
+    window._ultimoErroQZ = e?.message || String(e);
     return false;
   }
 }
@@ -18800,7 +18820,7 @@ async function imprimirEtiquetasAgora() {
       }
     }
 
-    alert('Para imprimir corretamente na Bematech LB-1000, abra o QZ Tray. O navegador está tratando a etiqueta como folha comum (A4/Carta), por isso ela sai grande.');
+    alert('A LB-1000 não recebeu a impressão pelo QZ Tray.\n\nDetalhe: ' + (window._ultimoErroQZ || 'falha de conexão com o QZ Tray') + '\n\nA impressão pelo navegador foi bloqueada de propósito para não desperdiçar etiquetas.');
     return;
   }
 
