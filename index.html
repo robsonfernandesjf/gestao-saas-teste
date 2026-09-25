@@ -18555,27 +18555,39 @@ function abrirEtiquetasUltimaImportacao() {
     Array.from({ length: x.qtd }, () => x.ref)
   );
 
-  // Usa o editor NORMAL de etiquetas para permitir personalização.
-  // Apenas aplica 32x22 como ponto de partida.
-  const selTam = document.getElementById('etq-tamanho-preset');
-  if (selTam) {
-    selTam.value = '32x22';
-    selTam.dispatchEvent(new Event('change'));
+  // Usa o layout salvo no editor de Etiquetas.
+  // Se ainda não houver layout 32x22 salvo, usa Referência + Descrição como padrão.
+  let cfg = getConfigEtiqueta();
+  if (!(Number(cfg.largura) === 32 && Number(cfg.altura) === 22)) {
+    cfg = getConfigEtiqueta32x22Importacao();
   }
 
-  const larg = document.getElementById('etq-largura');
-  const alt = document.getElementById('etq-altura');
-  if (larg) larg.value = 32;
-  if (alt) alt.value = 22;
+  const produtos = getProdutos();
+  const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
+  const preview = document.getElementById('etq-preview-conteudo');
 
-  // Abre a página/módulo de etiquetas existente, preservando suas ferramentas.
-  showPage('etiquetas');
+  preview.innerHTML = _etqRefsParaImprimir.map(ref => {
+    const p = produtos.find(x => x.ref === ref);
+    return montarEtiquetaHTML(p, cfg, nomeLoja, ETQ_ESCALA, true);
+  }).join('');
 
-  // Atualiza a lista/preview do módulo existente com os itens da importação.
-  setTimeout(() => {
-    if (typeof renderEtiquetas === 'function') renderEtiquetas();
-    if (typeof atualizarPreviewEtiqueta === 'function') atualizarPreviewEtiqueta();
-  }, 100);
+  // Preview visual em 3 colunas.
+  preview.style.display = 'grid';
+  preview.style.gridTemplateColumns = 'repeat(3, 32mm)';
+  preview.style.gridAutoRows = '22mm';
+  preview.style.gap = '1mm';
+  preview.style.width = 'max-content';
+  preview.style.justifyContent = 'start';
+
+  const modal = document.getElementById('modal-etiqueta-preview');
+  modal.dataset.modoImportacao32x22 = '1';
+  modal.classList.add('open');
+
+  carregarJsBarcodeSeNecessario(() => {
+    document.querySelectorAll('#etq-preview-conteudo .etq-barcode-svg').forEach(svg => {
+      try { JsBarcode(svg, svg.dataset.code, { format: 'EAN13', width: 1.3, height: 32, fontSize: 10, margin: 0 }); } catch (e) {}
+    });
+  });
 }
 
 // ===== IMPRESSÃO DE ETIQUETA (código de barras via JsBarcode, janela isolada) =====
@@ -18691,7 +18703,8 @@ function montarEtiquetaHTML(p, cfg, nomeLoja, escalaPx, ehPreview) {
     };
     const fontes = { loja: 6, nome: 7, ref: 6, preco: 13, categoria: 6, parcelamento: 8, texto: 7 };
     const fonte = (el.fontSize || fontes[el.tipo] || 7) * (escalaPx ? (escalaPx / 8) : 1);
-    return `<div style="${style}font-size:${fonte}px;font-weight:${el.tipo === 'preco' ? 800 : 700};white-space:nowrap;">${valores[el.tipo] || ''}</div>`;
+    const unidadeFonte = escalaPx ? 'px' : 'pt';
+    return `<div style="${style}font-size:${fonte}${unidadeFonte};font-weight:${el.tipo === 'preco' ? 800 : 700};white-space:nowrap;">${valores[el.tipo] || ''}</div>`;
   }).join('');
   const wrapStyle = escalaPx
     ? `position:relative;width:${cfg.largura * escalaPx}px;height:${cfg.altura * escalaPx}px;background:#fff;border:1px solid #ccc;box-shadow:0 1px 3px rgba(0,0,0,.15);overflow:hidden;`
@@ -18702,7 +18715,15 @@ function montarEtiquetaHTML(p, cfg, nomeLoja, escalaPx, ehPreview) {
 function imprimirEtiquetasAgora() {
   const modalPreview = document.getElementById('modal-etiqueta-preview');
   const modoImportacao32x22 = modalPreview?.dataset.modoImportacao32x22 === '1';
-  const cfg = modoImportacao32x22 ? getConfigEtiqueta32x22Importacao() : getConfigEtiqueta();
+  let cfg;
+  if (modoImportacao32x22) {
+    const cfgSalvo = getConfigEtiqueta();
+    cfg = (Number(cfgSalvo.largura) === 32 && Number(cfgSalvo.altura) === 22)
+      ? cfgSalvo
+      : getConfigEtiqueta32x22Importacao();
+  } else {
+    cfg = getConfigEtiqueta();
+  }
   const produtos = getProdutos();
   const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
 
