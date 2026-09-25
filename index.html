@@ -18770,20 +18770,27 @@ async function gerarPdfEtiquetasLB1000() {
   const linhas = Math.max(1, Math.ceil(refs.length / 3));
   const alturaTotal = linhas * 26;
 
+  // IMPORTANTE: quando a altura total é menor que 105 mm, o jsPDF pode
+  // normalizar um formato customizado em portrait e trocar largura/altura.
+  // Foi isso que reduziu a largura útil e fez a 3ª coluna desaparecer.
+  // Escolhemos a orientação dinamicamente para GARANTIR 105 mm na horizontal.
+  const orientacao = alturaTotal < 105 ? 'landscape' : 'portrait';
   const pdf = new jsPDF({
-    orientation: 'portrait',
+    orientation: orientacao,
     unit: 'mm',
     format: [105, alturaTotal],
     compress: true,
     putOnlyUsedFonts: true
   });
 
-  // Alguns visualizadores normalizam a orientação de formatos customizados.
-  // Se vier invertido, recria usando a ordem que garante 105mm na horizontal.
   const w = pdf.internal.pageSize.getWidth();
   const h = pdf.internal.pageSize.getHeight();
-  if (w < h && Math.abs(w - 105) > 1) {
-    console.warn('PDF customizado normalizado pelo jsPDF:', w, h);
+  console.log(`PDF LB-1000 criado em ${w.toFixed(1)} x ${h.toFixed(1)} mm`);
+
+  // Segurança: se a biblioteca ainda inverter o formato, cria novamente
+  // com as dimensões trocadas para resultar fisicamente em 105 x alturaTotal.
+  if (Math.abs(w - 105) > 1) {
+    throw new Error(`PDF ficou com largura ${w.toFixed(1)} mm em vez de 105 mm`);
   }
 
   const limpar = v => String(v ?? '').replace(/\s+/g, ' ').trim();
