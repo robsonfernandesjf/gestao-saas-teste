@@ -18811,7 +18811,7 @@ async function gerarPdfEtiquetasLB1000() {
       pdf.text(desc, 7.5, yBase+3, { angle:-90 });
 
       pdf.setFont('helvetica','bold');
-      pdf.setFontSize(8);
+      pdf.setFontSize(11);
       let rr=referencia;
       while(rr.length>1 && pdf.getTextWidth(rr)>28) rr=rr.slice(0,-1);
       pdf.text(rr, 14.5, yBase+3, { angle:-90 });
