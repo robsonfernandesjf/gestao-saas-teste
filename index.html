@@ -18762,80 +18762,68 @@ function carregarJsPDFSeNecessario() {
 async function gerarPdfEtiquetasLB1000() {
   const jsPDF = await carregarJsPDFSeNecessario();
   const produtos = getProdutos();
-  const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
+  const refs = [..._etqRefsParaImprimir];
 
-  const cfgSalvo = getConfigEtiqueta();
-  const cfg = (Number(cfgSalvo.largura) === 32 && Number(cfgSalvo.altura) === 22)
-    ? cfgSalvo
-    : getConfigEtiqueta32x22Importacao();
+  // A LB-1000 trabalha com mídia contínua. Em vez de criar uma página
+  // 105x26 para cada fileira (que o driver estava rotacionando), geramos
+  // UMA página contínua: 105mm de largura x 26mm por fileira.
+  const linhas = Math.max(1, Math.ceil(refs.length / 3));
+  const alturaTotal = linhas * 26;
 
-  // Cada página do PDF representa UMA fileira física:
-  // papel 105 mm; 3 etiquetas 32x22; início X=3 mm; avanço vertical total 26 mm.
   const pdf = new jsPDF({
-    orientation: 'landscape',
+    orientation: 'portrait',
     unit: 'mm',
-    format: [105, 26],
+    format: [105, alturaTotal],
     compress: true,
     putOnlyUsedFonts: true
   });
 
-  const refs = [..._etqRefsParaImprimir];
-  const linhas = Math.ceil(refs.length / 3);
+  // Alguns visualizadores normalizam a orientação de formatos customizados.
+  // Se vier invertido, recria usando a ordem que garante 105mm na horizontal.
+  const w = pdf.internal.pageSize.getWidth();
+  const h = pdf.internal.pageSize.getHeight();
+  if (w < h && Math.abs(w - 105) > 1) {
+    console.warn('PDF customizado normalizado pelo jsPDF:', w, h);
+  }
 
   const limpar = v => String(v ?? '').replace(/\s+/g, ' ').trim();
 
-  for (let linha = 0; linha < linhas; linha++) {
-    if (linha > 0) pdf.addPage([105, 26], 'landscape');
+  for (let idx = 0; idx < refs.length; idx++) {
+    const p = produtos.find(x => x.ref === refs[idx]);
+    if (!p) continue;
 
-    // Não desenha bordas: são apenas as posições físicas das três etiquetas.
-    for (let col = 0; col < 3; col++) {
-      const idx = linha * 3 + col;
-      if (idx >= refs.length) break;
+    const linha = Math.floor(idx / 3);
+    const col = idx % 3;
 
-      const p = produtos.find(x => x.ref === refs[idx]);
-      if (!p) continue;
+    // Papel: 105mm. Início útil: 3mm. Colunas: 3, 35 e 67mm.
+    const xBase = 3 + (col * 32);
+    const yBase = linha * 26;
 
-      const xBase = 3 + (col * 32);
+    // Layout físico compacto próprio para 32x22.
+    // Não reutiliza fontes grandes salvas em outros modelos.
+    const descricao = limpar(p.produto || '');
+    const referencia = limpar(`Ref: ${p.ref || ''}`);
 
-      for (const el of cfg.elementos) {
-        if (el.tipo === 'barras') continue; // código de barras permanece fora deste fluxo inicial PDF
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(5.5);
+    let desc = descricao;
+    while (desc.length > 1 && pdf.getTextWidth(desc) > 29) desc = desc.slice(0, -1);
+    if (desc !== descricao && desc.length > 1) desc = desc.slice(0, -1) + '…';
+    pdf.text(desc, xBase + 1.5, yBase + 6);
 
-        const valores = {
-          loja: nomeLoja,
-          nome: p.produto,
-          ref: `Ref: ${p.ref}`,
-          preco: R(p.preco_venda),
-          categoria: p.categoria || '',
-          texto: el.texto || '',
-          parcelamento: (p.parcela && p.nparcelas) ? `${p.nparcelas}x ${R(p.parcela)}` : R(p.preco_venda)
-        };
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(6.5);
+    let ref = referencia;
+    while (ref.length > 1 && pdf.getTextWidth(ref) > 29) ref = ref.slice(0, -1);
+    pdf.text(ref, xBase + 1.5, yBase + 13);
 
-        const texto = limpar(valores[el.tipo] || '');
-        if (!texto) continue;
-
-        const fs = Number(el.fontSize || ({loja:6,nome:7,ref:6,preco:13,categoria:6,parcelamento:8,texto:7}[el.tipo] || 7));
-        pdf.setFont('helvetica', el.tipo === 'preco' ? 'bold' : 'normal');
-        pdf.setFontSize(fs);
-
-        const x = xBase + Number(el.x || 0);
-        const y = Number(el.y || 0) + (fs * 0.3528); // aproxima topo CSS -> baseline PDF
-
-        // Limita o texto aos 30 mm úteis para não invadir a etiqueta seguinte.
-        const maxW = Math.max(5, 31 - Number(el.x || 0));
-        let txt = texto;
-        while (txt.length > 1 && pdf.getTextWidth(txt) > maxW) txt = txt.slice(0, -1);
-        if (txt !== texto && txt.length > 1) txt = txt.slice(0, -1) + '…';
-
-        pdf.text(txt, x, y, { baseline: 'alphabetic' });
-      }
-    }
+    // 22mm = fim da etiqueta. Os 4mm seguintes ficam propositalmente vazios (GAP).
   }
 
   const blob = pdf.output('blob');
   const url = URL.createObjectURL(blob);
-
-  // Abre o PDF pronto. Sem cabeçalho, URL, data ou rodapé do HTML.
   const aba = window.open(url, '_blank');
+
   if (!aba) {
     const a = document.createElement('a');
     a.href = url;
@@ -18846,7 +18834,6 @@ async function gerarPdfEtiquetasLB1000() {
 
   setTimeout(() => URL.revokeObjectURL(url), 120000);
 }
-
 async function imprimirEtiquetasAgora() {
   const modalPreview = document.getElementById('modal-etiqueta-preview');
   const modoImportacao32x22 = modalPreview?.dataset.modoImportacao32x22 === '1';
