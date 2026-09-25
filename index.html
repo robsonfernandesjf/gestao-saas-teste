@@ -18555,27 +18555,27 @@ function abrirEtiquetasUltimaImportacao() {
     Array.from({ length: x.qtd }, () => x.ref)
   );
 
-  const produtos = getProdutos();
-  const cfg = getConfigEtiqueta32x22Importacao();
-  const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
+  // Usa o editor NORMAL de etiquetas para permitir personalização.
+  // Apenas aplica 32x22 como ponto de partida.
+  const selTam = document.getElementById('etq-tamanho-preset');
+  if (selTam) {
+    selTam.value = '32x22';
+    selTam.dispatchEvent(new Event('change'));
+  }
 
-  const preview = document.getElementById('etq-preview-conteudo');
-  preview.innerHTML = _etqRefsParaImprimir.map(ref => {
-    const p = produtos.find(x => x.ref === ref);
-    return montarEtiquetaHTML(p, cfg, nomeLoja, ETQ_ESCALA, true);
-  }).join('');
+  const larg = document.getElementById('etq-largura');
+  const alt = document.getElementById('etq-altura');
+  if (larg) larg.value = 32;
+  if (alt) alt.value = 22;
 
-  // A pré-visualização deve representar a folha real: 32x22 mm em 3 colunas.
-  preview.style.display = 'grid';
-  preview.style.gridTemplateColumns = 'repeat(3, 32mm)';
-  preview.style.gridAutoRows = '22mm';
-  preview.style.gap = '1mm';
-  preview.style.width = 'max-content';
-  preview.style.alignItems = 'start';
-  preview.style.justifyContent = 'start';
+  // Abre a página/módulo de etiquetas existente, preservando suas ferramentas.
+  showPage('etiquetas');
 
-  document.getElementById('modal-etiqueta-preview').dataset.modoImportacao32x22 = '1';
-  document.getElementById('modal-etiqueta-preview').classList.add('open');
+  // Atualiza a lista/preview do módulo existente com os itens da importação.
+  setTimeout(() => {
+    if (typeof renderEtiquetas === 'function') renderEtiquetas();
+    if (typeof atualizarPreviewEtiqueta === 'function') atualizarPreviewEtiqueta();
+  }, 100);
 }
 
 // ===== IMPRESSÃO DE ETIQUETA (código de barras via JsBarcode, janela isolada) =====
