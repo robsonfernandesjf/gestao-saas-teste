@@ -18808,13 +18808,15 @@ async function gerarPdfEtiquetasLB1000() {
     let desc=descricao;
     while(desc.length>1 && pdf.getTextWidth(desc)>28) desc=desc.slice(0,-1);
     if(desc!==descricao && desc.length>1) desc=desc.slice(0,-1)+'…';
-    pdf.text(desc,x+2,y+7);
+    // A LB-1000/driver está girando o conteúdo físico 90° no sentido horário.
+    // O PDF compensa 90° no sentido anti-horário.
+    pdf.text(desc, x+6, y+20, { angle: -90 });
 
     pdf.setFont('helvetica','bold');
     pdf.setFontSize(6.5);
     let rr=referencia;
     while(rr.length>1 && pdf.getTextWidth(rr)>28) rr=rr.slice(0,-1);
-    pdf.text(rr,x+2,y+14);
+    pdf.text(rr, x+13, y+20, { angle: -90 });
   });
 
   const blob=pdf.output('blob');
