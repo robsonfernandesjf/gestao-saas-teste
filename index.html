@@ -10642,6 +10642,7 @@ function baixarModeloExcel() {
 }
 
 let _produtosImportados = [];
+let _ultimaImportacaoEtiquetas = [];
 
 function handleImportExcel(event) {
   const file = event.target.files[0];
@@ -10725,6 +10726,7 @@ async function confirmarImportacaoExcel() {
   statusEl.innerHTML = '<span style="color:var(--muted)">Importando produtos, aguarde...</span>';
 
   let sucesso = 0, erros = 0;
+  _ultimaImportacaoEtiquetas = [];
   const existentes = getProdutos();
   const refsExistentes = new Set(existentes.map(p => p.ref));
 
@@ -10744,6 +10746,10 @@ async function confirmarImportacaoExcel() {
         refsExistentes.add(p.ref);
       }
       sucesso++;
+      _ultimaImportacaoEtiquetas.push({
+        ref: p.ref,
+        qtd: Math.max(1, parseInt(p.qtd_comprada || p.estoque || 1) || 1)
+      });
     } catch (e) {
       console.warn('Erro ao importar', p.ref, e.message);
       erros++;
@@ -10753,11 +10759,23 @@ async function confirmarImportacaoExcel() {
   invalidarCache('produtos');
   await carregarDadosNuvem();
 
-  statusEl.innerHTML = `<span style="color:var(--success)">✅ Importação concluída! ${sucesso} produto(s) importado(s)${erros>0?`, ${erros} erro(s)`:''}.</span>`;
+  const totalEtiquetasImportacao = _ultimaImportacaoEtiquetas.reduce((s, x) => s + x.qtd, 0);
+  statusEl.innerHTML = `
+    <span style="color:var(--success)">✅ Importação concluída! ${sucesso} produto(s) importado(s)${erros>0?`, ${erros} erro(s)`:''}.</span>
+    ${sucesso > 0 ? `<div style="margin-top:10px;">
+      <button class="btn btn-primary btn-sm" onclick="abrirEtiquetasUltimaImportacao()">🏷️ Imprimir ${totalEtiquetasImportacao} etiqueta(s) 32×22</button>
+      <span style="font-size:11px;color:var(--muted);margin-left:8px;">3 colunas • referência + descrição</span>
+    </div>` : ''}
+  `;
   document.getElementById('import-excel-preview').innerHTML = '';
   document.getElementById('import-excel-input').value = '';
   _produtosImportados = [];
   populateCatFilter();
+
+  // Abre automaticamente a prévia das etiquetas da importação concluída.
+  if (_ultimaImportacaoEtiquetas.length > 0) {
+    setTimeout(() => abrirEtiquetasUltimaImportacao(), 150);
+  }
 }
 
 function cancelarImportacaoExcel() {
@@ -18511,6 +18529,45 @@ function renderHistoricoTrocas() {
   `;
 }
 
+
+// ===== ETIQUETA 32x22 MM / 3 COLUNAS — FLUXO PÓS-IMPORTAÇÃO =====
+// Não altera o layout normal de etiquetas já salvo pela loja.
+function getConfigEtiqueta32x22Importacao() {
+  return {
+    largura: 32,
+    altura: 22,
+    tresColunas: true,
+    elementos: [
+      { tipo: 'ref',  x: 1.5, y: 4.0, fontSize: 8 },
+      { tipo: 'nome', x: 1.5, y: 10.0, fontSize: 6 }
+    ]
+  };
+}
+
+function abrirEtiquetasUltimaImportacao() {
+  if (!_ultimaImportacaoEtiquetas.length) {
+    alert('Não há produtos da última importação disponíveis para imprimir.');
+    return;
+  }
+
+  _etqRefsDiretos = _ultimaImportacaoEtiquetas.map(x => x.ref);
+  _etqRefsParaImprimir = _ultimaImportacaoEtiquetas.flatMap(x =>
+    Array.from({ length: x.qtd }, () => x.ref)
+  );
+
+  const produtos = getProdutos();
+  const cfg = getConfigEtiqueta32x22Importacao();
+  const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
+
+  document.getElementById('etq-preview-conteudo').innerHTML = _etqRefsParaImprimir.map(ref => {
+    const p = produtos.find(x => x.ref === ref);
+    return montarEtiquetaHTML(p, cfg, nomeLoja, ETQ_ESCALA, true);
+  }).join('');
+
+  document.getElementById('modal-etiqueta-preview').dataset.modoImportacao32x22 = '1';
+  document.getElementById('modal-etiqueta-preview').classList.add('open');
+}
+
 // ===== IMPRESSÃO DE ETIQUETA (código de barras via JsBarcode, janela isolada) =====
 // ===== SELEÇÃO MÚLTIPLA E IMPRESSÃO DE ETIQUETAS =====
 function toggleTodosEtiquetas(chk) {
@@ -18633,7 +18690,9 @@ function montarEtiquetaHTML(p, cfg, nomeLoja, escalaPx, ehPreview) {
 }
 
 function imprimirEtiquetasAgora() {
-  const cfg = getConfigEtiqueta();
+  const modalPreview = document.getElementById('modal-etiqueta-preview');
+  const modoImportacao32x22 = modalPreview?.dataset.modoImportacao32x22 === '1';
+  const cfg = modoImportacao32x22 ? getConfigEtiqueta32x22Importacao() : getConfigEtiqueta();
   const produtos = getProdutos();
   const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
 
@@ -18646,10 +18705,16 @@ function imprimirEtiquetasAgora() {
   <title>Etiquetas</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"><\/script>
   <style>
-    @page { size: ${cfg.largura}mm ${cfg.altura}mm; margin: 0; }
+    @page { size: ${modoImportacao32x22 ? (cfg.largura * 3) : cfg.largura}mm ${cfg.altura}mm; margin: 0; }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: Arial, sans-serif; }
-    .etiqueta:last-child { page-break-after: auto; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      ${modoImportacao32x22 ? `display:grid;grid-template-columns:repeat(3, ${cfg.largura}mm);grid-auto-rows:${cfg.altura}mm;width:${cfg.largura * 3}mm;` : ''}
+    }
+    ${modoImportacao32x22
+      ? `.etiqueta { page-break-after:auto !important; break-inside:avoid; } .etiqueta:nth-child(3n) { break-after:page; page-break-after:always !important; } .etiqueta:last-child { break-after:auto; page-break-after:auto !important; }`
+      : `.etiqueta:last-child { page-break-after: auto; }`}
   </style>
 
 </head><body>
@@ -18665,6 +18730,7 @@ function imprimirEtiquetasAgora() {
   </body></html>`;
 
   imprimirDocumento(html);
+  if (modalPreview) delete modalPreview.dataset.modoImportacao32x22;
   fecharModal('modal-etiqueta-preview');
 }
 
@@ -21675,7 +21741,7 @@ const ETQ_TIPO_FONTE = { loja: 6, nome: 7, ref: 6, preco: 13, categoria: 6, parc
 function mudarTamanhoEtiqueta() {
   const tam = document.getElementById('etq-tamanho').value;
   document.getElementById('etq-personalizado-wrap').style.display = tam === 'personalizado' ? 'grid' : 'none';
-  const presets = { '40x30': [40, 30], '50x30': [50, 30], '40x60': [40, 60] };
+  const presets = { '32x22': [32, 22], '40x30': [40, 30], '50x30': [50, 30], '40x60': [40, 60] };
   if (tam === 'personalizado') {
     _etqLargura = parseInt(document.getElementById('etq-largura-custom').value) || 40;
     _etqAltura = parseInt(document.getElementById('etq-altura-custom').value) || 30;
@@ -21824,7 +21890,7 @@ function carregarConfigEtiqueta() {
 // estado do editor, que só existe enquanto a tela de Configurações está aberta).
 function getConfigEtiqueta() {
   const cfg = (_dadosEmpresaCache && _dadosEmpresaCache.etiqueta) || {};
-  const presets = { '40x30': [40, 30], '50x30': [50, 30], '40x60': [40, 60] };
+  const presets = { '32x22': [32, 22], '40x30': [40, 30], '50x30': [50, 30], '40x60': [40, 60] };
   let largura = cfg.largura || 40, altura = cfg.altura || 30;
   if (presets[cfg.tamanho] && cfg.tamanho !== 'personalizado') [largura, altura] = presets[cfg.tamanho];
   const elementos = (cfg.elementos && cfg.elementos.length) ? cfg.elementos : [
@@ -22232,6 +22298,7 @@ atualizarHora();
           <div class="form-row">
             <label>Tamanho da etiqueta</label>
             <select id="etq-tamanho" onchange="mudarTamanhoEtiqueta()">
+              <option value="32x22">32 x 22 mm (3 colunas)</option>
               <option value="40x30">40 x 30 mm</option>
               <option value="50x30">50 x 30 mm</option>
               <option value="40x60">40 x 60 mm</option>
