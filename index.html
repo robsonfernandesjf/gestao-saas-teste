@@ -10353,7 +10353,7 @@ function renderEstoque() {
   document.getElementById('estoque-body').innerHTML = pagina.map(p => {
     const margem = p.custo > 0 ? ((p.preco_venda - p.custo) / p.preco_venda * 100) : null;
     return `<tr>
-      <td><input type="checkbox" class="etq-select-produto" value="${esc(p.ref)}" onchange="atualizarBarraSelecaoEtiqueta()" style="width:auto;"></td>
+      <td><input type="checkbox" class="etq-select-produto" value="${esc(p.ref)}" ${_etqRefsSelecionados.has(p.ref) ? 'checked' : ''} onchange="atualizarBarraSelecaoEtiqueta(this)" style="width:auto;"></td>
       <td><code style="font-size:11px;">${esc(p.ref)}</code></td>
       <td>${esc(p.produto)}</td>
       <td><span class="tag-cat">${esc(p.categoria)}</span></td>
@@ -18616,20 +18616,37 @@ function abrirEtiquetasUltimaImportacao() {
 
 // ===== IMPRESSÃO DE ETIQUETA (código de barras via JsBarcode, janela isolada) =====
 // ===== SELEÇÃO MÚLTIPLA E IMPRESSÃO DE ETIQUETAS =====
+// Mantém a seleção de etiquetas independente da pesquisa/paginação do estoque.
+const _etqRefsSelecionados = new Set();
+
 function toggleTodosEtiquetas(chk) {
-  document.querySelectorAll('.etq-select-produto').forEach(c => c.checked = chk.checked);
+  document.querySelectorAll('.etq-select-produto').forEach(c => {
+    c.checked = chk.checked;
+    if (chk.checked) _etqRefsSelecionados.add(c.value);
+    else _etqRefsSelecionados.delete(c.value);
+  });
   atualizarBarraSelecaoEtiqueta();
 }
 
-function atualizarBarraSelecaoEtiqueta() {
-  const marcados = document.querySelectorAll('.etq-select-produto:checked');
+function atualizarBarraSelecaoEtiqueta(chkAlterado) {
+  if (chkAlterado && chkAlterado.value) {
+    if (chkAlterado.checked) _etqRefsSelecionados.add(chkAlterado.value);
+    else _etqRefsSelecionados.delete(chkAlterado.value);
+  }
+
+  // Ao renderizar/pesquisar novamente, restaura visualmente os itens já selecionados.
+  document.querySelectorAll('.etq-select-produto').forEach(c => {
+    c.checked = _etqRefsSelecionados.has(c.value);
+  });
+
   const barra = document.getElementById('etq-barra-selecao');
-  if (marcados.length === 0) { barra.style.display = 'none'; return; }
+  if (_etqRefsSelecionados.size === 0) { barra.style.display = 'none'; return; }
   barra.style.display = 'flex';
-  document.getElementById('etq-barra-texto').textContent = `${marcados.length} produto(s) selecionado(s)`;
+  document.getElementById('etq-barra-texto').textContent = `${_etqRefsSelecionados.size} produto(s) selecionado(s)`;
 }
 
 function limparSelecaoEtiquetas() {
+  _etqRefsSelecionados.clear();
   document.querySelectorAll('.etq-select-produto').forEach(c => c.checked = false);
   const todos = document.getElementById('etq-selecionar-todos');
   if (todos) todos.checked = false;
@@ -18638,6 +18655,8 @@ function limparSelecaoEtiquetas() {
 
 // Botão 🏷️ de uma linha só — marca aquele produto e já abre o fluxo normal
 function abrirImpressaoEtiqueta(ref) {
+  _etqRefsSelecionados.clear();
+  _etqRefsSelecionados.add(ref);
   document.querySelectorAll('.etq-select-produto').forEach(c => { c.checked = (c.value === ref); });
   atualizarBarraSelecaoEtiqueta();
   abrirImpressaoEtiquetaLote();
@@ -18652,7 +18671,7 @@ let _ultimoProdutoCadastradoRef = null;
 
 function abrirImpressaoEtiquetaLote() {
   _etqRefsDiretos = null;
-  const refs = Array.from(document.querySelectorAll('.etq-select-produto:checked')).map(c => c.value);
+  const refs = Array.from(_etqRefsSelecionados);
   if (refs.length === 0) { alert('Selecione ao menos um produto.'); return; }
   abrirModalQtdEtiqueta(refs);
 }
@@ -18687,7 +18706,7 @@ function abrirModalQtdEtiqueta(refs) {
 }
 
 function gerarPreviewEtiquetas() {
-  const refs = _etqRefsDiretos || Array.from(document.querySelectorAll('.etq-select-produto:checked')).map(c => c.value);
+  const refs = _etqRefsDiretos || Array.from(_etqRefsSelecionados);
   const quantidades = Array.from(document.querySelectorAll('#etq-qtd-individual-lista .etq-qtd-individual'));
   _etqRefsParaImprimir = [];
   quantidades.forEach(input => {
