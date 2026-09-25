@@ -18815,7 +18815,13 @@ async function imprimirEtiquetasAgora() {
         return;
       } catch (e) {
         console.error('Falha na impressão nativa LB-1000:', e);
-        alert('Não foi possível enviar a etiqueta diretamente para a LB-1000. Verifique se o QZ Tray está aberto e se a Bematech LB-1000 é a impressora padrão.');
+        const detalhe = e?.message || String(e);
+        alert(
+          'Falha ao enviar para a LB-1000.\n\n' +
+          'Erro real: ' + detalhe + '\n\n' +
+          'QZ Tray: conectado.\n' +
+          'A impressão pelo Chrome continuará bloqueada para não desperdiçar etiquetas.'
+        );
         return;
       }
     }
