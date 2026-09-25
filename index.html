@@ -18691,7 +18691,11 @@ function gerarPreviewEtiquetas() {
   }).join('');
 
   fecharModal('modal-etiqueta');
-  document.getElementById('modal-etiqueta-preview').classList.add('open');
+  const modalPreview = document.getElementById('modal-etiqueta-preview');
+  // LB-1000 32x22: usa sempre o PDF calibrado de 3 colunas (105x22 físico).
+  // Isso vale também para seleção/lote, não apenas para a última importação.
+  modalPreview.dataset.modoImportacao32x22 = (Number(cfg.largura) === 32 && Number(cfg.altura) === 22) ? '1' : '0';
+  modalPreview.classList.add('open');
 
   carregarJsBarcodeSeNecessario(() => {
     document.querySelectorAll('#etq-preview-conteudo .etq-barcode-svg').forEach(svg => {
