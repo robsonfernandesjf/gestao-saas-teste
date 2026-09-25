@@ -10353,7 +10353,7 @@ function renderEstoque() {
   document.getElementById('estoque-body').innerHTML = pagina.map(p => {
     const margem = p.custo > 0 ? ((p.preco_venda - p.custo) / p.preco_venda * 100) : null;
     return `<tr>
-      <td><input type="checkbox" class="etq-select-produto" value="${esc(p.ref)}" ${_etqRefsSelecionados.has(p.ref) ? 'checked' : ''} onchange="atualizarBarraSelecaoEtiqueta(this)" style="width:auto;"></td>
+      <td><input type="checkbox" class="etq-select-produto" value="${esc(p.ref)}" ${_etqSelecaoPersistente.has(String(p.ref)) ? 'checked' : ''} onchange="atualizarBarraSelecaoEtiqueta(this)" style="width:auto;"></td>
       <td><code style="font-size:11px;">${esc(p.ref)}</code></td>
       <td>${esc(p.produto)}</td>
       <td><span class="tag-cat">${esc(p.categoria)}</span></td>
@@ -18616,37 +18616,29 @@ function abrirEtiquetasUltimaImportacao() {
 
 // ===== IMPRESSÃO DE ETIQUETA (código de barras via JsBarcode, janela isolada) =====
 // ===== SELEÇÃO MÚLTIPLA E IMPRESSÃO DE ETIQUETAS =====
-// Mantém a seleção de etiquetas independente da pesquisa/paginação do estoque.
-const _etqRefsSelecionados = new Set();
-
 function toggleTodosEtiquetas(chk) {
   document.querySelectorAll('.etq-select-produto').forEach(c => {
     c.checked = chk.checked;
-    if (chk.checked) _etqRefsSelecionados.add(c.value);
-    else _etqRefsSelecionados.delete(c.value);
+    if (chk.checked) _etqSelecaoPersistente.add(String(c.value));
+    else _etqSelecaoPersistente.delete(String(c.value));
   });
   atualizarBarraSelecaoEtiqueta();
 }
 
 function atualizarBarraSelecaoEtiqueta(chkAlterado) {
-  if (chkAlterado && chkAlterado.value) {
-    if (chkAlterado.checked) _etqRefsSelecionados.add(chkAlterado.value);
-    else _etqRefsSelecionados.delete(chkAlterado.value);
+  if (chkAlterado && chkAlterado.classList?.contains('etq-select-produto')) {
+    if (chkAlterado.checked) _etqSelecaoPersistente.add(String(chkAlterado.value));
+    else _etqSelecaoPersistente.delete(String(chkAlterado.value));
   }
-
-  // Ao renderizar/pesquisar novamente, restaura visualmente os itens já selecionados.
-  document.querySelectorAll('.etq-select-produto').forEach(c => {
-    c.checked = _etqRefsSelecionados.has(c.value);
-  });
-
   const barra = document.getElementById('etq-barra-selecao');
-  if (_etqRefsSelecionados.size === 0) { barra.style.display = 'none'; return; }
+  const qtd = _etqSelecaoPersistente.size;
+  if (qtd === 0) { barra.style.display = 'none'; return; }
   barra.style.display = 'flex';
-  document.getElementById('etq-barra-texto').textContent = `${_etqRefsSelecionados.size} produto(s) selecionado(s)`;
+  document.getElementById('etq-barra-texto').textContent = `${qtd} produto(s) selecionado(s)`;
 }
 
 function limparSelecaoEtiquetas() {
-  _etqRefsSelecionados.clear();
+  _etqSelecaoPersistente.clear();
   document.querySelectorAll('.etq-select-produto').forEach(c => c.checked = false);
   const todos = document.getElementById('etq-selecionar-todos');
   if (todos) todos.checked = false;
@@ -18655,9 +18647,9 @@ function limparSelecaoEtiquetas() {
 
 // Botão 🏷️ de uma linha só — marca aquele produto e já abre o fluxo normal
 function abrirImpressaoEtiqueta(ref) {
-  _etqRefsSelecionados.clear();
-  _etqRefsSelecionados.add(ref);
-  document.querySelectorAll('.etq-select-produto').forEach(c => { c.checked = (c.value === ref); });
+  _etqSelecaoPersistente.clear();
+  _etqSelecaoPersistente.add(String(ref));
+  document.querySelectorAll('.etq-select-produto').forEach(c => { c.checked = (String(c.value) === String(ref)); });
   atualizarBarraSelecaoEtiqueta();
   abrirImpressaoEtiquetaLote();
 }
@@ -18667,11 +18659,13 @@ function abrirImpressaoEtiqueta(ref) {
 // onde essa tabela nem existe na tela).
 let _etqRefsDiretos = null;
 let _etqRefsParaImprimir = [];
+// Seleção persistente de etiquetas: não se perde ao pesquisar/paginar o estoque.
+const _etqSelecaoPersistente = new Set();
 let _ultimoProdutoCadastradoRef = null;
 
 function abrirImpressaoEtiquetaLote() {
   _etqRefsDiretos = null;
-  const refs = Array.from(_etqRefsSelecionados);
+  const refs = Array.from(_etqSelecaoPersistente);
   if (refs.length === 0) { alert('Selecione ao menos um produto.'); return; }
   abrirModalQtdEtiqueta(refs);
 }
@@ -18706,7 +18700,7 @@ function abrirModalQtdEtiqueta(refs) {
 }
 
 function gerarPreviewEtiquetas() {
-  const refs = _etqRefsDiretos || Array.from(_etqRefsSelecionados);
+  const refs = _etqRefsDiretos || Array.from(_etqSelecaoPersistente);
   const quantidades = Array.from(document.querySelectorAll('#etq-qtd-individual-lista .etq-qtd-individual'));
   _etqRefsParaImprimir = [];
   quantidades.forEach(input => {
@@ -18720,20 +18714,33 @@ function gerarPreviewEtiquetas() {
     return;
   }
 
-  const cfg = getConfigEtiqueta();
   const produtos = getProdutos();
-  const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
+  const preview = document.getElementById('etq-preview-conteudo');
 
-  document.getElementById('etq-preview-conteudo').innerHTML = _etqRefsParaImprimir.map(ref => {
+  // Este fluxo é exclusivo da LB-1000 já calibrada: 32x22, 3 etiquetas por linha.
+  // Não usa o layout genérico salvo (que pode conter preço/outros campos).
+  preview.innerHTML = _etqRefsParaImprimir.map(ref => {
     const p = produtos.find(x => x.ref === ref);
-    return montarEtiquetaHTML(p, cfg, nomeLoja, ETQ_ESCALA, true);
+    if (!p) return '';
+    return `<div style="position:relative;width:32mm;height:22mm;background:#fff;border:1px solid #ccc;overflow:hidden;padding:3mm 2mm;box-sizing:border-box;">
+      <div style="font-size:6.5pt;font-weight:400;white-space:nowrap;overflow:hidden;">${esc(p.produto || '')}</div>
+      <div style="font-size:13pt;font-weight:700;margin-top:2.5mm;white-space:nowrap;overflow:hidden;">${esc(p.ref || '')}</div>
+    </div>`;
   }).join('');
+  preview.style.display = 'grid';
+  preview.style.gridTemplateColumns = 'repeat(3, 32mm)';
+  preview.style.gridAutoRows = '22mm';
+  preview.style.columnGap = '0mm';
+  preview.style.rowGap = '4mm';
+  preview.style.paddingLeft = '3mm';
+  preview.style.width = '105mm';
+  preview.style.boxSizing = 'border-box';
+  preview.style.justifyContent = 'start';
 
   fecharModal('modal-etiqueta');
   const modalPreview = document.getElementById('modal-etiqueta-preview');
-  // LB-1000 32x22: usa sempre o PDF calibrado de 3 colunas (105x22 físico).
-  // Isso vale também para seleção/lote, não apenas para a última importação.
-  modalPreview.dataset.modoImportacao32x22 = (Number(cfg.largura) === 32 && Number(cfg.altura) === 22) ? '1' : '0';
+  // Força o gerador PDF LB-1000; nunca cai na impressão genérica de 1 etiqueta por página.
+  modalPreview.dataset.modoImportacao32x22 = '1';
   modalPreview.classList.add('open');
 
   carregarJsBarcodeSeNecessario(() => {
