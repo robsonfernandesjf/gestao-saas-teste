@@ -18807,13 +18807,14 @@ async function gerarPdfEtiquetasLB1000() {
       if(desc!==descricao && desc.length>1) desc=desc.slice(0,-1)+'…';
 
       // Texto pré-rotacionado para sair horizontal após o giro do driver.
-      pdf.text(desc, 6, yBase+2, { angle:-90 });
+      // Ajuste fino: 3 mm de margem interna horizontal e conteúdo mais centralizado na altura.
+      pdf.text(desc, 7.5, yBase+3, { angle:-90 });
 
       pdf.setFont('helvetica','bold');
       pdf.setFontSize(6.5);
       let rr=referencia;
       while(rr.length>1 && pdf.getTextWidth(rr)>28) rr=rr.slice(0,-1);
-      pdf.text(rr, 13, yBase+2, { angle:-90 });
+      pdf.text(rr, 14.5, yBase+3, { angle:-90 });
     }
   }
 
