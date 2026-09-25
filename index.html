@@ -18764,83 +18764,67 @@ async function gerarPdfEtiquetasLB1000() {
   const produtos = getProdutos();
   const refs = [..._etqRefsParaImprimir];
 
-  // A LB-1000 trabalha com mídia contínua. Em vez de criar uma página
-  // 105x26 para cada fileira (que o driver estava rotacionando), geramos
-  // UMA página contínua: 105mm de largura x 26mm por fileira.
+  // Layout físico real:
+  // papel 105 mm de largura
+  // 3 etiquetas de 32 x 22 mm
+  // X = 3, 35 e 67 mm
+  // GAP vertical = 4 mm -> passo de 26 mm
   const linhas = Math.max(1, Math.ceil(refs.length / 3));
   const alturaTotal = linhas * 26;
 
-  // IMPORTANTE: quando a altura total é menor que 105 mm, o jsPDF pode
-  // normalizar um formato customizado em portrait e trocar largura/altura.
-  // Foi isso que reduziu a largura útil e fez a 3ª coluna desaparecer.
-  // Escolhemos a orientação dinamicamente para GARANTIR 105 mm na horizontal.
-  const orientacao = alturaTotal < 105 ? 'landscape' : 'portrait';
+  // O PDF precisa aparecer na tela com as 3 etiquetas LADO A LADO,
+  // texto horizontal. Para formatos baixos (ex.: 105x52), landscape
+  // impede o jsPDF de trocar 105 pela altura.
   const pdf = new jsPDF({
-    orientation: orientacao,
+    orientation: alturaTotal < 105 ? 'landscape' : 'portrait',
     unit: 'mm',
     format: [105, alturaTotal],
     compress: true,
     putOnlyUsedFonts: true
   });
 
-  const w = pdf.internal.pageSize.getWidth();
-  const h = pdf.internal.pageSize.getHeight();
-  console.log(`PDF LB-1000 criado em ${w.toFixed(1)} x ${h.toFixed(1)} mm`);
-
-  // Segurança: se a biblioteca ainda inverter o formato, cria novamente
-  // com as dimensões trocadas para resultar fisicamente em 105 x alturaTotal.
-  if (Math.abs(w - 105) > 1) {
-    throw new Error(`PDF ficou com largura ${w.toFixed(1)} mm em vez de 105 mm`);
+  const w=pdf.internal.pageSize.getWidth();
+  if (Math.abs(w-105)>1) {
+    throw new Error(`PDF ficou com ${w.toFixed(1)} mm de largura; esperado: 105 mm`);
   }
 
-  const limpar = v => String(v ?? '').replace(/\s+/g, ' ').trim();
+  const limpar=v=>String(v??'').replace(/\s+/g,' ').trim();
 
-  for (let idx = 0; idx < refs.length; idx++) {
-    const p = produtos.find(x => x.ref === refs[idx]);
-    if (!p) continue;
+  refs.forEach((refProduto, idx)=>{
+    const p=produtos.find(x=>x.ref===refProduto);
+    if(!p) return;
 
-    const linha = Math.floor(idx / 3);
-    const col = idx % 3;
+    const linha=Math.floor(idx/3);
+    const col=idx%3;
+    const x=3+(col*32);
+    const y=linha*26;
 
-    // Papel: 105mm. Início útil: 3mm. Colunas: 3, 35 e 67mm.
-    const xBase = 3 + (col * 32);
-    const yBase = linha * 26;
+    const descricao=limpar(p.produto||'');
+    const referencia=limpar(`Ref: ${p.ref||''}`);
 
-    // Layout físico compacto próprio para 32x22.
-    // Não reutiliza fontes grandes salvas em outros modelos.
-    const descricao = limpar(p.produto || '');
-    const referencia = limpar(`Ref: ${p.ref || ''}`);
-
-    pdf.setFont('helvetica', 'normal');
+    // Texto HORIZONTAL dentro da etiqueta 32x22.
+    pdf.setFont('helvetica','normal');
     pdf.setFontSize(5.5);
-    let desc = descricao;
-    while (desc.length > 1 && pdf.getTextWidth(desc) > 29) desc = desc.slice(0, -1);
-    if (desc !== descricao && desc.length > 1) desc = desc.slice(0, -1) + '…';
-    // O driver da LB-1000 gira a mídia física 90°. Compensamos no PDF.
-    pdf.text(desc, xBase + 6, yBase + 20.5, { angle: 90 });
+    let desc=descricao;
+    while(desc.length>1 && pdf.getTextWidth(desc)>28) desc=desc.slice(0,-1);
+    if(desc!==descricao && desc.length>1) desc=desc.slice(0,-1)+'…';
+    pdf.text(desc,x+2,y+7);
 
-    pdf.setFont('helvetica', 'bold');
+    pdf.setFont('helvetica','bold');
     pdf.setFontSize(6.5);
-    let ref = referencia;
-    while (ref.length > 1 && pdf.getTextWidth(ref) > 29) ref = ref.slice(0, -1);
-    pdf.text(ref, xBase + 13, yBase + 20.5, { angle: 90 });
+    let rr=referencia;
+    while(rr.length>1 && pdf.getTextWidth(rr)>28) rr=rr.slice(0,-1);
+    pdf.text(rr,x+2,y+14);
+  });
 
-    // 22mm = fim da etiqueta. Os 4mm seguintes ficam propositalmente vazios (GAP).
+  const blob=pdf.output('blob');
+  const url=URL.createObjectURL(blob);
+  const aba=window.open(url,'_blank');
+  if(!aba){
+    const a=document.createElement('a');
+    a.href=url;a.target='_blank';a.rel='noopener';a.click();
   }
-
-  const blob = pdf.output('blob');
-  const url = URL.createObjectURL(blob);
-  const aba = window.open(url, '_blank');
-
-  if (!aba) {
-    const a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.rel = 'noopener';
-    a.click();
-  }
-
-  setTimeout(() => URL.revokeObjectURL(url), 120000);
+  setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 async function imprimirEtiquetasAgora() {
   const modalPreview = document.getElementById('modal-etiqueta-preview');
