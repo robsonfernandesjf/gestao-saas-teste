@@ -18816,13 +18816,14 @@ async function gerarPdfEtiquetasLB1000() {
     let desc = descricao;
     while (desc.length > 1 && pdf.getTextWidth(desc) > 29) desc = desc.slice(0, -1);
     if (desc !== descricao && desc.length > 1) desc = desc.slice(0, -1) + '…';
-    pdf.text(desc, xBase + 1.5, yBase + 6);
+    // O driver da LB-1000 gira a mídia física 90°. Compensamos no PDF.
+    pdf.text(desc, xBase + 6, yBase + 20.5, { angle: 90 });
 
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(6.5);
     let ref = referencia;
     while (ref.length > 1 && pdf.getTextWidth(ref) > 29) ref = ref.slice(0, -1);
-    pdf.text(ref, xBase + 1.5, yBase + 13);
+    pdf.text(ref, xBase + 13, yBase + 20.5, { angle: 90 });
 
     // 22mm = fim da etiqueta. Os 4mm seguintes ficam propositalmente vazios (GAP).
   }
