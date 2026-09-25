@@ -18743,9 +18743,18 @@ function carregarJsPDFSeNecessario() {
   return new Promise((resolve, reject) => {
     if (window.jspdf?.jsPDF) return resolve(window.jspdf.jsPDF);
     const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
-    s.onload = () => window.jspdf?.jsPDF ? resolve(window.jspdf.jsPDF) : reject(new Error('jsPDF não carregou'));
-    s.onerror = () => reject(new Error('Não foi possível carregar o gerador de PDF'));
+    // jsDelivr: o cdnjs estava sendo bloqueado no ambiente publicado.
+    s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js';
+    s.onload = () => window.jspdf?.jsPDF ? resolve(window.jspdf.jsPDF) : reject(new Error('jsPDF carregou sem disponibilizar a biblioteca'));
+    s.onerror = () => {
+      const fallback = document.createElement('script');
+      fallback.src = 'https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js';
+      fallback.onload = () => window.jspdf?.jsPDF
+        ? resolve(window.jspdf.jsPDF)
+        : reject(new Error('Gerador de PDF não ficou disponível'));
+      fallback.onerror = () => reject(new Error('O navegador bloqueou os dois servidores do gerador de PDF'));
+      document.head.appendChild(fallback);
+    };
     document.head.appendChild(s);
   });
 }
