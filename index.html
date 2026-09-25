@@ -18763,61 +18763,59 @@ async function gerarPdfEtiquetasLB1000() {
   const jsPDF = await carregarJsPDFSeNecessario();
   const produtos = getProdutos();
   const refs = [..._etqRefsParaImprimir];
-
-  // Layout físico real:
-  // papel 105 mm de largura
-  // 3 etiquetas de 32 x 22 mm
-  // X = 3, 35 e 67 mm
-  // GAP vertical = 4 mm -> passo de 26 mm
   const linhas = Math.max(1, Math.ceil(refs.length / 3));
-  const alturaTotal = linhas * 26;
 
-  // O PDF precisa aparecer na tela com as 3 etiquetas LADO A LADO,
-  // texto horizontal. Para formatos baixos (ex.: 105x52), landscape
-  // impede o jsPDF de trocar 105 pela altura.
+  /*
+    LB-1000 / driver:
+    Cada LINHA física é tratada como UMA página, sem área extra abaixo.
+    O driver gira a página ao mandar para a impressora, então o PDF é criado
+    em 22 x 105 mm. Depois do giro do driver isso resulta em 105 x 22 mm físicos.
+    Não colocamos os 4 mm de GAP dentro do PDF; o sensor GAP da impressora
+    é quem faz o avanço entre uma linha e outra.
+  */
   const pdf = new jsPDF({
-    orientation: alturaTotal < 105 ? 'landscape' : 'portrait',
+    orientation: 'portrait',
     unit: 'mm',
-    format: [105, alturaTotal],
+    format: [22, 105],
     compress: true,
     putOnlyUsedFonts: true
   });
 
-  const w=pdf.internal.pageSize.getWidth();
-  if (Math.abs(w-105)>1) {
-    throw new Error(`PDF ficou com ${w.toFixed(1)} mm de largura; esperado: 105 mm`);
-  }
-
   const limpar=v=>String(v??'').replace(/\s+/g,' ').trim();
 
-  refs.forEach((refProduto, idx)=>{
-    const p=produtos.find(x=>x.ref===refProduto);
-    if(!p) return;
+  for(let linha=0; linha<linhas; linha++){
+    if(linha>0) pdf.addPage([22,105], 'portrait');
 
-    const linha=Math.floor(idx/3);
-    const col=idx%3;
-    const x=3+(col*32);
-    const y=linha*26;
+    for(let col=0; col<3; col++){
+      const idx=linha*3+col;
+      if(idx>=refs.length) break;
 
-    const descricao=limpar(p.produto||'');
-    const referencia=limpar(`Ref: ${p.ref||''}`);
+      const p=produtos.find(x=>x.ref===refs[idx]);
+      if(!p) continue;
 
-    // Texto HORIZONTAL dentro da etiqueta 32x22.
-    pdf.setFont('helvetica','normal');
-    pdf.setFontSize(5.5);
-    let desc=descricao;
-    while(desc.length>1 && pdf.getTextWidth(desc)>28) desc=desc.slice(0,-1);
-    if(desc!==descricao && desc.length>1) desc=desc.slice(0,-1)+'…';
-    // A LB-1000/driver está girando o conteúdo físico 90° no sentido horário.
-    // O PDF compensa 90° no sentido anti-horário.
-    pdf.text(desc, x+6, y+20, { angle: -90 });
+      // Após o giro do driver, Y do PDF vira X físico.
+      // 3mm de margem + 32mm por etiqueta.
+      const yBase=3+(col*32);
 
-    pdf.setFont('helvetica','bold');
-    pdf.setFontSize(6.5);
-    let rr=referencia;
-    while(rr.length>1 && pdf.getTextWidth(rr)>28) rr=rr.slice(0,-1);
-    pdf.text(rr, x+13, y+20, { angle: -90 });
-  });
+      const descricao=limpar(p.produto||'');
+      const referencia=limpar(`Ref: ${p.ref||''}`);
+
+      pdf.setFont('helvetica','normal');
+      pdf.setFontSize(5.5);
+      let desc=descricao;
+      while(desc.length>1 && pdf.getTextWidth(desc)>28) desc=desc.slice(0,-1);
+      if(desc!==descricao && desc.length>1) desc=desc.slice(0,-1)+'…';
+
+      // Texto pré-rotacionado para sair horizontal após o giro do driver.
+      pdf.text(desc, 6, yBase+2, { angle:-90 });
+
+      pdf.setFont('helvetica','bold');
+      pdf.setFontSize(6.5);
+      let rr=referencia;
+      while(rr.length>1 && pdf.getTextWidth(rr)>28) rr=rr.slice(0,-1);
+      pdf.text(rr, 13, yBase+2, { angle:-90 });
+    }
+  }
 
   const blob=pdf.output('blob');
   const url=URL.createObjectURL(blob);
