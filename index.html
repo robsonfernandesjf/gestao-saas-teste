@@ -18559,10 +18559,20 @@ function abrirEtiquetasUltimaImportacao() {
   const cfg = getConfigEtiqueta32x22Importacao();
   const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
 
-  document.getElementById('etq-preview-conteudo').innerHTML = _etqRefsParaImprimir.map(ref => {
+  const preview = document.getElementById('etq-preview-conteudo');
+  preview.innerHTML = _etqRefsParaImprimir.map(ref => {
     const p = produtos.find(x => x.ref === ref);
     return montarEtiquetaHTML(p, cfg, nomeLoja, ETQ_ESCALA, true);
   }).join('');
+
+  // A pré-visualização deve representar a folha real: 32x22 mm em 3 colunas.
+  preview.style.display = 'grid';
+  preview.style.gridTemplateColumns = 'repeat(3, 32mm)';
+  preview.style.gridAutoRows = '22mm';
+  preview.style.gap = '1mm';
+  preview.style.width = 'max-content';
+  preview.style.alignItems = 'start';
+  preview.style.justifyContent = 'start';
 
   document.getElementById('modal-etiqueta-preview').dataset.modoImportacao32x22 = '1';
   document.getElementById('modal-etiqueta-preview').classList.add('open');
@@ -18731,6 +18741,16 @@ function imprimirEtiquetasAgora() {
 
   imprimirDocumento(html);
   if (modalPreview) delete modalPreview.dataset.modoImportacao32x22;
+  const previewNormal = document.getElementById('etq-preview-conteudo');
+  if (previewNormal) {
+    previewNormal.style.display = '';
+    previewNormal.style.gridTemplateColumns = '';
+    previewNormal.style.gridAutoRows = '';
+    previewNormal.style.gap = '';
+    previewNormal.style.width = '';
+    previewNormal.style.alignItems = '';
+    previewNormal.style.justifyContent = '';
+  }
   fecharModal('modal-etiqueta-preview');
 }
 
