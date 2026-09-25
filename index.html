@@ -18760,7 +18760,10 @@ function imprimirEtiquetasAgora() {
     <\/script>
   </body></html>`;
 
-  imprimirDocumento(html);
+  // Etiquetas: abre a janela de impressão diretamente no clique.
+  // Evita o bloqueio de popup que ocorria quando o fallback era chamado
+  // somente depois da tentativa assíncrona de conexão com o QZ Tray.
+  abrirJanelaImpressaoFallback(html);
   if (modalPreview) delete modalPreview.dataset.modoImportacao32x22;
   const previewNormal = document.getElementById('etq-preview-conteudo');
   if (previewNormal) {
