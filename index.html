@@ -18536,6 +18536,10 @@ function getConfigEtiqueta32x22Importacao() {
   return {
     largura: 32,
     altura: 22,
+    papelLargura: 105,
+    margemEsquerda: 3,
+    gapHorizontal: 0,
+    gapVertical: 4,
     tresColunas: true,
     elementos: [
       { tipo: 'ref',  x: 1.5, y: 4.0, fontSize: 8 },
@@ -18575,8 +18579,11 @@ function abrirEtiquetasUltimaImportacao() {
   preview.style.display = 'grid';
   preview.style.gridTemplateColumns = 'repeat(3, 32mm)';
   preview.style.gridAutoRows = '22mm';
-  preview.style.gap = '1mm';
-  preview.style.width = 'max-content';
+  preview.style.columnGap = '0mm';
+  preview.style.rowGap = '4mm';
+  preview.style.paddingLeft = '3mm';
+  preview.style.width = '105mm';
+  preview.style.boxSizing = 'border-box';
   preview.style.justifyContent = 'start';
 
   const modal = document.getElementById('modal-etiqueta-preview');
@@ -18736,15 +18743,15 @@ function imprimirEtiquetasAgora() {
   <title>Etiquetas</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"><\/script>
   <style>
-    @page { size: ${modoImportacao32x22 ? (cfg.largura * 3) : cfg.largura}mm ${cfg.altura}mm; margin: 0; }
+    @page { size: ${modoImportacao32x22 ? 105 : cfg.largura}mm ${modoImportacao32x22 ? 26 : cfg.altura}mm; margin: 0; }
     * { box-sizing: border-box; }
+    html, body { margin:0; padding:0; }
     body {
-      margin: 0;
       font-family: Arial, sans-serif;
-      ${modoImportacao32x22 ? `display:grid;grid-template-columns:repeat(3, ${cfg.largura}mm);grid-auto-rows:${cfg.altura}mm;width:${cfg.largura * 3}mm;` : ''}
+      ${modoImportacao32x22 ? `display:grid;grid-template-columns:repeat(3,32mm);grid-auto-rows:22mm;column-gap:0;row-gap:4mm;width:105mm;padding-left:3mm;box-sizing:border-box;` : ''}
     }
     ${modoImportacao32x22
-      ? `.etiqueta { page-break-after:auto !important; break-inside:avoid; } .etiqueta:nth-child(3n) { break-after:page; page-break-after:always !important; } .etiqueta:last-child { break-after:auto; page-break-after:auto !important; }`
+      ? `.etiqueta { width:32mm !important;height:22mm !important;page-break-after:auto !important;break-inside:avoid;overflow:hidden; } .etiqueta:nth-child(3n) { break-after:page; page-break-after:always !important; } .etiqueta:last-child { break-after:auto; page-break-after:auto !important; }`
       : `.etiqueta:last-child { page-break-after: auto; }`}
   </style>
 
@@ -18771,6 +18778,10 @@ function imprimirEtiquetasAgora() {
     previewNormal.style.gridTemplateColumns = '';
     previewNormal.style.gridAutoRows = '';
     previewNormal.style.gap = '';
+    previewNormal.style.columnGap = '';
+    previewNormal.style.rowGap = '';
+    previewNormal.style.paddingLeft = '';
+    previewNormal.style.boxSizing = '';
     previewNormal.style.width = '';
     previewNormal.style.alignItems = '';
     previewNormal.style.justifyContent = '';
