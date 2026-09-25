@@ -18739,98 +18739,121 @@ function montarEtiquetaHTML(p, cfg, nomeLoja, escalaPx, ehPreview) {
   return `<div class="etiqueta" style="${wrapStyle}">${partes}</div>`;
 }
 
+function carregarJsPDFSeNecessario() {
+  return new Promise((resolve, reject) => {
+    if (window.jspdf?.jsPDF) return resolve(window.jspdf.jsPDF);
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
+    s.onload = () => window.jspdf?.jsPDF ? resolve(window.jspdf.jsPDF) : reject(new Error('jsPDF não carregou'));
+    s.onerror = () => reject(new Error('Não foi possível carregar o gerador de PDF'));
+    document.head.appendChild(s);
+  });
+}
+
+async function gerarPdfEtiquetasLB1000() {
+  const jsPDF = await carregarJsPDFSeNecessario();
+  const produtos = getProdutos();
+  const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
+
+  const cfgSalvo = getConfigEtiqueta();
+  const cfg = (Number(cfgSalvo.largura) === 32 && Number(cfgSalvo.altura) === 22)
+    ? cfgSalvo
+    : getConfigEtiqueta32x22Importacao();
+
+  // Cada página do PDF representa UMA fileira física:
+  // papel 105 mm; 3 etiquetas 32x22; início X=3 mm; avanço vertical total 26 mm.
+  const pdf = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: [105, 26],
+    compress: true,
+    putOnlyUsedFonts: true
+  });
+
+  const refs = [..._etqRefsParaImprimir];
+  const linhas = Math.ceil(refs.length / 3);
+
+  const limpar = v => String(v ?? '').replace(/\s+/g, ' ').trim();
+
+  for (let linha = 0; linha < linhas; linha++) {
+    if (linha > 0) pdf.addPage([105, 26], 'landscape');
+
+    // Não desenha bordas: são apenas as posições físicas das três etiquetas.
+    for (let col = 0; col < 3; col++) {
+      const idx = linha * 3 + col;
+      if (idx >= refs.length) break;
+
+      const p = produtos.find(x => x.ref === refs[idx]);
+      if (!p) continue;
+
+      const xBase = 3 + (col * 32);
+
+      for (const el of cfg.elementos) {
+        if (el.tipo === 'barras') continue; // código de barras permanece fora deste fluxo inicial PDF
+
+        const valores = {
+          loja: nomeLoja,
+          nome: p.produto,
+          ref: `Ref: ${p.ref}`,
+          preco: R(p.preco_venda),
+          categoria: p.categoria || '',
+          texto: el.texto || '',
+          parcelamento: (p.parcela && p.nparcelas) ? `${p.nparcelas}x ${R(p.parcela)}` : R(p.preco_venda)
+        };
+
+        const texto = limpar(valores[el.tipo] || '');
+        if (!texto) continue;
+
+        const fs = Number(el.fontSize || ({loja:6,nome:7,ref:6,preco:13,categoria:6,parcelamento:8,texto:7}[el.tipo] || 7));
+        pdf.setFont('helvetica', el.tipo === 'preco' ? 'bold' : 'normal');
+        pdf.setFontSize(fs);
+
+        const x = xBase + Number(el.x || 0);
+        const y = Number(el.y || 0) + (fs * 0.3528); // aproxima topo CSS -> baseline PDF
+
+        // Limita o texto aos 30 mm úteis para não invadir a etiqueta seguinte.
+        const maxW = Math.max(5, 31 - Number(el.x || 0));
+        let txt = texto;
+        while (txt.length > 1 && pdf.getTextWidth(txt) > maxW) txt = txt.slice(0, -1);
+        if (txt !== texto && txt.length > 1) txt = txt.slice(0, -1) + '…';
+
+        pdf.text(txt, x, y, { baseline: 'alphabetic' });
+      }
+    }
+  }
+
+  const blob = pdf.output('blob');
+  const url = URL.createObjectURL(blob);
+
+  // Abre o PDF pronto. Sem cabeçalho, URL, data ou rodapé do HTML.
+  const aba = window.open(url, '_blank');
+  if (!aba) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.click();
+  }
+
+  setTimeout(() => URL.revokeObjectURL(url), 120000);
+}
+
 async function imprimirEtiquetasAgora() {
   const modalPreview = document.getElementById('modal-etiqueta-preview');
   const modoImportacao32x22 = modalPreview?.dataset.modoImportacao32x22 === '1';
 
-  // LB-1000: impressão nativa em TSPL/TSPL2.
-  // 203 dpi ~= 8 dots/mm. Papel 105mm; 3 etiquetas 32x22;
-  // início em X=3mm; sem gap horizontal; GAP vertical=4mm.
   if (modoImportacao32x22) {
-    const conectado = await conectarQZ();
-    if (conectado) {
-      try {
-        const produtos = getProdutos();
-        const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
-        const cfgSalvo = getConfigEtiqueta();
-        const cfg = (Number(cfgSalvo.largura) === 32 && Number(cfgSalvo.altura) === 22)
-          ? cfgSalvo
-          : getConfigEtiqueta32x22Importacao();
-
-        const mmDot = v => Math.round(Number(v || 0) * 8);
-        const limpar = v => String(v ?? '')
-          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^\x20-\x7E]/g, '')
-          .replace(/"/g, "'");
-
-        const refs = [..._etqRefsParaImprimir];
-        let raw = 'SIZE 105 mm,22 mm\r\nGAP 4 mm,0 mm\r\nDIRECTION 1\r\nREFERENCE 0,0\r\nCLS\r\n';
-
-        refs.forEach((ref, idx) => {
-          const p = produtos.find(x => x.ref === ref);
-          if (!p) return;
-          const col = idx % 3;
-          const xBase = mmDot(3 + col * 32);
-
-          cfg.elementos.forEach(el => {
-            const x = xBase + mmDot(el.x);
-            const y = mmDot(el.y);
-            if (el.tipo === 'barras') {
-              if (p.ean13) {
-                const h = Math.max(24, mmDot(el.h || 8));
-                raw += `BARCODE ${x},${y},"EAN13",${h},1,0,2,2,"${limpar(p.ean13)}"\r\n`;
-              }
-              return;
-            }
-            const valores = {
-              loja: nomeLoja,
-              nome: p.produto,
-              ref: `Ref: ${p.ref}`,
-              preco: R(p.preco_venda),
-              categoria: p.categoria || '',
-              texto: el.texto || '',
-              parcelamento: (p.parcela && p.nparcelas) ? `${p.nparcelas}x ${R(p.parcela)}` : R(p.preco_venda)
-            };
-            const texto = limpar(valores[el.tipo] || '');
-            if (!texto) return;
-            const fs = Number(el.fontSize || ({loja:6,nome:7,ref:6,preco:13,categoria:6,parcelamento:8,texto:7}[el.tipo] || 7));
-            const fonte = fs >= 11 ? '4' : fs >= 8 ? '3' : '2';
-            const mult = fs >= 12 ? 2 : 1;
-            raw += `TEXT ${x},${y},"${fonte}",0,${mult},${mult},"${texto}"\r\n`;
-          });
-
-          // A LB-1000 imprime uma linha física com três etiquetas.
-          if (col === 2 || idx === refs.length - 1) {
-            raw += 'PRINT 1,1\r\n';
-            if (idx !== refs.length - 1) raw += 'CLS\r\n';
-          }
-        });
-
-        const nomeImpressora = await qz.printers.getDefault();
-        const config = qz.configs.create(nomeImpressora, { encoding: 'ISO-8859-1' });
-        await qz.print(config, [{ type:'raw', format:'command', flavor:'plain', data:raw }]);
-
-        if (modalPreview) delete modalPreview.dataset.modoImportacao32x22;
-        fecharModal('modal-etiqueta-preview');
-        return;
-      } catch (e) {
-        console.error('Falha na impressão nativa LB-1000:', e);
-        const detalhe = e?.message || String(e);
-        alert(
-          'Falha ao enviar para a LB-1000.\n\n' +
-          'Erro real: ' + detalhe + '\n\n' +
-          'QZ Tray: conectado.\n' +
-          'A impressão pelo Chrome continuará bloqueada para não desperdiçar etiquetas.'
-        );
-        return;
-      }
+    try {
+      await gerarPdfEtiquetasLB1000();
+      fecharModal('modal-etiqueta-preview');
+    } catch (e) {
+      console.error('Falha ao gerar PDF das etiquetas:', e);
+      alert('Não foi possível gerar o PDF das etiquetas.\n\nDetalhe: ' + (e?.message || String(e)));
     }
-
-    alert('A LB-1000 não recebeu a impressão pelo QZ Tray.\n\nDetalhe: ' + (window._ultimoErroQZ || 'falha de conexão com o QZ Tray') + '\n\nA impressão pelo navegador foi bloqueada de propósito para não desperdiçar etiquetas.');
     return;
   }
 
-  // Mantém o fluxo antigo para os demais modelos de etiqueta.
+  // Mantém exatamente o fluxo anterior para os demais modelos.
   const cfg = getConfigEtiqueta();
   const produtos = getProdutos();
   const nomeLoja = (_dadosEmpresaCache && _dadosEmpresaCache.nome_fantasia) || CONFIG_LOJA.nomeLoja || 'Loja';
