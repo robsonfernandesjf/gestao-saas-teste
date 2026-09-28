@@ -8052,7 +8052,28 @@ function invalidarCache(tipo) { if (tipo) _cache[tipo] = null; else _cache = { p
 // ---- PRODUTOS ----
 async function getProdutosAsync() {
   if (_cache.produtos) return _cache.produtos;
-  _cache.produtos = await sbGet('produtos', 'order=ref.asc');
+
+  // Produtos podem ultrapassar o limite de 1.000 linhas retornadas pelo PostgREST.
+  // Carrega em páginas sem alterar o restante do fluxo/cache do ERP.
+  const pagina = 1000;
+  let inicio = 0;
+  const todos = [];
+  const q = comFiltroLoja('produtos', 'order=ref.asc');
+
+  while (true) {
+    const fim = inicio + pagina - 1;
+    const headers = { ...SB_HEADS, 'Range': `${inicio}-${fim}` };
+    const r = await fetch(`${SB_URL}/rest/v1/produtos?${q}`, { headers });
+    if (!r.ok) throw new Error(await r.text());
+
+    const lote = await r.json();
+    todos.push(...lote);
+
+    if (lote.length < pagina) break;
+    inicio += pagina;
+  }
+
+  _cache.produtos = todos;
   return _cache.produtos;
 }
 function getProdutos() { return _cache.produtos || JSON.parse(localStorage.getItem(DB_KEY) || '[]'); }
