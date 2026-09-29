@@ -5068,6 +5068,130 @@ body.mkt-workspace-open{overflow:hidden!important;}
 <div id="page-implantacao" class="page">
 <style>
 #page-implantacao{max-width:720px;margin:0 auto;padding:20px}.imp-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;box-shadow:0 8px 28px rgba(15,23,42,.06)}.imp-title{font-size:24px;font-weight:800;margin:0 0 4px}.imp-sub{font-size:13px;color:var(--muted);margin-bottom:22px}.imp-input{width:100%;font-size:22px;font-weight:700;padding:16px 18px;border:2px solid var(--border);border-radius:14px;background:var(--bg);outline:none}.imp-input:focus{border-color:var(--accent)}.imp-produto{display:none;margin-top:18px;border:1px solid var(--border);border-radius:14px;padding:18px;background:var(--bg)}.imp-produto.open{display:block}.imp-produto-nome{font-size:19px;font-weight:800}.imp-produto-dados{margin-top:8px;font-size:13px;color:var(--muted)}.imp-estoque{font-size:30px;font-weight:900;color:var(--accent);margin-top:12px}.imp-qtd-wrap{display:flex;align-items:center;justify-content:center;gap:14px;margin:20px 0}.imp-qtd-btn{width:48px;height:48px;border:1px solid var(--border);border-radius:12px;background:var(--surface);font-size:25px;font-weight:800}.imp-qtd{width:90px;text-align:center;font-size:25px;font-weight:800;padding:10px;border:1px solid var(--border);border-radius:12px}.imp-confirmar{width:100%;min-height:54px;border:0;border-radius:14px;background:var(--accent);color:#fff;font-size:16px;font-weight:800}.imp-msg{display:none;margin-top:14px;padding:12px 14px;border-radius:12px;font-size:14px;font-weight:700;text-align:center}.imp-msg.ok{display:block;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0}.imp-msg.erro{display:block;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA}.imp-ultima{display:none;margin-top:18px;padding:14px;border:1px solid var(--border);border-radius:12px}.imp-ultima.open{display:block}.imp-desfazer{margin-top:10px;padding:8px 12px;border:1px solid #FCA5A5;border-radius:9px;background:#fff;color:#B91C1C;font-weight:700}@media(max-width:600px){#page-implantacao{padding:12px}.imp-card{padding:18px}.imp-input{font-size:18px}}
+
+/* ===== INDEX 89 — NOVO LAYOUT VISUAL DO PDV; LÓGICA ORIGINAL PRESERVADA ===== */
+#page-vendas .pdv-layout{
+  grid-template-columns:minmax(0,1fr) 360px!important;
+  gap:16px!important;
+  align-items:start!important;
+}
+#page-vendas .pdv-col-esquerda{
+  max-height:none!important;
+  overflow:visible!important;
+  padding-right:0!important;
+}
+#page-vendas .pdv-col-direita{
+  padding:16px!important;
+}
+#page-vendas .pdv-dados-topo-card{
+  background:var(--surface)!important;
+  border:1px solid var(--border)!important;
+  border-radius:14px!important;
+  box-shadow:var(--shadow)!important;
+  padding:15px 16px 16px!important;
+  margin-bottom:12px!important;
+}
+#page-vendas .pdv-bloco-titulo{
+  font-size:14px!important;
+  font-weight:800!important;
+  color:var(--text)!important;
+  margin-bottom:12px!important;
+  padding-bottom:9px!important;
+  border-bottom:1px solid var(--border)!important;
+}
+#page-vendas .pdv-dados-topo-grid{
+  display:grid!important;
+  grid-template-columns:minmax(320px,1.6fr) minmax(210px,.8fr) minmax(170px,.65fr)!important;
+  gap:12px!important;
+  align-items:start!important;
+}
+#page-vendas .pdv-dados-topo-grid .form-row{
+  margin:0!important;
+}
+#page-vendas .pdv-dados-topo-grid input,
+#page-vendas .pdv-dados-topo-grid select{
+  min-height:44px!important;
+  width:100%!important;
+  font-size:13px!important;
+}
+#page-vendas .pdv-busca-card{
+  margin-bottom:0!important;
+}
+#page-vendas .pdv-carrinho-tabela{
+  min-height:390px!important;
+}
+#page-vendas .pdv-pagamento-grid{
+  grid-template-columns:1fr 1fr!important;
+  gap:9px!important;
+}
+#page-vendas .pdv-pag-btn{
+  min-height:52px!important;
+}
+#page-vendas .pdv-pag-btn-full{
+  grid-column:1 / -1!important;
+}
+#page-vendas .pdv-resumo-novo-card{
+  margin-top:14px!important;
+  padding:14px!important;
+  border:1px solid #dce7d5!important;
+  border-radius:14px!important;
+  background:linear-gradient(180deg,#fbfff7 0%,#f7fbed 100%)!important;
+}
+#page-vendas .pdv-resumo-novo-card .pdv-resumo-lateral{
+  margin:0 0 12px!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+}
+#page-vendas .pdv-resumo-novo-card .pdv-resumo-lateral .linha{
+  padding:6px 0!important;
+}
+#page-vendas .pdv-resumo-novo-card .valor-total{
+  font-size:28px!important;
+  font-weight:900!important;
+}
+#page-vendas .pdv-desconto-novo{
+  border-top:1px solid #e1eadb!important;
+  padding-top:12px!important;
+}
+#page-vendas .pdv-desconto-novo label{
+  display:block!important;
+  font-size:11px!important;
+  font-weight:800!important;
+  color:var(--muted)!important;
+  text-transform:uppercase!important;
+  letter-spacing:.4px!important;
+  margin-bottom:6px!important;
+}
+#page-vendas .pdv-desconto-novo input{
+  width:100%!important;
+  max-width:none!important;
+  min-height:48px!important;
+  text-align:right!important;
+  font-size:18px!important;
+  font-weight:800!important;
+  border:1.5px solid #efcbd4!important;
+  background:#fff!important;
+}
+#page-vendas .pdv-limpar-novo{
+  margin-top:10px!important;
+}
+#page-vendas .pdv-limpar-novo .pdv-btn-limpar{
+  width:100%!important;
+}
+@media (max-width:1180px){
+  #page-vendas .pdv-layout{grid-template-columns:1fr!important;}
+  #page-vendas .pdv-col-direita{position:static!important;max-height:none!important;}
+}
+@media (max-width:900px){
+  #page-vendas .pdv-dados-topo-grid{grid-template-columns:1fr 1fr!important;}
+  #page-vendas .pdv-cliente-topo{grid-column:1 / -1!important;}
+}
+@media (max-width:620px){
+  #page-vendas .pdv-dados-topo-grid{grid-template-columns:1fr!important;}
+  #page-vendas .pdv-cliente-topo{grid-column:auto!important;}
+}
+
 </style>
 <div class="imp-card">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
@@ -5308,7 +5432,7 @@ body.mkt-workspace-open{overflow:hidden!important;}
 <div id="page-vendas" class="page">
   <div class="section-title">Registrar nova venda · carrinho</div>
 
-  <!-- WIDGET DE CAIXA (abertura/sangria/suprimento/fechamento) -->
+  <!-- WIDGET DE CAIXA (lógica original preservada) -->
   <div id="caixa-widget-fechado" style="display:none;background:var(--warn-light);border:1px solid var(--warn);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
     <span style="font-size:14px;font-weight:600;color:var(--warn);">🔒 Nenhum caixa aberto</span>
     <span style="font-size:12px;color:var(--muted);">Abra o caixa antes de registrar vendas.</span>
@@ -5327,8 +5451,34 @@ body.mkt-workspace-open{overflow:hidden!important;}
 
   <div class="pdv-layout">
 
-    <!-- COLUNA ESQUERDA: busca + produto + carrinho -->
+    <!-- COLUNA ESQUERDA -->
     <div class="pdv-col-esquerda">
+
+      <!-- DADOS DA VENDA — movidos para cima da busca -->
+      <div class="pdv-dados-topo-card">
+        <div class="pdv-bloco-titulo">👤 Dados da venda</div>
+        <div class="pdv-dados-topo-grid">
+          <div class="form-row pdv-cliente-topo" style="position:relative;">
+            <label>Cliente (opcional)</label>
+            <input type="text" id="venda-cliente" placeholder="Digite o nome da cliente..." autocomplete="off"
+                   oninput="filtrarClientesVenda(this);checarCreditoCliente();" onfocus="filtrarClientesVenda(this)" onblur="setTimeout(()=>{fecharSugestoesClienteVenda();checarCreditoCliente();},150)">
+            <div id="venda-cliente-sugestoes" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:150;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+            <div id="venda-cliente-credito" style="display:none;margin-top:6px;padding:8px 10px;background:var(--success-light);border:1px solid #B8D9C0;border-radius:6px;font-size:12px;"></div>
+          </div>
+
+          <div class="form-row">
+            <label>Vendedor (opcional)</label>
+            <select id="venda-vendedor" class="select-vendedor">
+              <option value="">Sem vendedor</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <label>Data da venda</label>
+            <input type="date" id="venda-data">
+          </div>
+        </div>
+      </div>
 
       <!-- BUSCA DESTACADA ESTILO PDV -->
       <div class="pdv-busca-card">
@@ -5337,7 +5487,7 @@ body.mkt-workspace-open{overflow:hidden!important;}
         <div id="sugestoes-venda" style="position:relative;z-index:100;"></div>
       </div>
 
-      <!-- PRODUTO SELECIONADO -->
+      <!-- PRODUTO SELECIONADO — original -->
       <div id="produto-selecionado-info" style="display:none;">
         <div class="pdv-produto-card">
           <div class="pdv-produto-header">
@@ -5387,7 +5537,7 @@ body.mkt-workspace-open{overflow:hidden!important;}
         <p>Digite para buscar um produto acima.</p>
       </div>
 
-      <!-- CARRINHO (tabela estilo PDV) -->
+      <!-- CARRINHO -->
       <div class="pdv-carrinho-tabela">
         <div class="pdv-carrinho-tabela-head">
           <span>Produto</span>
@@ -5404,49 +5554,12 @@ body.mkt-workspace-open{overflow:hidden!important;}
         </div>
       </div>
 
-      <!-- DADOS DA VENDA + RESUMO: apenas reorganização visual; IDs e eventos originais preservados -->
-      <div class="pdv-inferior-grid">
-        <div class="pdv-dados-venda-card">
-          <div class="pdv-card-titulo">👤 Dados da venda</div>
-          <div class="pdv-dados-grid">
-            <div class="form-row pdv-cliente-row" style="position:relative;">
-              <label>Cliente (opcional)</label>
-              <input type="text" id="venda-cliente" placeholder="Digite o nome da cliente..." autocomplete="off"
-                     oninput="filtrarClientesVenda(this);checarCreditoCliente();" onfocus="filtrarClientesVenda(this)" onblur="setTimeout(()=>{fecharSugestoesClienteVenda();checarCreditoCliente();},150)">
-              <div id="venda-cliente-sugestoes" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);max-height:200px;overflow-y:auto;margin-top:2px;"></div>
-              <div id="venda-cliente-credito" style="display:none;margin-top:6px;padding:8px 10px;background:var(--success-light);border:1px solid #B8D9C0;border-radius:6px;font-size:12px;"></div>
-            </div>
-
-            <div class="form-row">
-              <label>Vendedor (opcional)</label>
-              <select id="venda-vendedor" class="select-vendedor">
-                <option value="">Sem vendedor</option>
-              </select>
-            </div>
-
-            <div class="form-row">
-              <label>Data da venda</label>
-              <input type="date" id="venda-data">
-            </div>
-          </div>
-        </div>
-
-        <div class="pdv-resumo-card">
-          <div class="pdv-card-titulo">🧾 Resumo da venda</div>
-          <div class="pdv-desconto-destaque">
-            <label for="venda-desconto">Desconto (R$)</label>
-            <input type="text" inputmode="numeric" id="venda-desconto" placeholder="0,00" oninput="mascaraMoeda(this);renderCarrinho()">
-          </div>
-          <div class="pdv-resumo-lateral" id="carrinho-resumo"></div>
-        </div>
-      </div>
-
     </div>
 
-    <!-- COLUNA DIREITA: pagamento e ações -->
+    <!-- COLUNA DIREITA: pagamento + crediário + resumo -->
     <div class="pdv-col-direita">
 
-      <div class="pdv-pagamento-label">Pagamento</div>
+      <div class="pdv-pagamento-label" style="margin-top:0;">Pagamento</div>
       <div class="pdv-pagamento-grid">
         <button type="button" class="pdv-pag-btn" data-valor="À vista" onclick="selecionarFormaPagamento(this)">💵 Dinheiro</button>
         <button type="button" class="pdv-pag-btn" data-valor="Pix" onclick="selecionarFormaPagamento(this)">📱 Pix</button>
@@ -5457,7 +5570,7 @@ body.mkt-workspace-open{overflow:hidden!important;}
         <button type="button" class="pdv-pag-btn" data-valor="Voucher" onclick="selecionarFormaPagamento(this)">🎫 Voucher</button>
       </div>
 
-      <!-- Select real (mantido para a lógica existente, oculto visualmente) -->
+      <!-- Select real preservado -->
       <select id="venda-pagamento" onchange="togglePrazoFields()" style="display:none;">
         <option>À vista</option>
         <option>Cartão crédito</option>
@@ -5480,12 +5593,8 @@ body.mkt-workspace-open{overflow:hidden!important;}
         </label>
       </div>
 
-      <div class="pdv-finalizar-bar">
-        <button class="pdv-btn-limpar" onclick="limparCarrinho()">🗑 Limpar</button>
-      </div>
-
-      <!-- RECEBER CREDIÁRIO — só aparece se loja tem crediário habilitado -->
-      <div id="pdv-receber-cred-wrap" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
+      <!-- RECEBER CREDIÁRIO — posição original da função, agora acima do resumo -->
+      <div id="pdv-receber-cred-wrap" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
         <button onclick="abrirModalReceberCrediario()"
           style="width:100%;padding:12px;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(59,130,246,0.3);transition:.15s ease;"
           onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform=''">
@@ -5493,11 +5602,27 @@ body.mkt-workspace-open{overflow:hidden!important;}
         </button>
       </div>
 
+      <!-- RESUMO DA VENDA — movido para abaixo de Receber Crediário -->
+      <div class="pdv-resumo-novo-card">
+        <div class="pdv-bloco-titulo">🧾 Resumo da venda</div>
+
+        <div class="pdv-resumo-lateral" id="carrinho-resumo"></div>
+
+        <div class="pdv-desconto-novo">
+          <label for="venda-desconto">Desconto (R$)</label>
+          <input type="text" inputmode="numeric" id="venda-desconto" placeholder="0,00" oninput="mascaraMoeda(this);renderCarrinho()">
+        </div>
+      </div>
+
+      <div class="pdv-finalizar-bar pdv-limpar-novo">
+        <button class="pdv-btn-limpar" onclick="limparCarrinho()">🗑 Limpar venda</button>
+      </div>
+
     </div>
 
   </div>
 
-  <!-- Mantido oculto: usado pela lógica original para saber se há itens no carrinho -->
+  <!-- Mantido oculto: usado pela lógica original -->
   <div id="carrinho-wrap" style="display:none;"></div>
 </div>
 
@@ -24448,130 +24573,6 @@ const oldRender=window.renderMarketingIA;window.renderMarketingIA=function(){old
 #page-marketing .mkt-message-bubble{
   display:block !important;
 }
-
-/* ===== INDEX 88 — REORGANIZAÇÃO VISUAL DO PDV (SEM ALTERAR LÓGICA) ===== */
-#page-vendas .pdv-layout{
-  grid-template-columns:minmax(0,1fr) 380px!important;
-  gap:18px!important;
-}
-#page-vendas .pdv-col-esquerda{
-  max-height:none!important;
-  overflow:visible!important;
-  padding-right:0!important;
-}
-#page-vendas .pdv-col-direita{
-  padding:18px!important;
-}
-#page-vendas .pdv-carrinho-tabela{
-  min-height:390px!important;
-}
-#page-vendas .pdv-inferior-grid{
-  display:grid!important;
-  grid-template-columns:minmax(0,1.35fr) minmax(300px,.75fr)!important;
-  gap:14px!important;
-  margin-top:14px!important;
-}
-#page-vendas .pdv-dados-venda-card,
-#page-vendas .pdv-resumo-card{
-  border:1px solid var(--pdv-line)!important;
-  border-radius:20px!important;
-  background:#fff!important;
-  box-shadow:0 10px 28px rgba(15,23,42,.055)!important;
-  padding:18px!important;
-  min-width:0!important;
-}
-#page-vendas .pdv-card-titulo{
-  display:flex!important;
-  align-items:center!important;
-  gap:8px!important;
-  color:#0f172a!important;
-  font-size:16px!important;
-  font-weight:900!important;
-  margin-bottom:16px!important;
-  padding-bottom:12px!important;
-  border-bottom:1px solid #eef2f7!important;
-}
-#page-vendas .pdv-dados-grid{
-  display:grid!important;
-  grid-template-columns:minmax(0,1.4fr) minmax(220px,1fr)!important;
-  gap:14px!important;
-  align-items:start!important;
-}
-#page-vendas .pdv-dados-grid .form-row{
-  margin:0!important;
-}
-#page-vendas .pdv-dados-grid .pdv-cliente-row{
-  grid-column:1 / -1!important;
-}
-#page-vendas .pdv-dados-grid input,
-#page-vendas .pdv-dados-grid select{
-  width:100%!important;
-  min-height:52px!important;
-  font-size:14px!important;
-}
-#page-vendas .pdv-desconto-destaque{
-  margin-bottom:12px!important;
-}
-#page-vendas .pdv-desconto-destaque label{
-  display:block!important;
-  color:#334155!important;
-  font-size:12px!important;
-  font-weight:900!important;
-  text-transform:uppercase!important;
-  letter-spacing:.045em!important;
-  margin-bottom:8px!important;
-}
-#page-vendas .pdv-desconto-destaque #venda-desconto{
-  width:100%!important;
-  max-width:none!important;
-  min-height:54px!important;
-  font-size:20px!important;
-  font-weight:900!important;
-  text-align:right!important;
-  border:2px solid color-mix(in srgb,var(--pdv-primary) 28%,#dfe6f0)!important;
-  background:color-mix(in srgb,var(--pdv-primary) 4%,#fff)!important;
-}
-#page-vendas .pdv-resumo-card .pdv-resumo-lateral{
-  display:block!important;
-  margin-top:0!important;
-  min-height:116px!important;
-}
-#page-vendas .pdv-resumo-card .pdv-resumo-lateral:empty{
-  display:block!important;
-}
-#page-vendas .pdv-resumo-card .pdv-resumo-lateral:empty::before{
-  content:'Adicione produtos para visualizar o total da venda.';
-  display:block;
-  color:#94a3b8;
-  font-size:13px;
-  text-align:center;
-  padding:30px 10px;
-}
-#page-vendas .pdv-resumo-card .pdv-resumo-lateral .valor-total{
-  font-size:34px!important;
-}
-#page-vendas .pdv-pagamento-grid{
-  grid-template-columns:1fr 1fr!important;
-  gap:10px!important;
-}
-#page-vendas .pdv-pag-btn{
-  min-height:62px!important;
-}
-#page-vendas .pdv-pag-btn-full{
-  grid-column:1 / -1!important;
-}
-@media (max-width:1180px){
-  #page-vendas .pdv-layout{grid-template-columns:1fr!important;}
-  #page-vendas .pdv-col-direita{position:static!important;}
-}
-@media (max-width:860px){
-  #page-vendas .pdv-inferior-grid{grid-template-columns:1fr!important;}
-}
-@media (max-width:620px){
-  #page-vendas .pdv-dados-grid{grid-template-columns:1fr!important;}
-  #page-vendas .pdv-dados-grid .pdv-cliente-row{grid-column:auto!important;}
-}
-
 </style>
 
 </body>
